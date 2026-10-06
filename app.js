@@ -208,9 +208,17 @@ async function chonCT() {
   } catch (e) { say(e.message); }
 }
 
+// Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
+// ponytail: không có máy chủ nên không có refresh token, mỗi giờ phải xin lại một lần.
+const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth2.initTokenClient({
+  client_id: CLIENT_ID,
+  scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar.events', // quyền ghi: đổi quyền chia sẻ khi Gửi, lưu bản mới, ghi Rev vào sổ, lịch nhắc việc
+  callback, error_callback: () => {},
+}).requestAccessToken(opt);
 async function vao(resp) {
   if (resp.error) return say('Đăng nhập không được: ' + resp.error);
   token = resp.access_token; $('vao').hidden = true;
+  try { localStorage.setItem(KHO, JSON.stringify({ token, het: resp.het ?? Date.now() + (resp.expires_in - 60) * 1000 })); } catch {}
   try {
     const [goc] = await ls(`name='${ROOT_NAME}' and mimeType='${FOLDER}'`);
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
@@ -224,12 +232,13 @@ async function vao(resp) {
 
 $('vao').onclick = () => {
   if (!CLIENT_ID) return say('Chưa điền CLIENT_ID trong config.js (xem README).');
-  google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar.events', // quyền ghi: đổi quyền chia sẻ khi Gửi, lưu bản mới, ghi Rev vào sổ
-    callback: vao,
-  }).requestAccessToken();
+  dangNhap();
 };
+try { // mở lại app: còn token thì dùng luôn, hết hạn thì thử xin lại không hỏi gì
+  const luu = JSON.parse(localStorage.getItem(KHO));
+  if (luu?.het > Date.now()) vao({ access_token: luu.token, het: luu.het });
+  else if (luu) addEventListener('load', () => dangNhap({ prompt: 'none' }, r => r.error || vao(r)));
+} catch {}
 $('ct').onchange = chonCT;
 $('q').oninput = hien;
 $('vthem').onclick = themViec;
