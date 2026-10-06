@@ -37,6 +37,17 @@ function hien() {
   }));
 }
 
+const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+// Tìm Google Sheet theo điều kiện; chưa có mà có file Excel cùng tên thì tự chuyển thành Google Sheet (bản Excel giữ nguyên, cùng thư mục).
+async function sheetCo(dk) {
+  let [f] = await ls(`${dk} and mimeType='${SHEET}'`);
+  if (f) return f;
+  [f] = await ls(`${dk} and mimeType='${XLSX}'`);
+  if (!f) return;
+  say(`Đang chuyển ${f.name} sang Google Sheet...`);
+  const { parents } = await api(`https://www.googleapis.com/drive/v3/files/${f.id}?fields=parents`);
+  return api(`https://www.googleapis.com/drive/v3/files/${f.id}/copy`, json({ mimeType: SHEET, name: f.name.replace(/\.xlsx$/i, ''), parents }));
+}
 const q = s => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'"); // thoát ký tự trong truy vấn Drive
 const json = o => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(o) });
 
@@ -201,8 +212,8 @@ async function gui(d) {
 async function chonCT() {
   try {
     say('Đang tải sổ đăng ký...');
-    const [so] = await ls(`'${$('ct').value}' in parents and mimeType='${SHEET}' and name contains '_SODANGKY'`);
-    if (!so) { docs = []; hien(); return say('Công trình này chưa có Google Sheet _SODANGKY (mở file Excel trên Drive → Lưu thành Google Trang tính).'); }
+    const so = await sheetCo(`'${$('ct').value}' in parents and name contains '_SODANGKY'`);
+    if (!so) { docs = []; hien(); return say('Công trình này chưa có Google Sheet _SODANGKY (đặt file _SODANGKY, Excel hoặc Google Sheet, trong thư mục công trình trên Drive).'); }
     const v = await api(`https://sheets.googleapis.com/v4/spreadsheets/${so.id}/values/DANHMUC`);
     head = v.values[0]; soId = so.id; docs = parse(v.values); hien(); if (!docs.length) say('Sổ đăng ký đang trống, chưa có tài liệu nào.');
     await docInbox();
@@ -215,8 +226,8 @@ const nkApi = (id, p, opt) => api(`https://sheets.googleapis.com/v4/spreadsheets
 async function moNhatKy() {
   $('nk').hidden = false; $('nkf').hidden = true; nkId = null; nkVc = [];
   try {
-    const [f] = await ls(`name contains '${q($('ct').selectedOptions[0].text.split('_')[0])}-NK-NHATKY' and mimeType='${SHEET}'`);
-    if (!f) return $('nkmsg').textContent = 'Công trình này chưa có Google Sheet nhật ký (mở file CTxx-NK-NHATKY trên Drive → Lưu thành Google Trang tính).';
+    const f = await sheetCo(`name contains '${q($('ct').selectedOptions[0].text.split('_')[0])}-NK-NHATKY'`);
+    if (!f) return $('nkmsg').textContent = 'Công trình này chưa có Google Sheet nhật ký (đặt file CTxx-NK-NHATKY, Excel hoặc Google Sheet, trong thư mục công trình trên Drive).';
     nkId = f.id; nkDm = ((await nkApi(nkId, 'values/DANHMUC!A2:C')).values || []).filter(r => r[0]);
     $('nkv').replaceChildren(...nkDm.map(([ma, ten, dv]) => new Option(`${ma} · ${ten}${dv ? ' (' + dv + ')' : ''}`, ma)));
     $('nkc').replaceChildren(...NK.flatMap(([ten, kieu], i) => {
