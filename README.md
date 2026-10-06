@@ -123,3 +123,6 @@ Nút **Đã gia hạn** trên mỗi dòng hạn: hỏi ngày hết hạn mới (
 
 ## Khung giao diện (thanh tab dưới)
 Năm tab: Trang chủ (còn sót, thời tiết), Bản vẽ (tài liệu, mã QR), Việc, Nhật ký (xếp ảnh), Thêm (tin Zalo, thông tin công trình, vật tư, lịch nghiệm thu, Cài đặt). Ô chọn công trình luôn nằm ở đầu trang. Chấm đỏ ở Việc là số việc quá hạn. Thêm → Cài đặt chọn giao diện Sáng (mặc định), Tối hoặc Biển xanh (nền bãi biển). Trang chủ có 4 ô Làm nhanh. Khối mới thêm vào index.html chỉ cần ghi `data-s="tên màn"`; địa chỉ `#tên` mở màn đó.
+
+## Bàn giao khi vắng mặt
+Thêm → Thông tin công trình → "Bàn giao khi vắng mặt" (có thể ghi "Vắng đến ngày"): tạo một trang cho người thay gồm việc đang dở của công trình (quá hạn lên đầu), nghiệm thu đã hẹn sắp đến, vật tư cần chú ý (lô không đạt, lô chưa xong thủ tục) và số điện thoại trong mục Liên hệ. Chép hoặc gửi qua Zalo như bản tin họp. App chỉ gom số liệu đã có, nên kiểm tra lại trước khi gửi.
