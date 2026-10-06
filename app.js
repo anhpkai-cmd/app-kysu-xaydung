@@ -728,7 +728,7 @@ async function vao(resp) {
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
     gocId = goc.id;
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
-    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('tn').hidden = false; $('ps').hidden = false; $('qr').hidden = false; $('tq').hidden = false;
+    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('nhanh').hidden = false; $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('tn').hidden = false; $('ps').hidden = false; $('qr').hidden = false; $('tq').hidden = false;
     try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec(); taiHan(cts); sotQuet(cts);
