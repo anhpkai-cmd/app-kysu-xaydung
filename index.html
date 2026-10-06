@@ -47,7 +47,7 @@
   .anh th,.anh>div{min-width:0}
   #ttms:empty,#nkmsg:empty,#anms:empty,#sotms:empty,#tqms:empty,#vtms:empty{display:none}
   #tqd .cb,#sotn .cb{font-weight:600;color:var(--accent)}
-  #sotds{display:grid;gap:8px}
+  #sotds{display:grid;gap:8px} #tnms:empty,#tnz[hidden]{display:none} #tnt{width:100%;box-sizing:border-box;font:inherit;color:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--card)}
   .cot{flex-direction:column;align-items:stretch}
   .cot .nut{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
   summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
@@ -71,6 +71,16 @@
     <p id="sotms" role="status"></p>
     <p><button id="sotb" class="phu">Nhắc tôi lúc 17h mỗi ngày</button></p>
   </section>
+  <section id="tn" hidden>
+    <h2>Tin nhắn soạn sẵn</h2>
+    <details id="tnd"><summary>Soạn tin Zalo (nghiệm thu, tổ đội, dừng vì mưa, nhà cung cấp)</summary>
+    <label for="tnm">Loại tin</label><select id="tnm"></select>
+    <div id="tnf"></div>
+    <label for="tnt">Tin (sửa được trước khi chép)</label><textarea id="tnt" rows="9"></textarea>
+    <p id="tnms" role="status"></p>
+    <p><button id="tnc">Chép tin</button> <a id="tnz" class="nutlk" hidden target="_blank" rel="noopener">Mở Zalo</a></p>
+    </details>
+  </section>
   <section id="tq" hidden>
     <h2>Thời tiết công trình</h2>
     <div id="tqd"></div>
@@ -84,6 +94,13 @@
     <h2>Việc cần làm</h2>
     <div id="dsv"></div>
     <div id="han"></div>
+    <details id="hanf"><summary>+ Thêm thiết bị cần kiểm định, thẻ an toàn, giấy tờ có hạn</summary>
+    <label for="hanloai">Loại</label><select id="hanloai"></select>
+    <label for="hanten">Tên (thiết bị, người, giấy tờ)</label><input id="hanten" placeholder="ví dụ: Cẩu tháp TC5013">
+    <label for="hanngay">Ngày hết hạn</label><input id="hanngay" type="date">
+    <p id="hanms" role="status"></p>
+    <p><button id="hanb">Thêm vào sổ</button></p>
+    </details>
     <label for="vten">Việc mới</label><input id="vten" placeholder="ví dụ: Gia hạn bảo lãnh thực hiện hợp đồng">
     <label for="vct">Công trình</label><select id="vct"></select>
     <label for="vhan">Hạn (có hạn thì điện thoại sẽ nhắc qua Google Lịch)</label><input id="vhan" type="date">

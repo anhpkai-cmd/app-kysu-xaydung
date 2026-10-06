@@ -5,6 +5,8 @@ import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { url as urlTT, parse as parseTT, viTri, nhatKy, tomTat, canhBao, NGAY } from './thoitiet.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
 import { khoiQR, lamQR, moQR, inQR, sauBanMoi as qrSauBanMoi, laBanVe } from './qr.js';
+import { LOAI as LOAI_HAN, dong as dongHan, COT_HAN } from './han.js';
+import { MAU as MAU_TIN, dmy, macDinh, soan, zalo } from './tin.js';
 import { moVatTu, luuVe, themVatTu, demVatTu, soVn, themYc, lapYc, veYc } from './vattu.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
@@ -618,6 +620,52 @@ $('tql').onclick = () => {
 };
 $('tqg').onclick = () => navigator.geolocation ? navigator.geolocation.getCurrentPosition(p => { $('tqv').value = `${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`; $('tql').click(); }, () => tqMs('Không lấy được vị trí máy. Hãy cho phép vị trí hoặc gõ tọa độ.')) : tqMs('Máy không hỗ trợ lấy vị trí.');
 
+// Thêm thiết bị, thẻ an toàn, giấy tờ có hạn: một dòng DANHMUC của công trình đang chọn (thêm cột "Hạn hiệu lực" nếu sổ chưa có), rồi dùng chung danh sách hạn ở trên.
+async function themHan() {
+  const ten = $('hanten').value.trim(), han = $('hanngay').value, ms = t => $('hanms').textContent = t;
+  if (!ten || !han) return ms('Nhập tên và chọn ngày hết hạn.');
+  try {
+    if (!soId) return ms('Công trình này chưa có _SODANGKY.');
+    const sh = `https://sheets.googleapis.com/v4/spreadsheets/${soId}`, ctMa = maCT({ name: $('ct').selectedOptions[0].text });
+    const o = dongHan(ctMa, $('hanloai').value, ten, han, docs.map(d => d.ma), new Date().toLocaleDateString('en-GB'));
+    if (docs.some(d => d.ten === o['Tên'] && d.han === o[COT_HAN])) return ms('Đã có dòng này trong sổ.');
+    if (!head.includes(COT_HAN)) { // sổ chưa có cột hạn: thêm vào cuối hàng tiêu đề (ponytail: sổ tối đa 26 cột A-Z)
+      await api(`${sh}/values/DANHMUC!${String.fromCharCode(65 + head.length)}1?valueInputOption=RAW`, { ...json({ values: [[COT_HAN]] }), method: 'PUT' }); head = [...head, COT_HAN];
+    }
+    await api(`${sh}/values/DANHMUC:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [head.map(h => o[h] ?? '')] }));
+    $('hanten').value = ''; ms(`Đã thêm ${o['Mã tài liệu']}. Sắp đến hạn sẽ hiện trong "Giấy tờ sắp hết hạn" và khung Còn sót.`);
+    await chonCT(); taiHan([...$('ct').options].map(x => ({ id: x.value, name: x.text })));
+  } catch (e) { ms(e.message); }
+}
+// ---- Tin nhắn Zalo soạn sẵn (xem tin.js): thông tin lấy lúc mở khung và lúc đổi ô, nên không phụ thuộc thứ tự tải ----
+const tnCtx = () => {
+  const hom = homNay(), ten = $('ct').selectedOptions[0]?.text ?? '', tenCT = ttDong.find(r => /^tên công trình$/i.test(r[1]))?.[2] || ten.split('_').slice(1).join(' ') || ten;
+  return { tenCT, hom: dmy(hom), mai: dmy(cong(hom, 1)), tt: ttDong, thoiTiet: { hom: tqDs[0] && tomTat(tqDs[0]), mai: tqDs[1] && tomTat(tqDs[1]) },
+    viecMai: viec.filter(t => (!t.ct || t.ct === 'Chung' || t.ct === ten) && conLai(t.han, hom) === 1).map(t => t.ten) };
+};
+let tnV = {};
+function tnVe(moi) {
+  const m = MAU_TIN.find(x => x.id === $('tnm').value), c = tnCtx();
+  if (moi) {
+    tnV = macDinh(m, c); $('tnms').textContent = '';
+    $('tnf').replaceChildren(...m.truong.flatMap(([k, nhan, d]) => {
+      const l = document.createElement('label'), o = document.createElement(Array.isArray(d) ? 'select' : 'input'); l.textContent = nhan; l.htmlFor = o.id = 'tn_' + k;
+      if (Array.isArray(d)) o.append(...d.map(x => new Option(x)));
+      o.value = tnV[k]; o.oninput = () => { tnV[k] = o.value; tnVe(); }; // ponytail: đổi ô thì soạn lại cả tin (chữ đã sửa tay trong khung tin sẽ mất); sửa tay là bước cuối
+      return [l, o];
+    }));
+  }
+  $('tnt').value = soan(m, tnV, c);
+  const z = zalo(m, c); $('tnz').hidden = !z; if (z) { $('tnz').href = z.href; $('tnz').textContent = 'Mở Zalo của ' + z.ten; }
+}
+$('tnm').replaceChildren(...MAU_TIN.map(m => new Option(m.ten, m.id)));
+$('tnm').onchange = () => tnVe(true);
+$('tnd').ontoggle = () => { if ($('tnd').open) tnVe(true); };
+$('tnc').onclick = async () => {
+  try { await navigator.clipboard.writeText($('tnt').value); $('tnms').textContent = 'Đã chép. Mở Zalo rồi dán vào khung tin.'; }
+  catch { $('tnt').select(); $('tnms').textContent = document.execCommand?.('copy') ? 'Đã chép. Mở Zalo rồi dán vào khung tin.' : 'Máy không cho chép tự động: giữ vào khung tin, chọn Sao chép.'; }
+};
+
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
 // ponytail: không có máy chủ nên không có refresh token, mỗi giờ phải xin lại một lần.
 const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth2.initTokenClient({
@@ -634,7 +682,7 @@ async function vao(resp) {
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
     gocId = goc.id;
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
-    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('qr').hidden = false; $('tq').hidden = false;
+    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('tn').hidden = false; $('qr').hidden = false; $('tq').hidden = false;
     try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec(); taiHan(cts); sotQuet(cts);
@@ -681,6 +729,8 @@ $('sotb').onclick = khoa('sotb', banTin, banTinNut);
 $('anc').onclick = () => { const tat = anhDs.every(f => f.chon); anhDs.forEach(f => f.chon = !tat); veAnh(); };
 $('and').onclick = () => { anhDs.forEach(f => { if (f.chon && f.nguon === 'doan' && !f.ngaySua) f.ngaySua = f.ngay; }); veAnh(); };
 $('nkl').onclick = khoa('nkl', luuNhatKy);
+$('hanloai').replaceChildren(...Object.entries(LOAI_HAN).map(([k, l]) => new Option(l.ten, k)));
+$('hanb').onclick = khoa('hanb', themHan);
 $('nkf').oninput = nkNhap;
 $('vtluu').onclick = khoa('vtluu', luuVe);
 $('vtthem').onclick = khoa('vtthem', themVatTu);

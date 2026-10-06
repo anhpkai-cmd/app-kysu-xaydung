@@ -104,3 +104,11 @@ Trong mục Vật tư, **+ Phiếu yêu cầu vật tư** gợi ý các công vi
 - Lần đầu app tạo mẫu `PHIEU-YEU-CAU-VAT-TU` trong `CONGTRINH/_CHUNG/MAUBIEU_CONGTY` (gửi Bộ phận Vật tư công ty, đồng gửi Chỉ huy trưởng). Anh sửa mẫu này tùy ý, chỉ cần giữ dòng tiêu đề bảng có ô **STT** ở cột A; các ô `{{Tên mục}}` điền như văn bản gửi đi.
 - Phiếu lưu ở `05_VATTU_DOITHICONG/PHIEU_YEUCAU`, tên `CTxx-YC-VT-yyyymmdd-01_PhieuYeuCauVatTu`. Mỗi vật tư thêm một việc "<vật tư> về (phiếu ...)" vào ngày cần.
 - Gửi: app hỏi trước khi mở link cho người có link xem, rồi mở Chia sẻ (Zalo) với nội dung phiếu và link.
+
+## Thiết bị, thẻ an toàn, giấy tờ có hạn
+
+Dưới danh sách giấy tờ sắp hết hạn có ô "+ Thêm thiết bị cần kiểm định, thẻ an toàn, giấy tờ có hạn": chọn loại (kiểm định cẩu, giàn giáo, máy hàn; thẻ an toàn lao động; giấy tờ khác như bảo lãnh, bảo hiểm), gõ tên và ngày hết hạn. App thêm một dòng vào trang DANHMUC của `_SODANGKY` công trình đang chọn (mã dạng CT01-TB-001, CT01-AT-001, CT01-GT-001; tự thêm cột "Hạn hiệu lực" nếu sổ chưa có), nên dùng luôn danh sách "Giấy tờ sắp hết hạn" (còn dưới 30 ngày), nút **Nhắc tôi** và khung Còn sót (dưới 7 ngày). Muốn sửa ngày hay xóa dòng thì sửa trực tiếp trong Trang tính. `node han.js` tự kiểm tra.
+
+## Tin nhắn Zalo soạn sẵn
+
+Mục "Tin nhắn soạn sẵn" soạn bốn loại tin hay gửi: báo tổ đội lịch ngày mai, báo chủ đầu tư dừng thi công do mưa, mời nghiệm thu (tư vấn giám sát), nhắc nhà cung cấp giao hàng. Tên công trình (trang Thông tin, dòng "Tên công trình", nếu có), ngày, dự báo thời tiết, việc đến hạn ngày mai và người nhận (liên hệ có vai trò "Chủ đầu tư" hoặc "Giám sát" trong trang Thông tin) được điền sẵn; chỉ phải gõ phần còn lại. Sửa tin trong khung rồi bấm **Chép tin**, mở Zalo và dán; nếu liên hệ có số điện thoại thì có nút mở đúng cuộc trò chuyện Zalo. Không cần bot Zalo, không gửi gì đi từ app. Đổi một ô thì tin được soạn lại cả (chữ sửa tay trong khung sẽ mất). `node tin.js` tự kiểm tra.
