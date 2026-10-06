@@ -39,27 +39,47 @@ export function soat(van, tt) {
     .map(([n, c, m]) => `Số ${so(n)} đ nhưng bằng chữ ghi "${c}" (${so(m)} đ)`);
   return { lech: [...chuLech, ...sai.map(b => `Văn bản ghi ${so(b.sai)} đ, thông tin công trình ghi ${b.ten} là ${so(b.n)} đ`)], thieu };
 }
+// Số thành chữ cho dòng "Bằng chữ: ...". ponytail: đến hàng trăm tỷ (dưới 10^12), đủ cho công trình thường.
+const DV = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+const baSo = (n, du) => { // một nhóm 3 chữ số; du: có nhóm lớn hơn đứng trước nên phải đọc đủ "không trăm lẻ"
+  const t = Math.floor(n / 100), c = Math.floor(n / 10) % 10, d = n % 10, r = du || t ? [DV[t], 'trăm'] : [];
+  if (c > 1) r.push(DV[c], 'mươi'); else if (c === 1) r.push('mười'); else if (d && r.length) r.push('lẻ');
+  if (d) r.push(d === 1 && c > 1 ? 'mốt' : d === 5 && c ? 'lăm' : DV[d]);
+  return r;
+};
+export function soChu(n) {
+  const r = [];
+  ['tỷ', 'triệu', 'nghìn', ''].forEach((bac, i) => {
+    const nhom = Math.floor(n / 10 ** (9 - 3 * i)) % 1000;
+    if (nhom) r.push(...baSo(nhom, r.length > 0), bac);
+  });
+  const c = r.filter(Boolean).join(' ') || 'không';
+  return c[0].toUpperCase() + c.slice(1);
+}
 export const conSot = van => [...new Set(String(van).match(/\{\{[^{}]+\}\}/g) || [])]; // chỗ điền chưa có thông tin
 
 const DOC = 'application/vnd.google-apps.document', SHEET = 'application/vnd.google-apps.spreadsheet';
 const WORD = /\.(docx?|odt|rtf)$/i, EXCEL = /\.(xlsx?|ods)$/i;
 const chuCua = (g, f) => g.api(`https://www.googleapis.com/drive/v3/files/${f.id}/export?mimeType=${f.mimeType === SHEET ? 'text/csv' : 'text/plain'}`, { raw: true }); // ponytail: Trang tính chỉ đọc trang đầu
 
-// Chữ của văn bản để soát, ưu tiên Google Docs, rồi Word, rồi PDF. Word, PDF (cả bản scan) thì Drive chuyển tạm sang Google Docs
+// Chữ của văn bản để soát, ưu tiên Google Docs, rồi Word, rồi PDF, rồi Trang tính/Excel (báo giá, khối lượng; đọc trang đầu). Word, PDF (cả bản scan) thì Drive chuyển tạm sang Google Docs
 // (Drive tự nhận dạng chữ), bản tạm nằm trong thư mục g.tam() và xóa ngay sau khi đọc; app chỉ xóa đúng bản tạm do nó vừa tạo.
 export async function docChu(g, ds) {
-  const f = ds.find(f => f.mimeType === DOC) || ds.find(f => WORD.test(f.name)) || ds.find(f => /\.pdf$/i.test(f.name));
+  const f = ds.find(f => f.mimeType === DOC) || ds.find(f => WORD.test(f.name)) || ds.find(f => /\.pdf$/i.test(f.name)) || ds.find(f => f.mimeType === SHEET) || ds.find(f => EXCEL.test(f.name));
   if (!f) return null;
-  if (f.mimeType === DOC) return chuCua(g, f);
-  const tam = await g.api(`https://www.googleapis.com/drive/v3/files/${f.id}/copy?ocrLanguage=vi&fields=id,mimeType`, g.json({ mimeType: DOC, name: '_TAM-SOAT_' + f.name, parents: [await g.tam()] }));
+  if (f.mimeType === DOC || f.mimeType === SHEET) return chuCua(g, f);
+  const tam = await g.api(`https://www.googleapis.com/drive/v3/files/${f.id}/copy?ocrLanguage=vi&fields=id,mimeType`, g.json({ mimeType: EXCEL.test(f.name) ? SHEET : DOC, name: '_TAM-SOAT_' + f.name, parents: [await g.tam()] }));
   try { return await chuCua(g, tam); } finally { await g.api(`https://www.googleapis.com/drive/v3/files/${tam.id}`, { method: 'DELETE' }).catch(() => {}); }
 }
 
-// Lập văn bản: chép mẫu (Word/Excel thì chuyển sang Google Docs/Trang tính) vào thư mục đích, điền {{Tên mục}} từ trang Thông tin và {{Ngày}}.
+// Lập văn bản: chép mẫu (Word/Excel thì chuyển sang Google Docs/Trang tính) vào thư mục đích, điền {{Tên mục}} từ trang Thông tin,
+// {{Tên mục bằng chữ}} cho mục là số tiền (ví dụ {{Giá trị HĐ bằng chữ}}), {{Ngày}} (06/10/2026) và {{Ngày dài}} (ngày 06 tháng 10 năm 2026).
 export async function lap(g, mau, ten, dir, tt) {
   const sheet = mau.mimeType === SHEET || EXCEL.test(mau.name);
   const f = await g.api(`https://www.googleapis.com/drive/v3/files/${mau.id}/copy?fields=id,mimeType,webViewLink`, g.json({ mimeType: sheet ? SHEET : DOC, name: ten, parents: [dir] }));
-  const dien = [...tt.filter(([t, gt]) => t && gt), ['Ngày', new Date().toLocaleDateString('en-GB')]];
+  const [d, m, y] = new Date().toLocaleDateString('en-GB').split('/'), co = tt.filter(([t, gt]) => t && gt);
+  const dien = [...co, ...co.filter(([, gt]) => tien(gt).length === 1).map(([t, gt]) => [`${t} bằng chữ`, soChu(tien(gt)[0]) + ' đồng']),
+    ['Ngày', `${d}/${m}/${y}`], ['Ngày dài', `ngày ${d} tháng ${m} năm ${y}`]];
   await (sheet
     ? g.api(`https://sheets.googleapis.com/v4/spreadsheets/${f.id}:batchUpdate`, g.json({ requests: dien.map(([t, gt]) => ({ findReplace: { find: `{{${t}}}`, replacement: gt, allSheets: true } })) }))
     : g.api(`https://docs.googleapis.com/v1/documents/${f.id}:batchUpdate`, g.json({ requests: dien.map(([t, gt]) => ({ replaceAllText: { containsText: { text: `{{${t}}}`, matchCase: false }, replaceText: gt } })) })));
@@ -87,6 +107,11 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vanban.js')) { 
     ['Số 423.301.185 đ nhưng bằng chữ ghi "bốn trăm hai mươi bốn triệu ba trăm lẻ một nghìn một trăm tám mươi lăm" (424.301.185 đ)']);
   a.deepEqual(soat('Ký ngày 24 tháng 9 năm 2026', [['Ngày ký HĐ', '24/09/2026']]).thieu, []); a.deepEqual(soat('Ký 24-9-2026', [['Ngày ký HĐ', '24/09/2026']]).thieu, []);
   a.deepEqual(soat('Ký 25/9/2026', [['Ngày ký HĐ', '24/09/2026']]).thieu, ['Ngày ký HĐ: 24/09/2026']);
+  a.equal(soChu(423301185), 'Bốn trăm hai mươi ba triệu ba trăm lẻ một nghìn một trăm tám mươi lăm');
+  a.equal(soChu(1005000000), 'Một tỷ không trăm lẻ năm triệu'); a.equal(soChu(21), 'Hai mươi mốt'); a.equal(soChu(15), 'Mười lăm'); a.equal(soChu(0), 'Không');
+  for (const n of [1, 10, 101, 110, 1001, 20500, 613406400, 999999999999, 100000000000]) a.equal(bangChu(soChu(n).toLowerCase()), n); // đọc ngược phải ra đúng số
+  // báo giá mẫu thật của anh: tổng 613.406.400 nhưng dòng bằng chữ ghi 613.430.400
+  a.equal(soat('TỔNG CỘNG,,,"613,406,400"\n"Bằng chữ: Sáu trăm mười ba triệu, bốn trăm ba mươi nghìn, bốn trăm đồng."', []).lech.length, 1);
   a.deepEqual(conSot('Kính gửi {{Chủ đầu tư}}, ngày {{Ngày}} {{Chủ đầu tư}} {x}'), ['{{Chủ đầu tư}}', '{{Ngày}}']);
   console.log('ok');
 }
