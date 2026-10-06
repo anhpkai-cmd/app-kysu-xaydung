@@ -35,3 +35,7 @@ App giữ phiên đăng nhập trên máy (khoảng 1 giờ). Hết hạn, app t
 ## Nhật ký ngày
 
 Mục "Nhật ký ngày" ghi vào Google Sheet `CTxx-NK-NHATKY_2026` (trang NGAY và KHOILUONG), tìm theo mã công trình đang chọn. File Excel trên Drive phải được Lưu thành Google Trang tính trước. App chỉ thêm dòng mới; ngày đã có thì không ghi đè. Chạy `node nhatky.js` để tự kiểm tra đổi ngày.
+
+## Menu
+
+Thanh menu dưới cùng: Trang chủ (việc quá hạn và sắp đến hạn trong 3 ngày), Tài liệu, Việc, Nhật ký, Thêm (các luồng sắp có). Mỗi mục là một `#tên` trên địa chỉ nên nút Back của điện thoại hoạt động.

@@ -111,6 +111,13 @@ function hienNhan() {
 }
 
 // ---- Việc cần làm: Trang tính _CONGVIEC (trong thư mục CONGTRINH) + sự kiện Google Lịch để điện thoại tự nhắc hạn ----
+const TAB = ['tc', 'td', 'vi', 'nk', 'kh']; // trang chủ, tài liệu, việc, nhật ký, thêm
+function mo() { // hiện đúng mục theo #tên trên địa chỉ; sai tên thì về Trang chủ
+  const t = TAB.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'tc';
+  document.body.dataset.t = t;
+  document.querySelectorAll('nav a').forEach(a => a.toggleAttribute('aria-current', a.hash === '#' + t));
+  scrollTo(0, 0);
+}
 const homNay = () => new Date().toLocaleDateString('sv-SE'); // yyyy-mm-dd theo giờ máy
 const LICH = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 
@@ -124,21 +131,27 @@ async function soViec(goc) {
   return t.spreadsheetId;
 }
 
+const dongViec = (t, han) => {
+  const el = document.createElement('div'); el.className = 'doc';
+  const th = document.createElement('div');
+  const a = document.createElement('div'); a.textContent = t.ten;
+  const b = document.createElement('small'); b.textContent = [t.ct, han ?? t.han].filter(Boolean).join(' · ');
+  th.append(a, b);
+  const x = document.createElement('button'); x.className = 'phu'; x.textContent = 'Xong'; x.setAttribute('aria-label', 'Xong việc: ' + t.ten);
+  x.onclick = () => xong(t);
+  el.append(th, x); return el;
+};
+const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dongViec(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
+
 async function taiViec() {
   viec = parseViec((await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC`)).values);
-  const nhom = chia(viec, homNay()), dong = (t, han) => {
-    const el = document.createElement('div'); el.className = 'doc';
-    const th = document.createElement('div');
-    const a = document.createElement('div'); a.textContent = t.ten;
-    const b = document.createElement('small'); b.textContent = [t.ct, han ?? t.han].filter(Boolean).join(' · ');
-    th.append(a, b);
-    const x = document.createElement('button'); x.className = 'phu'; x.textContent = 'Xong'; x.setAttribute('aria-label', 'Xong việc: ' + t.ten);
-    x.onclick = () => xong(t);
-    el.append(th, x); return el;
-  };
-  const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dong(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
+  const nhom = chia(viec, homNay());
   $('dsv').replaceChildren(...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen), ...muc('Sau đó', nhom.sau), ...muc('Chưa có hạn', nhom.khongHan));
-  if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên bên dưới.';
+  if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên ở mục Việc.';
+  // Trang chủ: chỉ việc cần để mắt hôm nay (quá hạn + trong 3 ngày tới)
+  const gap = nhom.quaHan.length + nhom.sapDen.length;
+  $('tcn').textContent = gap ? `${nhom.quaHan.length} việc quá hạn, ${nhom.sapDen.length} việc đến hạn trong 3 ngày tới.` : 'Hôm nay không có việc quá hạn hay sắp đến hạn.';
+  $('tcv').replaceChildren(...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen));
 }
 
 async function themViec() {
@@ -287,6 +300,8 @@ try { // mở lại app: còn token thì dùng luôn, hết hạn thì thử xin
   else if (luu) addEventListener('load', () => dangNhap({ prompt: 'none' }, r => r.error || vao(r)));
 } catch {}
 $('ct').onchange = () => { chonCT(); moNhatKy(); };
+$('tcd').textContent = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric' });
+addEventListener('hashchange', mo); mo();
 $('nkt').onclick = themVc;
 $('nkl').onclick = luuNhatKy;
 $('q').oninput = hien;
