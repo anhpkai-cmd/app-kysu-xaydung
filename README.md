@@ -75,7 +75,7 @@ Khung "Thời tiết công trình" lấy dự báo 3 ngày từ Open-Meteo (mi�
 ## Vật tư
 
 Mục "Vật tư" ghi vào file nhật ký `CTxx-NK-NHATKY` của công trình (cùng file với Nhật ký ngày). Cột A..H của trang VATTU giữ nguyên như file gốc; app chỉ thêm cột từ I trở đi.
-- Trang `DMVATTU` (app tự tạo lần đầu bấm Thêm): Vật tư, Quy cách, ĐV, Ngày đệ trình, Ngày duyệt, Tần suất lấy mẫu (tự ghi), Ghi chú.
+- Trang `DMVATTU` (app tự tạo lần đầu bấm Thêm): Vật tư, Quy cách, ĐV, Ngày đệ trình, Ngày duyệt, Tần suất lấy mẫu (tự ghi), Ghi chú, KL dự toán. Có dự toán thì danh mục hiện "Đã về 19/20 tấn (95%)", vượt thì báo VƯỢT dự toán; chưa có thì bấm Nhập dự toán.
 - Trang `VATTU`: mỗi lần vật tư về một dòng; thêm cột Phiếu giao nhận, Mã lô, Kết quả TN (bê tông: R7), Kết quả R28, Xử lý. Thí nghiệm và nghiệm thu tính theo **lô**: về thêm cho lô cũ thì chọn lại Mã lô, kết quả ghi lên mọi dòng của lô.
 - **Vật tư về:** vật tư chưa được TVGS duyệt thì app hỏi lại trước khi ghi. CO/CQ chọn Chưa, Có hoặc Không cần (cát, đá mua ngoài bãi). Ảnh phiếu giao nhận lưu vào `05_VATTU_DOITHICONG/PHIEU_GIAONHAN/` tên `CT01-GN-20261006-01_XiMangPcb40.jpg`, tải ảnh trước rồi mới ghi dòng; mất sóng giữa chừng thì bấm lại, ảnh đã tải không tải lại.
 - **Cần xử lý:** mỗi lô chưa xong kèm nút bước tiếp theo. Bê tông: bấm Đã đúc mẫu là thêm việc "Nén mẫu R7", "R28" (theo ngày đổ) vào Việc cần làm. Không đạt: lô ghi "Cấm dùng", thêm việc "Xử lý lô không đạt" hạn hôm nay, đứng đầu khung Còn sót tới khi bấm Đã xử lý xong.

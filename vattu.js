@@ -7,13 +7,13 @@ import { serial } from './nhatky.js';
 import { iso, cong } from './viec.js';
 import { tenChuan } from './register.js';
 
-export const DM = ['Vật tư', 'Quy cách', 'ĐV', 'Ngày đệ trình', 'Ngày duyệt', 'Tần suất lấy mẫu', 'Ghi chú'];
+export const DM = ['Vật tư', 'Quy cách', 'ĐV', 'Ngày đệ trình', 'Ngày duyệt', 'Tần suất lấy mẫu', 'Ghi chú', 'KL dự toán'];
 export const VT = ['Ngày', 'Vật tư', 'ĐV', 'Khối lượng', 'Nhà cung cấp', 'Có CO/CQ', 'Đã lấy mẫu TN', 'Ghi chú', 'Phiếu giao nhận', 'Mã lô', 'Kết quả TN (bê tông: R7)', 'Kết quả R28 (bê tông)', 'Xử lý'];
 const NT = ['Ngày', 'Mã công việc', 'Nội dung nghiệm thu', 'Vị trí', 'Kết quả', 'Số biên bản', 'Ghi chú'];
 
 const bo = s => String(s ?? '').normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').trim().toLowerCase(); // so tên không phân biệt dấu, hoa thường
 export const laBeTong = ten => bo(ten).includes('be tong');
-export const docDm = v => (v || []).slice(1).map((r, i) => ({ ten: r[0] ?? '', qc: r[1] ?? '', dv: r[2] ?? '', detrinh: r[3] ?? '', duyet: r[4] ?? '', ts: r[5] ?? '', goc: r, dong: i + 2 })).filter(d => d.ten !== '');
+export const docDm = v => (v || []).slice(1).map((r, i) => ({ ten: r[0] ?? '', qc: r[1] ?? '', dv: r[2] ?? '', detrinh: r[3] ?? '', duyet: r[4] ?? '', ts: r[5] ?? '', dt: +r[7] || 0, goc: r, dong: i + 2 })).filter(d => d.ten !== '');
 const docDong = v => (v || []).slice(1).map((r, i) => ({ ngay: r[0] ?? '', ten: r[1] ?? '', dv: r[2] ?? '', kl: r[3] ?? '', ncc: r[4] ?? '', co: r[5] ?? '', mau: r[6] ?? '', phieu: r[8] ?? '', lo: String(r[9] ?? ''), kq: r[10] ?? '', r28: r[11] ?? '', xl: r[12] ?? '', goc: r, dong: i + 2 })).filter(l => l.ten !== '');
 const daNt = v => new Set((v || []).slice(1).filter(r => r[1] === 'VATLIEU').map(r => / lô (\S+)$/.exec(r[2] ?? '')?.[1]).filter(Boolean));
 // Gom các lần về thành lô. Dòng chưa có Mã lô (ghi tay trong sheet) là một lô riêng, mã tạm D<số dòng>, được ghi vào sheet ở lần bấm đầu tiên.
@@ -41,6 +41,8 @@ export function canLam(l, dm) {
   return v;
 }
 
+// Đã về so với dự toán: "19/20 tấn (95%)"; chưa nhập dự toán thì chỉ ghi số đã về.
+export const soDt = (ve, dt, dv) => dt > 0 ? `${ve.toLocaleString('vi-VN')}/${dt.toLocaleString('vi-VN')} ${dv} (${Math.round(ve / dt * 100)}%)${ve > dt ? ', VƯỢT dự toán' : ''}` : `${ve.toLocaleString('vi-VN')} ${dv}`;
 export const tong = (lo, ten) => lo.filter(l => bo(l.ten) === bo(ten)).reduce((s, l) => s + l.kl, 0);
 // Số tiếp theo sau số lớn nhất đã có (file bị chuyển đi hay lô bị xóa cũng không trùng): ảnh phiếu "<gốc>-01", mã lô "<gốc>-1".
 export const soTiep = (goc, ten, rong = 2) => String(Math.max(0, ...ten.filter(n => n.startsWith(goc + '-')).map(n => +(n.slice(goc.length + 1).match(/^\d+/)?.[0] ?? 0))) + 1).padStart(rong, '0');
@@ -93,8 +95,9 @@ function ve() {
   $('vtdm').replaceChildren(...(dm.length ? [] : [tao('p', 'Chưa có vật tư nào trong danh mục. Thêm vật tư đầu tiên bên dưới.')]), ...dm.map(d => {
     const el = tao('div', '', 'doc'), th = tao('div'), cho = d.detrinh && !d.duyet && iso(d.detrinh) ? (Date.parse(homNay()) - Date.parse(iso(d.detrinh))) / 864e5 : 0;
     const tt = d.duyet ? `Đã duyệt ${ngayVn(d.duyet)}` : d.detrinh ? `Đã đệ trình ${ngayVn(d.detrinh)}, chờ duyệt${cho > 0 ? ` ${cho} ngày` : ''}` : 'Chưa đệ trình';
-    th.append(tao('div', d.ten + (d.qc ? ` · ${d.qc}` : '')), tao('small', `${tt} · Đã về ${tong(lo, d.ten).toLocaleString('vi-VN')} ${d.dv}`)); el.append(th);
+    th.append(tao('div', d.ten + (d.qc ? ` · ${d.qc}` : '')), tao('small', `${tt} · Đã về ${soDt(tong(lo, d.ten), d.dt, d.dv)}`)); el.append(th);
     if (!d.duyet) { const [chu, cot] = d.detrinh ? ['Đã duyệt', 'E'] : ['Đã đệ trình', 'D']; el.append(nutBam(chu, `${chu} ${d.ten}`, () => ghiDm(d, cot))); }
+    if (!d.dt) el.append(nutBam('Nhập dự toán', 'Nhập khối lượng dự toán ' + d.ten, () => ghiDm(d, 'H')));
     return el;
   }));
   $('vtl').replaceChildren(...dm.map((d, i) => new Option(d.ten + (d.qc ? ` · ${d.qc}` : '') + (d.dv ? ` (${d.dv})` : ''), i)));
@@ -122,10 +125,15 @@ async function kiem(tab, xs) {
 }
 const ghiO = data => h.api(sh('/values:batchUpdate'), h.json({ valueInputOption: 'RAW', data }));
 
-async function ghiDm(d, cot) {
-  const s = hoiNgay(); if (!s) return;
+async function ghiDm(d, cot) { // cột D, E: ngày; cột H: khối lượng dự toán
+  let gt;
+  if (cot === 'H') {
+    const s = prompt(`Khối lượng dự toán của ${d.ten} (${d.dv})`)?.trim().replace(',', '.'); if (s === undefined) return;
+    if (!((gt = parseFloat(s)) > 0)) return ms(`“${s}” không phải số lớn hơn 0.`);
+    await damBao('DMVATTU', DM); // danh mục tạo trước khi có cột dự toán
+  } else { const s = hoiNgay(); if (!s) return; gt = ngayVn(s); }
   if (!await kiem('DMVATTU', [d])) return;
-  await ghiO([{ range: `DMVATTU!${cot}${d.dong}`, values: [[ngayVn(s)]] }]);
+  await ghiO([{ range: `DMVATTU!${cot}${d.dong}`, values: [[gt]] }]);
   await moVatTu(h); ms(`Đã ghi: ${d.ten}.`);
 }
 
@@ -160,8 +168,8 @@ export async function themVatTu() {
   if (dm.some(d => bo(d.ten) === bo(ten))) return ms(`“${ten}” đã có trong danh mục.`);
   try {
     await damBao('DMVATTU', DM);
-    await them('DMVATTU', [ten, $('vtqc').value.trim(), $('vtdv').value.trim(), '', '', $('vtts').value.trim(), '']);
-    for (const id of ['vtten', 'vtqc', 'vtdv', 'vtts']) $(id).value = '';
+    await them('DMVATTU', [ten, $('vtqc').value.trim(), $('vtdv').value.trim(), '', '', $('vtts').value.trim(), '', parseFloat($('vtdt').value) || '']);
+    for (const id of ['vtten', 'vtqc', 'vtdv', 'vtts', 'vtdt']) $(id).value = '';
     await moVatTu(h); ms(`Đã thêm ${ten}. Khi nộp hồ sơ đệ trình, bấm “Đã đệ trình”.`);
   } catch (e) { ms(e.message); }
 }
@@ -226,6 +234,7 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vattu.js')) { /
   a.deepEqual(chu(6), ['Chờ kết quả nén R28']); a.deepEqual(canLam(lo[6], dm)[0].nut[1].o, { L: 'Không đạt', M: 'Cấm dùng' });
   a.equal(canLam({ ...lo[6], mau: 'Chưa', kq: '' }, dm)[0].nut[0].viec, 'mau'); // đúc mẫu bê tông: thêm việc nén R7, R28
   a.equal(tong(lo, 'Xi măng PCB40'), 30); a.equal(ngayVn(46301), '06/10/2026'); a.equal(ngayVn('6/10/2026'), '06/10/2026');
+  a.equal(soDt(19, 20, 'tấn'), '19/20 tấn (95%)'); a.equal(soDt(21, 20, 'tấn'), '21/20 tấn (105%), VƯỢT dự toán'); a.equal(soDt(5, 0, 'm3'), '5 m3');
   a.equal(soTiep('CT01-GN-20261006', []), '01'); a.equal(soTiep('CT01-GN-20261006', ['CT01-GN-20261006-01_A.jpg', 'CT01-GN-20261006-03_B.jpg', 'CT01-GN-20261007-09_C.jpg']), '04');
   a.equal(soTiep('L20261006', ['L20261006-1', 'L20261006-2', 'D5'], 1), '3');
   a.equal(tenChuan('CT01-GN-20261006', '01', 'Xi măng PCB40', 'image.JPG'), 'CT01-GN-20261006-01_XiMangPcb40.jpg');
