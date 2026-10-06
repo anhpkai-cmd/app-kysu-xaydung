@@ -54,4 +54,6 @@ Lưu ý ảnh HEIC của iPhone: bước điền báo cáo tuần vào mẫu Exc
 
 ## Hôm nay còn sót gì
 
-Khung đầu trang liệt kê: việc quá hạn hoặc đến hạn hôm nay, giấy tờ hết hạn trong 7 ngày, nhật ký hôm nay chưa ghi (theo công trình đang chọn), ảnh chờ xếp. Nút **Nhắc tôi lúc 17h mỗi ngày** tạo một sự kiện lặp trên Google Lịch (thứ 2 đến thứ 7, 17:00); bấm lại không tạo trùng. Lịch chỉ nhắc mở app, nội dung nằm trong app. Cần bật Google Calendar API.
+Khung đầu trang liệt kê: việc quá hạn hoặc đến hạn hôm nay, giấy tờ hết hạn trong 7 ngày, và với **từng công trình** (không chỉ công trình đang chọn): nhật ký hôm nay chưa ghi, ảnh chờ xếp. Chạm một dòng thì app chuyển sang đúng công trình đó. Mục nào không kiểm tra được (chưa có Google Sheet nhật ký, mất sóng) thì hiện "Chưa kiểm tra được...", và chỉ ghi "Hôm nay không còn gì sót" khi mọi mục đã kiểm tra xong. Việc quét chỉ đọc, không tạo thư mục hay chuyển Excel. Để app mở qua đêm thì sang ngày mới app tự tải lại.
+
+Nút **Nhắc tôi lúc 17h mỗi ngày** tạo một sự kiện lặp trên Google Lịch (thứ 2 đến thứ 7, 17:00); bấm lại không tạo trùng, đã bật thì nút thành **Tắt nhắc 17h** (xóa sự kiện). Lịch chỉ nhắc mở app, nội dung nằm trong app. Cần bật Google Calendar API.
