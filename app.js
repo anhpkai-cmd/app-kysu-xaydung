@@ -10,6 +10,7 @@ import { LOAI as LOAI_HAN, dong as dongHan, COT_HAN } from './han.js';
 import { MAU as MAU_TIN, dmy, macDinh, soan, zalo } from './tin.js';
 import { moPS, ghiPS } from './phatsinh.js';
 import { moVatTu, luuVe, themVatTu, demVatTu, soVn, themYc, lapYc, veYc } from './vattu.js';
+import { moCC, doiThang, sauLap, lapCC } from './chamcong.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
 const $ = id => document.getElementById(id);
@@ -730,6 +731,7 @@ async function vao(resp) {
 }
 
 // Một ô chọn công trình chung cho cả trang: tài liệu, thông tin, nhật ký cùng theo, nhớ lần chọn cuối.
+let hv; // hàm app đưa cho vattu.js, chamcong.js
 function doiCT() {
   setTimeout(() => $('tnd').open && tnVe(true)); // đổi công trình: soạn lại tin (người nhận, tên công trình) sau khi các phần kia đã xóa dữ liệu cũ
   try { localStorage.setItem('ct', $('ct').value); } catch {}
@@ -737,7 +739,7 @@ function doiCT() {
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
   const ct = $('ct').value;
   Promise.all([chonCT(), taiTT()]).then(() => $('ct').value === ct && moPS({ api, json, taiLen, thuMuc, ctx: () => ({ so: soId, ct: $('ct').value, ma: maCT({ name: $('ct').selectedOptions[0].text }), tenCT: tnCtx().tenCT, tt: ttDong }) })); // sổ phát sinh cần sổ đăng ký và danh bạ
-  moQR(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), thuMucMau: () => thuMuc(gocId, MAU), dsMau: d => dsMau(g, d), lapMau: (m, ten, dir) => lap(g, m, ten, dir, ttTin()), tenCt: () => tnCtx().tenCT, moiNt, sot: sotCap, id: nkId }); }); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
+  moQR(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu(hv = { api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), thuMucMau: () => thuMuc(gocId, MAU), dsMau: d => dsMau(g, d), lapMau: (m, ten, dir) => lap(g, m, ten, dir, ttTin()), tenCt: () => tnCtx().tenCT, moiNt, sot: sotCap, id: nkId }), moCC(hv); }); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
 khoiQR({ api, ls, thuMuc, json, tim, blob, ct: () => $('ct').value, say, hoi: t => confirm(t), q, FOLDER });
@@ -777,6 +779,7 @@ $('hanloai').replaceChildren(...Object.entries(LOAI_HAN).map(([k, l]) => new Opt
 $('hanb').onclick = khoa('hanb', themHan);
 $('nkf').oninput = nkNhap;
 $('vtluu').onclick = khoa('vtluu', luuVe);
+$('cct').onchange = doiThang; $('cclap').onclick = khoa('cclap', () => lapCC().catch(e => $('ccms').textContent = e.message), sauLap);
 $('vtthem').onclick = khoa('vtthem', themVatTu);
 $('ycthem').onclick = themYc;
 $('ycgui').onclick = khoa('ycgui', () => lapYc().catch(e => $('vtms').textContent = e.message), veYc); // sau khi khóa trả lại chữ nút thì vẽ lại số vật tư trên nút
