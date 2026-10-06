@@ -129,9 +129,14 @@ async function docNhan() {
   hienNhan();
 }
 // File chờ lưu: nhận từ Zalo (Android) hoặc đang nằm trong 00_INBOX của công trình (iPhone: Zalo → Lưu vào Drive → 00_INBOX). File đầu danh sách là file đang chọn.
+// Hộp 00_INBOX: của công trình, và (nếu có) 00_INBOX ngoài cùng My Drive, nơi app Drive trên máy tính hay đồng bộ ảnh về. Hộp ngoài cùng không thuộc công trình nào: file trong đó thuộc công trình đang chọn khi anh xếp.
+async function hopInbox() {
+  const [ngoai] = await ls(`'root' in parents and mimeType='${FOLDER}' and name='00_INBOX'`, 'id');
+  return [await thuMuc($('ct').value, '00_INBOX'), ...(ngoai ? [ngoai.id] : [])];
+}
 async function docInbox() {
-  const cha = await thuMuc($('ct').value, '00_INBOX');
-  nhan = nhan.filter(f => !f.cha).concat((await ls(`'${cha}' in parents and mimeType!='${FOLDER}'`)).filter(f => !f.mimeType.startsWith('image/') || f.name.startsWith(TL)).map(f => ({ ...f, cha }))); // ảnh hiện trường đi đường riêng (mục Ảnh hiện trường); ảnh đã đánh dấu TAILIEU_ là tài liệu
+  const hop = await hopInbox();
+  nhan = nhan.filter(f => !f.cha).concat((await Promise.all(hop.map(async cha => (await ls(`'${cha}' in parents and mimeType!='${FOLDER}'`)).map(f => ({ ...f, cha }))))).flat().filter(f => !f.mimeType.startsWith('image/') || f.name.startsWith(TL))); // ảnh hiện trường đi đường riêng (mục Ảnh hiện trường); ảnh đã đánh dấu TAILIEU_ là tài liệu
   hienNhan();
 }
 function hienNhan() {
@@ -513,13 +518,12 @@ const ddmm = d => d.split('-').reverse().slice(0, 2).join('/'), ngayAnh = f => f
 async function taiAnh() {
   const ct = $('ct').value; $('anx').hidden = true; anhDs = [];
   try {
-    const cha = await thuMuc(ct, '00_INBOX');
-    const ds = await ls(`'${cha}' in parents and mimeType contains 'image/'`, 'id,name,mimeType,createdTime,thumbnailLink,imageMediaMetadata(time)');
+    const ds = (await Promise.all((await hopInbox()).map(async cha => (await ls(`'${cha}' in parents and mimeType contains 'image/'`, 'id,name,mimeType,createdTime,thumbnailLink,imageMediaMetadata(time)')).map(f => ({ ...f, cha }))))).flat();
     if ($('ct').value !== ct) return;
-    anhDs = ds.filter(f => !f.name.startsWith(TL)).map(f => ({ ...f, cha, ...ngayChup(f) })); // ảnh đã đánh dấu tài liệu thì không hiện ở đây
+    anhDs = ds.filter(f => !f.name.startsWith(TL)).map(f => ({ ...f, ...ngayChup(f) })); // ảnh đã đánh dấu tài liệu thì không hiện ở đây
     const hm = new Map([...nkDm.map(([ma, ten]) => [ma, `${ma} · ${ten}`]), ['CHUNG', 'CHUNG · Toàn cảnh, việc chung'], ['ATLD', 'ATLD · An toàn lao động'], ['VATLIEU', 'VATLIEU · Vật liệu nhập về']]); // luôn có ba mục chung ở cuối
     $('anhm').replaceChildren(...[...hm].map(([ma, ten]) => new Option(ten, ma)));
-    $('anms').textContent = anhDs.length ? `Có ${anhDs.length} ảnh chờ xếp trong 00_INBOX. Tick các ảnh cùng một hạng mục, chọn hạng mục, bấm Xếp; ảnh chưa tick vẫn ở lại cho lượt sau.` : 'Không có ảnh chờ xếp. Tải ảnh lên thư mục 00_INBOX của công trình bằng app Google Drive.';
+    $('anms').textContent = anhDs.length ? `Có ${anhDs.length} ảnh chờ xếp trong 00_INBOX (của công trình hoặc ngoài cùng My Drive; ảnh sẽ vào công trình đang chọn). Tick các ảnh cùng một hạng mục, chọn hạng mục, bấm Xếp; ảnh chưa tick vẫn ở lại cho lượt sau.` : 'Không có ảnh chờ xếp. Ảnh phải nằm trong 00_INBOX của công trình (CONGTRINH/tên công trình/00_INBOX) hoặc 00_INBOX ngoài cùng của My Drive. Ảnh ở thư mục khác thì app không thấy.';
     $('anx').hidden = !anhDs.length; veAnh(); sotCap({ anh: anhDs.length });
   } catch (e) { $('anms').textContent = e.message; }
 }
