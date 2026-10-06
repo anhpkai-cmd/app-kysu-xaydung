@@ -1,5 +1,6 @@
 import { CLIENT_ID, ROOT_NAME } from './config.js';
 import { NK, serial } from './nhatky.js';
+import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
@@ -12,7 +13,7 @@ const api = async (url, opt = {}) => {
   if (!r.ok) throw new Error(r.status === 401 ? 'Phiên đăng nhập hết hạn, bấm Đăng nhập lại.' : r.status === 403 ? 'Google không cho phép (không đủ quyền với file này).' : 'Lỗi Google ' + r.status);
   return r.status === 204 ? null : r.json();
 };
-const ls = async q => (await api('https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=files(id,name,mimeType,webViewLink)&q=' + encodeURIComponent(q + ' and trashed=false'))).files;
+const ls = async (q, cot = 'id,name,mimeType,webViewLink') => (await api(`https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=files(${cot})&q=` + encodeURIComponent(q + ' and trashed=false'))).files;
 const say = t => $('msg').textContent = t || '';
 
 function hien() {
@@ -111,7 +112,7 @@ async function docNhan() {
 // File chờ lưu: nhận từ Zalo (Android) hoặc đang nằm trong 00_INBOX của công trình (iPhone: Zalo → Lưu vào Drive → 00_INBOX). File đầu danh sách là file đang chọn.
 async function docInbox() {
   const cha = await thuMuc($('ct').value, '00_INBOX');
-  nhan = nhan.filter(f => !f.cha).concat((await ls(`'${cha}' in parents and mimeType!='${FOLDER}'`)).map(f => ({ ...f, cha })));
+  nhan = nhan.filter(f => !f.cha).concat((await ls(`'${cha}' in parents and mimeType!='${FOLDER}' and not mimeType contains 'image/'`)).map(f => ({ ...f, cha }))); // ảnh hiện trường đi đường riêng (mục Ảnh hiện trường)
   hienNhan();
 }
 function hienNhan() {
@@ -257,7 +258,7 @@ const nkApi = (id, p, opt) => api(`https://sheets.googleapis.com/v4/spreadsheets
 const nkKey = () => 'nk:' + $('ct').value; // bản nháp theo công trình, xóa khi lưu thành công
 function nkNhap() { try { localStorage.setItem(nkKey(), JSON.stringify({ d: $('nkd').value, f: NK.map((_, i) => $('nk' + i).value), vc: nkVc })); } catch {} }
 async function moNhatKy() {
-  const ct = $('ct').value; // người dùng đổi công trình giữa chừng thì bỏ kết quả của công trình cũ
+  const ct = $('ct').value; nkDm = []; // người dùng đổi công trình giữa chừng thì bỏ kết quả của công trình cũ
   $('nk').hidden = false; $('nkf').hidden = true; nkId = null; nkVc = [];
   try {
     const f = await sheetCo(`name contains '${q($('ct').selectedOptions[0].text.split('_')[0])}-NK-NHATKY'`);
@@ -353,6 +354,38 @@ async function themTT() {
   } catch (e) { ttMs(e.message); }
 }
 
+// Ảnh hiện trường: ảnh trong 00_INBOX (tải bằng app Google Drive) xếp vào 09_HINHANH/yyyy-mm/yyyy-mm-dd và đổi tên chuẩn. Chỉ di chuyển và đổi tên, không xóa, không nén.
+let anhDs = [];
+async function taiAnh() {
+  const ct = $('ct').value; $('anx').hidden = true; anhDs = [];
+  try {
+    const cha = await thuMuc(ct, '00_INBOX');
+    const ds = await ls(`'${cha}' in parents and mimeType contains 'image/'`, 'id,name,mimeType,createdTime,imageMediaMetadata(time)');
+    if ($('ct').value !== ct) return;
+    anhDs = ds.map(f => ({ ...f, cha }));
+    $('anhm').replaceChildren(...(nkDm.length ? nkDm.map(([ma, ten]) => new Option(`${ma} · ${ten}`, ma)) : ['CHUNG', 'ATLD', 'VATLIEU'].map(x => new Option(x))));
+    $('anms').textContent = ds.length ? `Có ${ds.length} ảnh chờ xếp trong 00_INBOX.` : 'Không có ảnh chờ xếp. Tải ảnh lên thư mục 00_INBOX của công trình bằng app Google Drive.';
+    $('anx').hidden = !ds.length;
+  } catch (e) { $('anms').textContent = e.message; }
+}
+async function xepAnh() {
+  const ct = $('ct').value, ma = $('ct').selectedOptions[0].text.split('_')[0], hm = $('anhm').value, mota = $('anmt').value, ds = anhDs.slice(), nhom = {};
+  for (const f of ds) (nhom[ngayChup(f)] ||= []).push(f);
+  let xong = 0, loi = '';
+  try {
+    for (const [ngay, fs] of Object.entries(nhom).sort()) {
+      const dir = await thuMuc(ct, `09_HINHANH/${ngay.slice(0, 7)}/${ngay}`);
+      let stt = sttTiep(ma, ngay, (await ls(`'${dir}' in parents`)).map(f => f.name));
+      for (const f of fs.sort((x, y) => x.name.localeCompare(y.name))) { // cùng ngày giữ thứ tự tên file (tên Zalo bắt đầu bằng giờ)
+        await api(`https://www.googleapis.com/drive/v3/files/${f.id}?addParents=${dir}&removeParents=${f.cha}&fields=id`, { ...json({ name: tenAnh(ma, ngay, stt++, hm, mota, f.name) }), method: 'PATCH' });
+        xong++;
+      }
+    }
+    $('anmt').value = '';
+  } catch (e) { loi = ' Dừng giữa chừng: ' + e.message; }
+  await taiAnh(); $('anms').textContent = `Đã xếp ${xong}/${ds.length} ảnh vào 09_HINHANH.${loi} ` + $('anms').textContent;
+}
+
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
 // ponytail: không có máy chủ nên không có refresh token, mỗi giờ phải xin lại một lần.
 const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth2.initTokenClient({
@@ -372,7 +405,7 @@ async function vao(resp) {
     try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec(); taiHan(cts);
-    $('tt').hidden = false;
+    $('tt').hidden = false; $('anh').hidden = false;
     doiCT();
   } catch (e) { say(e.message); }
 }
@@ -381,7 +414,7 @@ async function vao(resp) {
 function doiCT() {
   try { localStorage.setItem('ct', $('ct').value); } catch {}
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
-  chonCT(); moNhatKy(); taiTT();
+  chonCT(); moNhatKy().then(taiAnh); taiTT();
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
 const khoa = (id, fn) => async () => {
@@ -402,6 +435,7 @@ try { // mở lại app: còn token thì dùng luôn, hết hạn thì thử xin
 $('ct').onchange = doiCT;
 $('ttt').onclick = khoa('ttt', themTT);
 $('nkt').onclick = themVc;
+$('anb').onclick = khoa('anb', xepAnh);
 $('nkl').onclick = khoa('nkl', luuNhatKy);
 $('nkf').oninput = nkNhap;
 $('q').oninput = hien;

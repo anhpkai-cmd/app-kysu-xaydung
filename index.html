@@ -40,7 +40,7 @@
   .phu{background:transparent;color:var(--ink);border:1px solid var(--rule)}
   #nhan,#msg{color:var(--ink);background:var(--card);border-left:3px solid var(--accent);padding:8px 12px;margin:0 0 var(--gap)}
   .nutlk{display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 12px;border-radius:8px;border:1px solid var(--rule);background:var(--card);color:var(--ink);text-decoration:none;font-weight:600}
-  #ttms:empty,#nkmsg:empty{display:none}
+  #ttms:empty,#nkmsg:empty,#anms:empty{display:none}
   summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
   #msg:empty,#nhan:empty{display:none}
   @media (prefers-reduced-motion:no-preference){button{transition:filter .15s}}
@@ -77,6 +77,15 @@
     <label for="ttdt">Điện thoại (nếu có)</label><input id="ttdt" type="tel" inputmode="tel">
     <p><button id="ttt">Thêm</button></p>
     </details>
+  </section>
+  <section id="anh" hidden>
+    <h2>Ảnh hiện trường</h2>
+    <p id="anms" role="status"></p>
+    <div id="anx" hidden>
+      <label for="anhm">Hạng mục của các ảnh này</label><select id="anhm"></select>
+      <label for="anmt">Mô tả chung (không bắt buộc)</label><input id="anmt" placeholder="ví dụ: phá dỡ nền bệ trục A-C">
+      <p><button id="anb">Xếp ảnh vào 09_HINHANH</button></p>
+    </div>
   </section>
   <section id="nk" hidden>
     <h2>Nhật ký ngày</h2>
