@@ -53,6 +53,7 @@ Mục "Thông tin công trình" đọc trang `THONGTIN` trong `_SODANGKY` (app t
 - **Số bằng chữ trong mẫu:** mục Thông tin nào là số tiền thì có thêm chỗ điền `{{Tên mục bằng chữ}}`, ví dụ `{{Giá trị HĐ bằng chữ}}` thành "Bốn trăm hai mươi ba triệu ... đồng". `{{Ngày dài}}` thành "ngày 06 tháng 10 năm 2026". Báo giá, bảng khối lượng bằng Excel/Trang tính cũng được soát khi Gửi (đọc trang đầu), kể cả tổng tiền bằng số so với dòng bằng chữ.
 - **Thông tư, nghị định:** nút trong mục Thông tin mở thư mục `CONGTRINH/_CHUNG/THONGTU_NGHIDINH` (tự tạo lần đầu bấm). Dòng Thông tin có Chi tiết là đường link `https://...` (ví dụ sổ NotebookLM của công trình) có nút **Mở**.
 - Chạy `node vanban.js` để tự kiểm tra phần soát.
+- **Họp chủ đầu tư:** nút **Chuẩn bị họp chủ đầu tư** trong mục Thông tin gom cho công trình đang chọn: tiến độ 7 ngày (số ngày có nhật ký, số người trung bình, khối lượng từng việc, sự cố), việc đang mở, giấy tờ đang chờ duyệt và 5 lần gửi gần nhất trong 30 ngày. Bản tin sửa được: xóa phần nội bộ (việc quá hạn, sự cố) rồi bấm **Chép / gửi (đã xem lại)**. 6 ảnh mới nhất chỉ hiện trên màn hình, không gửi kèm. Chỉ đọc, không ghi gì. `node hop.js` tự kiểm tra.
 
 ## Ảnh hiện trường
 
@@ -112,3 +113,5 @@ Dưới danh sách giấy tờ sắp hết hạn có ô "+ Thêm thiết bị c�
 ## Tin nhắn Zalo soạn sẵn
 
 Mục "Tin nhắn soạn sẵn" soạn bốn loại tin hay gửi: báo tổ đội lịch ngày mai, báo chủ đầu tư dừng thi công do mưa, mời nghiệm thu (tư vấn giám sát), nhắc nhà cung cấp giao hàng. Tên công trình (trang Thông tin, dòng "Tên công trình", nếu có), ngày, dự báo thời tiết, việc đến hạn ngày mai và người nhận (liên hệ có vai trò "Chủ đầu tư" hoặc "Giám sát" trong trang Thông tin) được điền sẵn; chỉ phải gõ phần còn lại. Sửa tin trong khung rồi bấm **Chép tin**, mở Zalo và dán; nếu liên hệ có số điện thoại thì có nút mở đúng cuộc trò chuyện Zalo. Không cần bot Zalo, không gửi gì đi từ app. Đổi một ô thì tin được soạn lại cả (chữ sửa tay trong khung sẽ mất). `node tin.js` tự kiểm tra.
+
+Nút **Đã gia hạn** trên mỗi dòng hạn: hỏi ngày hết hạn mới (dd/mm/yyyy, không được trước hôm nay) rồi ghi đè ô "Hạn hiệu lực" của đúng dòng trong sổ công trình đó (đọc lại mã tài liệu của dòng trước khi ghi; sổ vừa đổi thì tải lại và hỏi lại). Thiết bị cần kiểm định (mã có -TB-) được nhắc trước 30 ngày, giấy tờ khác trước 14 ngày. Đổi công trình thì app bỏ sổ đăng ký của công trình trước, nên công trình chưa có sổ hoặc tải lỗi sẽ không ghi nhầm vào sổ cũ (cũng áp dụng cho nút lập văn bản từ mẫu).

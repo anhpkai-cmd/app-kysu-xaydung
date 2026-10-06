@@ -6,7 +6,7 @@ const chu = s => String(s).normalize('NFC').toLowerCase().replace(/\s+/g, ' ').t
   .replace(/ngày (\d{1,2}) tháng (\d{1,2}) năm (\d{4})/g, (_, d, m, y) => `${hai(d)}/${hai(m)}/${y}`)
   .replace(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b/g, (_, d, m, y) => `${hai(d)}/${hai(m)}/${y}`);
 // Số tiền từ 1 triệu: có dấu phân cách (423.301.185, 423,301,185) hoặc viết liền ngay trước đ/đồng/VNĐ (423301185 đồng).
-const TIEN = /(?<!\d)(?:\d{1,3}(?:[.,]\d{3}){2,}|\d{7,}(?=\s*(?:đ|vn)))/giu; // (?<!\d): không bắt giữa số điện thoại 0911.472.472
+const TIEN = /(?<!\d)(?:\d{1,3}(?:[.,]\d{3}){2,}|\d{7,}(?=\s*(?:đ|vn)))/giu; // (?<!\d): không bắt giữa số điện thoại có dấu chấm
 const tien = s => (String(s).match(TIEN) || []).map(x => +x.replace(/\D/g, ''));
 // Số bằng chữ ("bốn trăm hai mươi ba triệu ... đồng") thành số; gặp chữ lạ thì NaN (không đoán, không báo).
 const CHUSO = { 'không': 0, 'một': 1, 'mốt': 1, 'hai': 2, 'ba': 3, 'bốn': 4, 'tư': 4, 'năm': 5, 'lăm': 5, 'nhăm': 5, 'sáu': 6, 'bảy': 7, 'bẩy': 7, 'tám': 8, 'chín': 9 };
@@ -119,9 +119,9 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vanban.js')) { 
   a.deepEqual(soat('TỔNG,"613,406,400"\n"Bằng chữ: ……… đồng."', []).lech, ['Số 613.406.400 đ chưa ghi bằng chữ. Đúng là: Sáu trăm mười ba triệu bốn trăm lẻ sáu nghìn bốn trăm đồng']); // mẫu báo giá chưa điền
   a.equal(soat('TỔNG CỘNG THANH TOÁN,,,613430400,\n"Bằng chữ: Sáu trăm mười ba triệu, bốn trăm lẻ sáu nghìn, bốn trăm đồng.",,', []).lech.length, 1); // ô tổng không định dạng nghìn
   a.equal(soat('TỔNG CỘNG THANH TOÁN,,,613430400,\nBằng chữ: Sáu trăm mười ba triệu bốn trăm ba mươi nghìn bốn trăm đồng.,,', []).lech.length, 0);
-  a.deepEqual(soat('Điện thoại: 0911472472 - Bằng chữ: một trăm đồng', []).lech, []); // số điện thoại không phải tổng tiền
-  a.deepEqual(soat('Tài khoản 8977777797979 Bằng chữ: một trăm đồng', []).lech, []); // số tài khoản cũng vậy
-  a.deepEqual(soat('ĐT 0911.472.472, giá 1.000.000 đ', [['Giá', '911.472.472 đ']]).lech, []); // không bắt giữa số điện thoại có dấu chấm
+  a.deepEqual(soat('Điện thoại: 0901234567 - Bằng chữ: một trăm đồng', []).lech, []); // số điện thoại không phải tổng tiền
+  a.deepEqual(soat('Tài khoản 1234567890123 Bằng chữ: một trăm đồng', []).lech, []); // số tài khoản cũng vậy
+  a.deepEqual(soat('ĐT 0901.234.567, giá 1.000.000 đ', [['Giá', '911.472.472 đ']]).lech, []); // không bắt giữa số điện thoại có dấu chấm
   a.equal(soat('TỔNG,613430400.4,\nBằng chữ: Sáu trăm mười ba triệu bốn trăm ba mươi nghìn bốn trăm đồng.', []).lech.length, 0); // tổng lẻ do VAT: làm tròn rồi so
   a.deepEqual(soat('Tổng cộng xem bảng trên. Bằng chữ: một trăm đồng', []).thieu, ['Dòng "Bằng chữ": chưa soát được (không thấy số tiền ngay trước, tự xem lại)']);
   a.deepEqual(conSot('Kính gửi {{Chủ đầu tư}}, ngày {{Ngày}} {{Chủ đầu tư}} {x}'), ['{{Chủ đầu tư}}', '{{Ngày}}']);
