@@ -177,10 +177,24 @@ async function taiHan(cts) {
   hanDs = (await Promise.all(cts.map(async c => {
     try {
       const s = await sheetCo(`'${c.id}' in parents and name contains '_SODANGKY'`);
-      return s ? parse((await api(`https://sheets.googleapis.com/v4/spreadsheets/${s.id}/values/DANHMUC?valueRenderOption=UNFORMATTED_VALUE`)).values).map(d => ({ ...d, ct: c.name, n: conLai(d.han, hom) })) : [];
+      return s ? parse((await api(`https://sheets.googleapis.com/v4/spreadsheets/${s.id}/values/DANHMUC?valueRenderOption=UNFORMATTED_VALUE`)).values).map(d => ({ ...d, ct: c.name, so: s.id, n: conLai(d.han, hom) })) : [];
     } catch { hanLoi.push(c.name); return []; } // một công trình lỗi không chặn các công trình khác, nhưng phải báo
   }))).flat().filter(d => d.han !== '' && (isNaN(d.n) || d.n <= 30)).sort((x, y) => (isNaN(x.n) ? -Infinity : x.n) - (isNaN(y.n) ? -Infinity : y.n));
   veHan();
+}
+// Đã gia hạn: hỏi ngày hết hạn mới rồi ghi đè ô "Hạn hiệu lực" của đúng dòng trong sổ của công trình đó (không phải sửa trong Trang tính trên điện thoại).
+async function giaHan(d) {
+  const moi = prompt(`Hạn mới của "${d.ten}" (hiện ${isNaN(d.n) ? d.han : ngayVn(d.han)}). Gõ dd/mm/yyyy:`), ngay = iso((moi || '').trim());
+  if (moi === null) return;
+  if (!ngay || conLai(ngay, homNay()) < 0) return say(`“${moi}” không phải ngày hợp lệ từ hôm nay trở đi. Gõ dạng 31/12/2027.`);
+  try {
+    const sh = `https://sheets.googleapis.com/v4/spreadsheets/${d.so}`, hang = (await api(`${sh}/values/DANHMUC!1:1`)).values?.[0] || [], c = hang.indexOf(COT_HAN);
+    if (c < 0) return say('Sổ không còn cột "Hạn hiệu lực".');
+    const ma = (await api(`${sh}/values/DANHMUC!A${d.dong}:A${d.dong}`)).values?.[0]?.[0];
+    if (ma !== d.ma) { await taiHan([...$('ct').options].map(x => ({ id: x.value, name: x.text }))); return say('Sổ vừa thay đổi, đã tải lại. Bấm Đã gia hạn lần nữa.'); } // dòng đã bị đổi chỗ ở nơi khác
+    await api(`${sh}/values/DANHMUC!${String.fromCharCode(65 + c)}${d.dong}?valueInputOption=RAW`, { ...json({ values: [[ngay.split('-').reverse().join('/')]] }), method: 'PUT' });
+    await taiHan([...$('ct').options].map(x => ({ id: x.value, name: x.text }))); say(`Đã ghi hạn mới ${ngay.split('-').reverse().join('/')} cho ${d.ten}.`);
+  } catch (e) { say(e.message); }
 }
 const ngayVn = han => iso(han).split('-').reverse().join('/');
 function veHan() {
@@ -192,10 +206,12 @@ function veHan() {
     t.textContent = d.ten; s.textContent = isNaN(d.n) ? `${d.ct} · ${d.ma} · Ngày hạn không đọc được (“${d.han}”), sửa trong sổ` : `${d.ct} · ${d.ma} · ${nhanHan(d.n)} (${ngayVn(d.han)})${dat ? ' · Đã đặt nhắc' : ''}`; th.append(t, s); el.append(th);
     if (!isNaN(d.n) && !dat) {
       const b = document.createElement('button'); b.className = 'phu'; b.textContent = 'Nhắc tôi'; b.setAttribute('aria-label', 'Tạo việc nhắc gia hạn ' + d.ten);
-      // gia hạn cần làm hồ sơ vài tuần: nhắc trước 14 ngày so với ngày hết hiệu lực (không lùi về quá khứ)
-      b.onclick = () => { $('vten').value = `${ten} (hết ${ngayVn(d.han)})`; $('vct').value = d.ct; $('vhan').value = d.n > 14 ? cong(d.han, -14) : homNay(); $('vten').focus(); say('Kiểm tra rồi bấm Thêm việc để tạo nhắc trên Google Lịch.'); };
+      // gia hạn cần làm hồ sơ vài tuần: nhắc trước 14 ngày so với ngày hết hiệu lực, thiết bị cần kiểm định (mã -TB-) trước 30 ngày (không lùi về quá khứ)
+      const truoc = /-TB-/.test(d.ma) ? 30 : 14;
+      b.onclick = () => { $('vten').value = `${ten} (hết ${ngayVn(d.han)})`; $('vct').value = d.ct; $('vhan').value = d.n > truoc ? cong(d.han, -truoc) : homNay(); $('vten').focus(); say('Kiểm tra rồi bấm Thêm việc để tạo nhắc trên Google Lịch.'); };
       el.append(b);
     }
+    const g = document.createElement('button'); g.className = 'phu'; g.textContent = 'Đã gia hạn'; g.setAttribute('aria-label', 'Đã gia hạn ' + d.ten); g.onclick = () => giaHan(d); el.append(g);
     return el;
   }), ...(hanLoi.length ? [Object.assign(document.createElement('p'), { textContent: 'Không đọc được hạn giấy tờ của: ' + hanLoi.join(', ') })] : []));
   veSot();
@@ -301,6 +317,7 @@ async function gui(d) {
 }
 
 async function chonCT() {
+  soId = null; head = []; docs = []; // đổi công trình: bỏ sổ của công trình trước, để công trình chưa có sổ hoặc tải lỗi không ghi nhầm vào sổ cũ
   try {
     say('Đang tải sổ đăng ký...');
     const so = await sheetCo(`'${$('ct').value}' in parents and name contains '_SODANGKY'`);
