@@ -47,7 +47,7 @@
   .anh th,.anh>div{min-width:0}
   #ttms:empty,#nkmsg:empty,#anms:empty,#sotms:empty,#tqms:empty,#vtms:empty{display:none}
   #tqd .cb,#sotn .cb{font-weight:600;color:var(--accent)}
-  #sotds{display:grid;gap:8px} #tnms:empty,#tnz[hidden]{display:none} #tnt,#hopt{width:100%;box-sizing:border-box;font:inherit;color:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--card)}
+  #sotds{display:grid;gap:8px} #tnms:empty,#tnz[hidden],#psz[hidden],#psm[hidden],#psms:empty{display:none} #tnt,#hopt,#pst{width:100%;box-sizing:border-box;font:inherit;color:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--card)}
   .cot{flex-direction:column;align-items:stretch}
   .cot .nut{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
   summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
@@ -81,6 +81,25 @@
     <p id="tnms" role="status"></p>
     <p><button id="tnc">Chép tin</button> <a id="tnz" class="nutlk" hidden target="_blank" rel="noopener">Mở Zalo</a></p>
     </details>
+  </section>
+  <section id="ps" hidden>
+    <h2>Phát sinh, chỉ đạo hiện trường</h2>
+    <p id="psms" role="status"></p>
+    <details><summary>+ Ghi yêu cầu miệng (CĐT, TVGS bảo làm thêm, đổi vật liệu...)</summary>
+    <label for="psai">Người yêu cầu</label><input id="psai" list="psais" autocomplete="off" placeholder="chọn trong danh bạ công trình hoặc gõ tên"><datalist id="psais"></datalist>
+    <label for="psd">Ngày</label><input id="psd" type="date">
+    <label for="psn">Nội dung yêu cầu</label><input id="psn" placeholder="ví dụ: làm thêm rãnh thoát nước">
+    <label for="psv">Vị trí</label><input id="psv">
+    <label for="psk1">Khối lượng ước</label><input id="psk1" inputmode="decimal"> <label for="psdv">Đơn vị</label><input id="psdv" placeholder="m, m3, cái...">
+    <label for="psa">Ảnh hiện trường (nếu có)</label><input id="psa" type="file" accept="image/*">
+    <p><button id="psg">Ghi sổ và soạn tin xác nhận</button></p>
+    </details>
+    <div id="psk" hidden>
+    <label for="pst">Tin xác nhận gửi người yêu cầu (sửa được trước khi chép)</label><textarea id="pst" rows="7"></textarea>
+    <p><button id="psc">Chép tin</button> <a id="psz" class="nutlk" hidden target="_blank" rel="noopener">Mở Zalo</a></p>
+    </div>
+    <div id="psds"></div>
+    <p><a id="psm" class="nutlk" hidden target="_blank" rel="noopener">Mở sổ phát sinh (làm phụ lục)</a></p>
   </section>
   <section id="tq" hidden>
     <h2>Thời tiết công trình</h2>

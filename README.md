@@ -54,6 +54,7 @@ Mục "Thông tin công trình" đọc trang `THONGTIN` trong `_SODANGKY` (app t
 - **Thông tư, nghị định:** nút trong mục Thông tin mở thư mục `CONGTRINH/_CHUNG/THONGTU_NGHIDINH` (tự tạo lần đầu bấm). Dòng Thông tin có Chi tiết là đường link `https://...` (ví dụ sổ NotebookLM của công trình) có nút **Mở**.
 - Chạy `node vanban.js` để tự kiểm tra phần soát.
 - **Họp chủ đầu tư:** nút **Chuẩn bị họp chủ đầu tư** trong mục Thông tin gom cho công trình đang chọn: tiến độ 7 ngày (số ngày có nhật ký, số người trung bình, khối lượng từng việc, sự cố), việc đang mở, giấy tờ đang chờ duyệt và 5 lần gửi gần nhất trong 30 ngày. Bản tin sửa được: xóa phần nội bộ (việc quá hạn, sự cố) rồi bấm **Chép / gửi (đã xem lại)**. 6 ảnh mới nhất chỉ hiện trên màn hình, không gửi kèm. Chỉ đọc, không ghi gì. `node hop.js` tự kiểm tra.
+- **Phát sinh, chỉ đạo hiện trường:** CĐT, TVGS yêu cầu miệng thì bấm **+ Ghi yêu cầu miệng**: người yêu cầu (chọn trong danh bạ công trình), ngày, nội dung, vị trí, khối lượng ước, ảnh. App ghi vào trang PHATSINH của `_SODANGKY` (ảnh vào `04_KHOILUONG_THANHTOAN/PS_PHATSINH`), rồi soạn sẵn tin xác nhận lại để chép gửi Zalo người yêu cầu làm bằng chứng. Người đó trả lời đồng ý thì bấm **Đã được xác nhận**. Cuối kỳ bấm **Mở sổ phát sinh** để làm phụ lục. `node phatsinh.js` tự kiểm tra.
 
 ## Ảnh hiện trường
 
