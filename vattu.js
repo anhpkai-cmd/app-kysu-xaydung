@@ -33,7 +33,7 @@ export function canLam(l, dm) {
   if (l.xl === 'Cấm dùng') v.push({ chu: 'KHÔNG ĐẠT, CẤM DÙNG lô này', cam: true, nut: [{ chu: 'Đã xử lý xong', o: { M: 'Đã xử lý' } }] });
   if (!d) v.push({ chu: 'Vật tư chưa có trong danh mục (chưa đệ trình)', nut: [] });
   else if (!d.duyet) v.push({ chu: 'Vật tư chưa được TVGS duyệt', nut: [] });
-  if (!l.co) v.push({ chu: 'Chưa có CO/CQ', nut: [{ chu: 'Đã có CO/CQ', o: { F: 'Có' } }] });
+  if (!l.co) v.push({ chu: 'Chưa có CO/CQ', nut: [{ chu: 'Đã có CO/CQ', o: { F: 'Có' } }, { chu: 'Không cần CO/CQ', o: { F: 'Không cần' } }] });
   if (l.mau !== 'Có' && l.mau !== 'Không cần') v.push({ chu: bt ? 'Chưa đúc mẫu bê tông' : 'Chưa lấy mẫu thí nghiệm' + (d?.ts ? ` (tần suất: ${d.ts})` : ''), nut: [{ chu: bt ? 'Đã đúc mẫu' : 'Đã lấy mẫu', o: { G: 'Có' }, viec: bt ? 'mau' : '' }, { chu: 'Không cần mẫu', o: { G: 'Không cần' } }] });
   else if (l.mau === 'Có' && l.kq === '') v.push({ chu: bt ? 'Chờ kết quả nén R7' : 'Chờ kết quả thí nghiệm', nut: kq(bt ? 'R7' : 'Mẫu', 'K') });
   else if (l.mau === 'Có' && bt && l.r28 === '') v.push({ chu: 'Chờ kết quả nén R28', nut: kq('R28', 'L') });

@@ -44,6 +44,16 @@ Thêm cột **Hạn hiệu lực** vào trang DANHMUC của `_SODANGKY` (cột k
 
 Mục "Thông tin công trình" đọc trang `THONGTIN` trong `_SODANGKY` (app tự tạo trang này lần đầu). Mỗi dòng: Nhóm (Liên hệ hoặc Thông tin), Tên, Chi tiết, Điện thoại. Liên hệ có số điện thoại thì có nút Gọi và Zalo. Thêm dòng ngay trong app; sửa hoặc xóa thì làm trực tiếp trong Trang tính. Trang chỉ có một ô "Công trình đang làm" ở đầu, app nhớ lần chọn cuối; tài liệu, thông tin, nhật ký đều theo ô đó. Trang THONGTIN chỉ được tạo khi bấm Thêm lần đầu. Nhật ký đang nhập dở được lưu nháp trên máy theo từng công trình, lưu thành công thì xóa nháp.
 
+## Văn bản gửi đi (hợp đồng, báo giá, biên bản)
+
+- **Soát trước khi gửi:** bấm **Gửi**, app đọc bản Google Docs, Word hoặc PDF của tài liệu (PDF scan thì Drive tự nhận dạng chữ; bản tạm để trong `CONGTRINH/_TAM` và xóa ngay sau khi đọc) rồi so với các dòng nhóm "Thông tin" của trang `THONGTIN`. App báo: số tiền gần giống mà khác (lệch dưới 5%, ví dụ 424.575.008 đ trong khi thông tin ghi 423.301.185 đ), số bằng số khác số bằng chữ trong cùng văn bản, và mục không thấy trong văn bản. Số tiền viết 423.301.185, 423,301,185 hay 423301185 đồng, ngày viết 24/9/2026 hay "ngày 24 tháng 9 năm 2026" đều được coi là một. Không đọc được chữ thì báo "chưa soát được", không bao giờ báo khớp. Thấy cảnh báo mà văn bản vẫn đúng thì cứ bấm OK để gửi: các cảnh báo đó được nhớ trên máy, lần sau tài liệu này không nhắc lại. Mỗi dòng Thông tin nên ghi một giá trị (ví dụ Tên "Giá trị hợp đồng", Chi tiết "423.301.185 đ").
+- **Sổ gửi nhận:** gửi xong app thêm một dòng vào trang `NHATKY_GUINHAN` của `_SODANGKY` (ngày, mã, Rev, file). File có đuôi `_NHAP` được bỏ đuôi khi gửi.
+- **Lập văn bản từ mẫu:** bỏ mẫu (Word, Excel, Google Docs/Trang tính, có sẵn logo và thông tin công ty) vào `CONGTRINH/_CHUNG/MAUBIEU_CONGTY`. Chỗ cần điền ghi `{{Tên mục}}` đúng như cột Tên trong Thông tin, thêm `{{Ngày}}` là ngày lập. Chọn mẫu và loại (CV, HD, BB...), app chép mẫu vào `07_VANBAN/DI` của công trình, điền, đặt tên theo luồng 1 `CT01-CV-DI-20261006-01-R00_MoTa_NHAP`, ghi vào sổ (R00, Nháp) rồi mở để sửa. Chỗ nào chưa có thông tin thì app báo. Cần bật **Google Docs API** trong Google Cloud (không phải đăng nhập lại). Thông tin công ty (địa chỉ, mã số thuế, tài khoản) chỉ nằm trong mẫu trên Drive, không nằm trong mã app vì kho mã công khai.
+- **Bị trả:** mỗi tài liệu có nút **Bị trả** để ghi lý do chủ đầu tư/TVGS trả hồ sơ (một dòng "Nhận", "Bị trả: ..." trong NHATKY_GUINHAN). Lần Gửi sau, hộp xác nhận nhắc lại tối đa 5 lý do đã gặp của công trình.
+- **Số bằng chữ trong mẫu:** mục Thông tin nào là số tiền thì có thêm chỗ điền `{{Tên mục bằng chữ}}`, ví dụ `{{Giá trị HĐ bằng chữ}}` thành "Bốn trăm hai mươi ba triệu ... đồng". `{{Ngày dài}}` thành "ngày 06 tháng 10 năm 2026". Báo giá, bảng khối lượng bằng Excel/Trang tính cũng được soát khi Gửi (đọc trang đầu), kể cả tổng tiền bằng số so với dòng bằng chữ.
+- **Thông tư, nghị định:** nút trong mục Thông tin mở thư mục `CONGTRINH/_CHUNG/THONGTU_NGHIDINH` (tự tạo lần đầu bấm). Dòng Thông tin có Chi tiết là đường link `https://...` (ví dụ sổ NotebookLM của công trình) có nút **Mở**.
+- Chạy `node vanban.js` để tự kiểm tra phần soát.
+
 ## Ảnh hiện trường
 
 Tải ảnh lên thư mục `00_INBOX` của công trình bằng app Google Drive (từ Zalo hoặc Timemark). Mục "Ảnh hiện trường" hiện lưới ảnh nhỏ. Tick các ảnh cùng một hạng mục, chọn hạng mục (mã trong trang DANHMUC của file nhật ký; luôn có thêm CHUNG, ATLD, VATLIEU ở cuối), gõ mô tả nếu muốn, bấm Xếp; ảnh chưa tick ở lại cho lượt sau. Dòng trên nút cho biết trước các ảnh sẽ vào ngày nào.
@@ -58,12 +68,16 @@ Khung đầu trang liệt kê: việc quá hạn hoặc đến hạn hôm nay, g
 
 Nút **Nhắc tôi lúc 17h mỗi ngày** tạo một sự kiện lặp trên Google Lịch (thứ 2 đến thứ 7, 17:00); bấm lại không tạo trùng, đã bật thì nút thành **Tắt nhắc 17h** (xóa sự kiện). Lịch chỉ nhắc mở app, nội dung nằm trong app. Cần bật Google Calendar API.
 
+## Thời tiết công trình
+
+Khung "Thời tiết công trình" lấy dự báo 3 ngày từ Open-Meteo (miễn phí, không cần khóa) theo vị trí của công trình đang chọn. Vị trí: bấm **Lấy vị trí máy** khi đang ở công trường, hoặc gõ tọa độ "vĩ độ, kinh độ"; vị trí lưu trên máy này theo từng công trình. App đọc tên các việc chưa xong có hạn trong 3 ngày tới (của công trình đó hoặc Chung) và cảnh báo: đổ bê tông gặp mưa hoặc từ 35°C; mái, tôn, cẩu, giàn giáo gặp gió giật từ 36 km/h hoặc mưa; sơn, bả gặp độ ẩm từ 85% (cao nhất 7h đến 17h) hoặc mưa; sơn chỉ khớp tên như "Sơn tường ngoài", "Bả matit". Mở Nhật ký ngày của hôm nay thì ô Thời tiết sáng và chiều được điền sẵn theo dự báo (sáng và chiều giống nhau, sửa tay được; không đè lên nháp). `node thoitiet.js` tự kiểm tra.
+
 ## Vật tư
 
 Mục "Vật tư" ghi vào file nhật ký `CTxx-NK-NHATKY` của công trình (cùng file với Nhật ký ngày). Cột A..H của trang VATTU giữ nguyên như file gốc; app chỉ thêm cột từ I trở đi.
 - Trang `DMVATTU` (app tự tạo lần đầu bấm Thêm): Vật tư, Quy cách, ĐV, Ngày đệ trình, Ngày duyệt, Tần suất lấy mẫu (tự ghi), Ghi chú.
 - Trang `VATTU`: mỗi lần vật tư về một dòng; thêm cột Phiếu giao nhận, Mã lô, Kết quả TN (bê tông: R7), Kết quả R28, Xử lý. Thí nghiệm và nghiệm thu tính theo **lô**: về thêm cho lô cũ thì chọn lại Mã lô, kết quả ghi lên mọi dòng của lô.
-- **Vật tư về:** vật tư chưa được TVGS duyệt thì app hỏi lại trước khi ghi. Ảnh phiếu giao nhận lưu vào `05_VATTU_DOITHICONG/PHIEU_GIAONHAN/` tên `CT01-GN-20261006-01_XiMangPcb40.jpg`, tải ảnh trước rồi mới ghi dòng; mất sóng giữa chừng thì bấm lại, ảnh đã tải không tải lại.
+- **Vật tư về:** vật tư chưa được TVGS duyệt thì app hỏi lại trước khi ghi. CO/CQ chọn Chưa, Có hoặc Không cần (cát, đá mua ngoài bãi). Ảnh phiếu giao nhận lưu vào `05_VATTU_DOITHICONG/PHIEU_GIAONHAN/` tên `CT01-GN-20261006-01_XiMangPcb40.jpg`, tải ảnh trước rồi mới ghi dòng; mất sóng giữa chừng thì bấm lại, ảnh đã tải không tải lại.
 - **Cần xử lý:** mỗi lô chưa xong kèm nút bước tiếp theo. Bê tông: bấm Đã đúc mẫu là thêm việc "Nén mẫu R7", "R28" (theo ngày đổ) vào Việc cần làm. Không đạt: lô ghi "Cấm dùng", thêm việc "Xử lý lô không đạt" hạn hôm nay, đứng đầu khung Còn sót tới khi bấm Đã xử lý xong.
 - **Nghiệm thu** (chỉ mở khi đã duyệt, đủ CO/CQ, mẫu đạt): thêm một dòng mã VATLIEU vào trang `NGHIEMTHU`.
 - Khung **Còn sót** đếm lô cấm dùng và lô chưa xong của mọi công trình.
