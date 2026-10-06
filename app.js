@@ -300,6 +300,7 @@ async function gui(d) {
 }
 
 async function chonCT() {
+  soId = null; head = []; docs = []; // đổi công trình: bỏ sổ của công trình trước, để công trình chưa có sổ hoặc tải lỗi không ghi nhầm vào sổ cũ
   try {
     say('Đang tải sổ đăng ký...');
     const so = await sheetCo(`'${$('ct').value}' in parents and name contains '_SODANGKY'`);
