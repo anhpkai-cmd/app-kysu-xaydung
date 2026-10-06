@@ -167,7 +167,6 @@ async function taiViec() {
   viec = parseViec((await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC`)).values);
   const nhom = chia(viec, homNay()), dong = dongViec;
   const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dong(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
-  $('vdot').textContent = nhom.quaHan.length || ''; // chấm đỏ ở tab Việc = số việc quá hạn
   $('dsv').replaceChildren(...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen), ...muc('Sau đó', nhom.sau), ...muc('Chưa có hạn', nhom.khongHan));
   if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên bên dưới.';
   veHan(); veTT();
@@ -201,6 +200,7 @@ async function giaHan(d) {
 }
 const ngayVn = han => iso(han).split('-').reverse().join('/');
 function veHan() {
+  const qh = chia(viec, homNay()).quaHan.length + hanDs.filter(d => d.n < 0).length; $('vdot').textContent = qh || ''; $('vdot').setAttribute('aria-label', qh + ' mục quá hạn'); // chấm đỏ ở tab Việc = việc quá hạn + giấy tờ, thiết bị quá hạn (đúng số người dùng thấy)
   const tieu = t => Object.assign(document.createElement('h3'), { textContent: t });
   $('han').replaceChildren(...(hanDs.length ? [tieu(`Giấy tờ sắp hết hạn (${hanDs.length})`)] : []), ...hanDs.map(d => {
     const el = document.createElement('div'); el.className = 'doc';
