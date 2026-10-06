@@ -254,12 +254,17 @@ async function chonCT() {
 // Nhật ký ngày: ghi vào file CTxx-NK-NHATKY (Google Sheet) trang NGAY và KHOILUONG; chỉ thêm dòng mới, không sửa dòng cũ.
 let nkId, nkDm = [], nkVc = [];
 const nkApi = (id, p, opt) => api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/${p}`, opt);
+const nkKey = () => 'nk:' + $('ct').value; // bản nháp theo công trình, xóa khi lưu thành công
+function nkNhap() { try { localStorage.setItem(nkKey(), JSON.stringify({ d: $('nkd').value, f: NK.map((_, i) => $('nk' + i).value), vc: nkVc })); } catch {} }
 async function moNhatKy() {
+  const ct = $('ct').value; // người dùng đổi công trình giữa chừng thì bỏ kết quả của công trình cũ
   $('nk').hidden = false; $('nkf').hidden = true; nkId = null; nkVc = [];
   try {
-    const f = await sheetCo(`name contains '${q($('nkct').selectedOptions[0].text.split('_')[0])}-NK-NHATKY'`);
+    const f = await sheetCo(`name contains '${q($('ct').selectedOptions[0].text.split('_')[0])}-NK-NHATKY'`);
     if (!f) return $('nkmsg').textContent = 'Công trình này chưa có Google Sheet nhật ký (đặt file CTxx-NK-NHATKY, Excel hoặc Google Sheet, trong thư mục công trình trên Drive).';
-    nkId = f.id; nkDm = ((await nkApi(nkId, 'values/DANHMUC!A2:C')).values || []).filter(r => r[0]);
+    const dm = ((await nkApi(f.id, 'values/DANHMUC!A2:C')).values || []).filter(r => r[0]);
+    if ($('ct').value !== ct) return;
+    nkId = f.id; nkDm = dm;
     $('nkv').replaceChildren(...nkDm.map(([ma, ten, dv]) => new Option(`${ma} · ${ten}${dv ? ' (' + dv + ')' : ''}`, ma)));
     $('nkc').replaceChildren(...NK.flatMap(([ten, kieu], i) => {
       const l = document.createElement('label'); l.htmlFor = 'nk' + i; l.textContent = ten;
@@ -268,20 +273,22 @@ async function moNhatKy() {
       if (Array.isArray(kieu)) o.append(...kieu.map(x => new Option(x))); else if (kieu === 'n') Object.assign(o, { type: 'number', min: 0, step: 1, inputMode: 'numeric' });
       return [l, o];
     }));
-    $('nkd').value = homNay(); $('nkmsg').textContent = ''; $('nkf').hidden = false; hienVc();
+    $('nkd').value = homNay(); $('nkmsg').textContent = ''; $('nkl').textContent = 'Lưu nhật ký vào ' + $('ct').selectedOptions[0].text;
+    try { const n = JSON.parse(localStorage.getItem(nkKey())); if (n) { $('nkd').value = n.d; n.f.forEach((v, i) => $('nk' + i).value = v); nkVc = n.vc; $('nkmsg').textContent = 'Đã khôi phục phần nhật ký đang nhập dở.'; } } catch {}
+    $('nkf').hidden = false; hienVc();
   } catch (e) { $('nkmsg').textContent = e.message; }
 }
 function hienVc() {
   $('nkds').replaceChildren(...nkVc.map((v, i) => {
     const el = document.createElement('div'); el.className = 'doc'; const t = document.createElement('span'); t.textContent = `${v.ma} · ${v.kl}`;
     const b = document.createElement('button'); b.className = 'phu'; b.textContent = 'Bỏ'; b.setAttribute('aria-label', 'Bỏ ' + t.textContent);
-    b.onclick = () => { nkVc.splice(i, 1); hienVc(); }; el.append(t, b); return el;
+    b.onclick = () => { nkVc.splice(i, 1); hienVc(); nkNhap(); }; el.append(t, b); return el;
   }));
 }
 function themVc() {
   const kl = parseFloat($('nkk').value);
   if (!(kl > 0)) return $('nkmsg').textContent = 'Nhập khối lượng lớn hơn 0.';
-  nkVc.push({ ma: $('nkv').value, kl }); $('nkk').value = ''; $('nkmsg').textContent = ''; hienVc();
+  nkVc.push({ ma: $('nkv').value, kl }); $('nkk').value = ''; $('nkmsg').textContent = ''; hienVc(); nkNhap();
 }
 async function luuNhatKy() {
   if (!$('nkd').value) return $('nkmsg').textContent = 'Chọn ngày.';
@@ -293,24 +300,20 @@ async function luuNhatKy() {
     const data = [{ range: `NGAY!A${n}:L${n}`, values: [[ngay, ...ov]] }];
     nkVc.forEach((v, i) => { const m = b.length + 1 + i; data.push({ range: `KHOILUONG!A${m}:B${m}`, values: [[ngay, v.ma]] }, { range: `KHOILUONG!E${m}`, values: [[v.kl]] }); }); // cột C, D là công thức, không ghi đè
     await nkApi(nkId, 'values:batchUpdate', json({ valueInputOption: 'RAW', data }));
-    $('nkmsg').textContent = `Đã lưu nhật ký ngày ${$('nkd').value} (${nkVc.length} việc).`; nkVc = []; hienVc();
+    $('nkmsg').textContent = `Đã lưu nhật ký ngày ${$('nkd').value} (${nkVc.length} việc).`; nkVc = []; hienVc(); try { localStorage.removeItem(nkKey()); } catch {}
   } catch (e) { $('nkmsg').textContent = e.message; }
 }
 
 // Thông tin công trình: trang THONGTIN trong _SODANGKY của công trình (Nhóm = Liên hệ hoặc Thông tin). Sửa, xóa dòng thì làm trực tiếp trong Trang tính.
 const TT = ['Nhóm', 'Tên', 'Chi tiết', 'Điện thoại'], ttMs = t => $('ttms').textContent = t || '';
-let ttSo;
+let ttSo, ttCo;
 async function taiTT() {
   ttMs(); ttSo = null; $('ttds').replaceChildren();
   try {
-    const so = await sheetCo(`'${$('ttct').value}' in parents and name contains '_SODANGKY'`);
+    const so = await sheetCo(`'${$('ct').value}' in parents and name contains '_SODANGKY'`);
     if (!so) return ttMs('Công trình này chưa có _SODANGKY.');
-    const sh = `https://sheets.googleapis.com/v4/spreadsheets/${so.id}`;
-    let v;
-    try { v = (await api(`${sh}/values/THONGTIN`)).values; } catch { // chưa có trang THONGTIN thì tạo
-      await api(`${sh}:batchUpdate`, json({ requests: [{ addSheet: { properties: { title: 'THONGTIN' } } }] }));
-      await api(`${sh}/values/THONGTIN!A1:D1?valueInputOption=RAW`, { ...json({ values: [TT] }), method: 'PUT' });
-    }
+    ttCo = (await api(`https://sheets.googleapis.com/v4/spreadsheets/${so.id}?fields=sheets.properties.title`)).sheets.some(s => s.properties.title === 'THONGTIN');
+    const v = ttCo ? (await api(`https://sheets.googleapis.com/v4/spreadsheets/${so.id}/values/THONGTIN`)).values : []; // đọc thì không ghi: trang chỉ được tạo khi bấm Thêm lần đầu
     ttSo = so.id;
     const dong = (v || []).slice(1).filter(r => r[1]);
     $('ttds').replaceChildren(...['Liên hệ', 'Thông tin'].flatMap(nhom => {
@@ -319,7 +322,7 @@ async function taiTT() {
         const el = document.createElement('div'); el.className = 'doc';
         const th = document.createElement('div'), t = document.createElement('div'), s = document.createElement('small');
         t.textContent = ten; s.textContent = [ct, dt].filter(Boolean).join(' · '); th.append(t, s); el.append(th);
-        const sdt = dt.replace(/[^\d+]/g, '');
+        const sdt = (dt.match(/\+?\d[\d .\-]{7,}\d/)?.[0] ?? '').replace(/[^\d+]/g, ''); // lấy số đầu tiên nếu ô ghi nhiều số
         if (sdt.length >= 6) { // chỉ giữ số và dấu +, nên đưa vào địa chỉ gọi/Zalo được
           const nut = document.createElement('div'); nut.className = 'nut';
           for (const [chu, href] of [['Gọi', 'tel:' + sdt], ['Zalo', 'https://zalo.me/' + sdt.replace('+', '')]]) {
@@ -339,7 +342,12 @@ async function themTT() {
   if (!ten) return ttMs('Gõ tên (người liên hệ hoặc tên mục như Địa chỉ).');
   if (!ttSo) return ttMs('Chưa mở được thông tin công trình này.');
   try {
-    await api(`https://sheets.googleapis.com/v4/spreadsheets/${ttSo}/values/THONGTIN:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [[$('ttnh').value, ten, $('ttct2').value.trim(), $('ttdt').value.trim()]] }));
+    const sh = `https://sheets.googleapis.com/v4/spreadsheets/${ttSo}`;
+    if (!ttCo) { // lần đầu: tạo trang THONGTIN rồi mới thêm
+      await api(`${sh}:batchUpdate`, json({ requests: [{ addSheet: { properties: { title: 'THONGTIN' } } }] }));
+      await api(`${sh}/values/THONGTIN!A1:D1?valueInputOption=RAW`, { ...json({ values: [TT] }), method: 'PUT' }); ttCo = true;
+    }
+    await api(`${sh}/values/THONGTIN:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [[$('ttnh').value, ten, $('ttct2').value.trim(), $('ttdt').value.trim()]] }));
     for (const id of ['ttten', 'ttct2', 'ttdt']) $(id).value = '';
     await taiTT(); ttMs('Đã thêm.');
   } catch (e) { ttMs(e.message); }
@@ -360,14 +368,27 @@ async function vao(resp) {
     const [goc] = await ls(`name='${ROOT_NAME}' and mimeType='${FOLDER}'`);
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
-    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false;
+    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false;
+    try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec(); taiHan(cts);
-    for (const id of ['nkct', 'ttct']) $(id).replaceChildren(...cts.map(c => new Option(c.name, c.id)));
     $('tt').hidden = false;
-    chonCT(); moNhatKy(); taiTT();
+    doiCT();
   } catch (e) { say(e.message); }
 }
+
+// Một ô chọn công trình chung cho cả trang: tài liệu, thông tin, nhật ký cùng theo, nhớ lần chọn cuối.
+function doiCT() {
+  try { localStorage.setItem('ct', $('ct').value); } catch {}
+  $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
+  chonCT(); moNhatKy(); taiTT();
+}
+// Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
+const khoa = (id, fn) => async () => {
+  const b = $(id), chu = b.textContent; if (b.disabled) return;
+  b.disabled = true; b.textContent = 'Đang lưu...';
+  try { await fn(); } finally { b.disabled = false; b.textContent = chu; }
+};
 
 $('vao').onclick = () => {
   if (!CLIENT_ID) return say('Chưa điền CLIENT_ID trong config.js (xem README).');
@@ -378,13 +399,12 @@ try { // mở lại app: còn token thì dùng luôn, hết hạn thì thử xin
   if (luu?.het > Date.now()) vao({ access_token: luu.token, het: luu.het });
   else if (luu) addEventListener('load', () => dangNhap({ prompt: 'none' }, r => r.error || vao(r)));
 } catch {}
-$('ct').onchange = chonCT;
-$('nkct').onchange = moNhatKy;
-$('ttct').onchange = taiTT;
-$('ttt').onclick = themTT;
+$('ct').onchange = doiCT;
+$('ttt').onclick = khoa('ttt', themTT);
 $('nkt').onclick = themVc;
-$('nkl').onclick = luuNhatKy;
+$('nkl').onclick = khoa('nkl', luuNhatKy);
+$('nkf').oninput = nkNhap;
 $('q').oninput = hien;
-$('vthem').onclick = themViec;
+$('vthem').onclick = khoa('vthem', themViec);
 docNhan();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
