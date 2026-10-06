@@ -123,3 +123,6 @@ Nút **Đã gia hạn** trên mỗi dòng hạn: hỏi ngày hết hạn mới (
 
 ## Khung giao diện (thanh tab dưới)
 Năm tab: Trang chủ (còn sót, thời tiết), Bản vẽ (tài liệu, mã QR), Việc, Nhật ký (xếp ảnh), Thêm (tin Zalo, thông tin công trình, vật tư, lịch nghiệm thu, Cài đặt). Ô chọn công trình luôn nằm ở đầu trang. Chấm đỏ ở Việc là số việc quá hạn. Thêm → Cài đặt chọn giao diện Sáng (mặc định), Tối hoặc Biển xanh (nền bãi biển). Trang chủ có 4 ô Làm nhanh. Khối mới thêm vào index.html chỉ cần ghi `data-s="tên màn"`; địa chỉ `#tên` mở màn đó.
+
+## Họp an toàn 5 phút
+Tab Nhật ký có khối "Họp an toàn 5 phút": app gợi ý chủ đề theo việc đã thêm vào nhật ký hôm nay (không có thì theo việc đến hạn hôm nay trong Việc cần làm; ngày dự báo trên 35 độ thì gợi chủ đề nắng nóng), đổi được. Chụp ảnh tổ đội rồi bấm Lưu: ảnh vào `09_HINHANH/yyyy-mm/yyyy-mm-dd` tên `CTxx-HA-yyyymmdd-STT_ATLD_HopAnToan`, và dòng "Họp an toàn 5 phút: chủ đề" được điền sẵn vào ô Sự cố, ATLĐ của nhật ký (bấm Lưu nhật ký để chốt). Chủ đề và ý chính nằm trong `atld.js` (sửa theo công ty được).
