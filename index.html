@@ -39,6 +39,8 @@
   #nhan button{display:block;margin-top:8px;max-width:100%;height:auto;min-height:44px;padding:8px 12px;white-space:normal;text-align:left;overflow-wrap:anywhere}
   .phu{background:transparent;color:var(--ink);border:1px solid var(--rule)}
   #nhan,#msg{color:var(--ink);background:var(--card);border-left:3px solid var(--accent);padding:8px 12px;margin:0 0 var(--gap)}
+  .nutlk{display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 12px;border-radius:8px;border:1px solid var(--rule);background:var(--card);color:var(--ink);text-decoration:none;font-weight:600}
+  #ttms:empty,#nkmsg:empty{display:none}
   #msg:empty,#nhan:empty{display:none}
   @media (prefers-reduced-motion:no-preference){button{transition:filter .15s}}
 </style>
@@ -63,8 +65,20 @@
     <label for="q">Tìm tài liệu</label><input id="q" type="search" placeholder="ví dụ: móng, cọc, KC-005">
   </div>
   <div id="ds"></div>
+  <section id="tt" hidden>
+    <h2>Thông tin công trình</h2>
+    <label for="ttct">Công trình</label><select id="ttct"></select>
+    <p id="ttms" role="status"></p>
+    <div id="ttds"></div>
+    <label for="ttnh">Loại</label><select id="ttnh"><option>Liên hệ</option><option>Thông tin</option></select>
+    <label for="ttten">Tên (người liên hệ, hoặc tên mục như Địa chỉ)</label><input id="ttten">
+    <label for="ttct2">Chi tiết (vai trò, đơn vị, nội dung)</label><input id="ttct2" placeholder="ví dụ: Giám sát, Cty ABC">
+    <label for="ttdt">Điện thoại (nếu có)</label><input id="ttdt" type="tel" inputmode="tel">
+    <p><button id="ttt">Thêm</button></p>
+  </section>
   <section id="nk" hidden>
     <h2>Nhật ký ngày</h2>
+    <label for="nkct">Công trình</label><select id="nkct"></select>
     <p id="nkmsg" role="status"></p>
     <div id="nkf" hidden>
       <label for="nkd">Ngày</label><input id="nkd" type="date">

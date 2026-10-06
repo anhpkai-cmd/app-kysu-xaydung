@@ -245,7 +245,7 @@ const nkApi = (id, p, opt) => api(`https://sheets.googleapis.com/v4/spreadsheets
 async function moNhatKy() {
   $('nk').hidden = false; $('nkf').hidden = true; nkId = null; nkVc = [];
   try {
-    const f = await sheetCo(`name contains '${q($('ct').selectedOptions[0].text.split('_')[0])}-NK-NHATKY'`);
+    const f = await sheetCo(`name contains '${q($('nkct').selectedOptions[0].text.split('_')[0])}-NK-NHATKY'`);
     if (!f) return $('nkmsg').textContent = 'Công trình này chưa có Google Sheet nhật ký (đặt file CTxx-NK-NHATKY, Excel hoặc Google Sheet, trong thư mục công trình trên Drive).';
     nkId = f.id; nkDm = ((await nkApi(nkId, 'values/DANHMUC!A2:C')).values || []).filter(r => r[0]);
     $('nkv').replaceChildren(...nkDm.map(([ma, ten, dv]) => new Option(`${ma} · ${ten}${dv ? ' (' + dv + ')' : ''}`, ma)));
@@ -285,6 +285,54 @@ async function luuNhatKy() {
   } catch (e) { $('nkmsg').textContent = e.message; }
 }
 
+// Thông tin công trình: trang THONGTIN trong _SODANGKY của công trình (Nhóm = Liên hệ hoặc Thông tin). Sửa, xóa dòng thì làm trực tiếp trong Trang tính.
+const TT = ['Nhóm', 'Tên', 'Chi tiết', 'Điện thoại'], ttMs = t => $('ttms').textContent = t || '';
+let ttSo;
+async function taiTT() {
+  ttMs(); ttSo = null; $('ttds').replaceChildren();
+  try {
+    const so = await sheetCo(`'${$('ttct').value}' in parents and name contains '_SODANGKY'`);
+    if (!so) return ttMs('Công trình này chưa có _SODANGKY.');
+    const sh = `https://sheets.googleapis.com/v4/spreadsheets/${so.id}`;
+    let v;
+    try { v = (await api(`${sh}/values/THONGTIN`)).values; } catch { // chưa có trang THONGTIN thì tạo
+      await api(`${sh}:batchUpdate`, json({ requests: [{ addSheet: { properties: { title: 'THONGTIN' } } }] }));
+      await api(`${sh}/values/THONGTIN!A1:D1?valueInputOption=RAW`, { ...json({ values: [TT] }), method: 'PUT' });
+    }
+    ttSo = so.id;
+    const dong = (v || []).slice(1).filter(r => r[1]);
+    $('ttds').replaceChildren(...['Liên hệ', 'Thông tin'].flatMap(nhom => {
+      const ds = dong.filter(r => (r[0] || 'Thông tin') === nhom);
+      return ds.length ? [Object.assign(document.createElement('h3'), { textContent: nhom }), ...ds.map(([, ten, ct = '', dt = '']) => {
+        const el = document.createElement('div'); el.className = 'doc';
+        const th = document.createElement('div'), t = document.createElement('div'), s = document.createElement('small');
+        t.textContent = ten; s.textContent = [ct, dt].filter(Boolean).join(' · '); th.append(t, s); el.append(th);
+        const sdt = dt.replace(/[^\d+]/g, '');
+        if (sdt.length >= 6) { // chỉ giữ số và dấu +, nên đưa vào địa chỉ gọi/Zalo được
+          const nut = document.createElement('div'); nut.className = 'nut';
+          for (const [chu, href] of [['Gọi', 'tel:' + sdt], ['Zalo', 'https://zalo.me/' + sdt.replace('+', '')]]) {
+            const l = document.createElement('a'); l.className = 'nutlk'; l.textContent = chu; l.href = href; l.setAttribute('aria-label', `${chu} ${ten}`);
+            if (chu === 'Zalo') l.target = '_blank', l.rel = 'noopener'; nut.append(l);
+          }
+          el.append(nut);
+        }
+        return el;
+      })] : [];
+    }));
+    if (!dong.length) ttMs('Chưa có thông tin nào. Thêm liên hệ hoặc thông tin đầu tiên bên dưới.');
+  } catch (e) { ttMs(e.message); }
+}
+async function themTT() {
+  const ten = $('ttten').value.trim();
+  if (!ten) return ttMs('Gõ tên (người liên hệ hoặc tên mục như Địa chỉ).');
+  if (!ttSo) return ttMs('Chưa mở được thông tin công trình này.');
+  try {
+    await api(`https://sheets.googleapis.com/v4/spreadsheets/${ttSo}/values/THONGTIN:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [[$('ttnh').value, ten, $('ttct2').value.trim(), $('ttdt').value.trim()]] }));
+    for (const id of ['ttten', 'ttct2', 'ttdt']) $(id).value = '';
+    await taiTT(); ttMs('Đã thêm.');
+  } catch (e) { ttMs(e.message); }
+}
+
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
 // ponytail: không có máy chủ nên không có refresh token, mỗi giờ phải xin lại một lần.
 const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth2.initTokenClient({
@@ -303,7 +351,9 @@ async function vao(resp) {
     $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false;
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec(); taiHan(cts);
-    chonCT(); moNhatKy();
+    for (const id of ['nkct', 'ttct']) $(id).replaceChildren(...cts.map(c => new Option(c.name, c.id)));
+    $('tt').hidden = false;
+    chonCT(); moNhatKy(); taiTT();
   } catch (e) { say(e.message); }
 }
 
@@ -316,7 +366,10 @@ try { // mở lại app: còn token thì dùng luôn, hết hạn thì thử xin
   if (luu?.het > Date.now()) vao({ access_token: luu.token, het: luu.het });
   else if (luu) addEventListener('load', () => dangNhap({ prompt: 'none' }, r => r.error || vao(r)));
 } catch {}
-$('ct').onchange = () => { chonCT(); moNhatKy(); };
+$('ct').onchange = chonCT;
+$('nkct').onchange = moNhatKy;
+$('ttct').onchange = taiTT;
+$('ttt').onclick = themTT;
 $('nkt').onclick = themVc;
 $('nkl').onclick = luuNhatKy;
 $('q').oninput = hien;
