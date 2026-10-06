@@ -22,21 +22,30 @@ export function docLo(vVt, vNt) {
   for (const d of docDong(vVt)) { const k = d.lo || 'D' + d.dong; m.has(k) ? m.get(k).dong.push(d) : m.set(k, { ma: k, dong: [d] }); }
   return [...m.values()].map(l => { const d = l.dong[0]; return { ...l, ten: d.ten, dv: d.dv, ngay: d.ngay, mau: d.mau, kq: d.kq, r28: d.r28, xl: d.xl, kl: l.dong.reduce((s, x) => s + (+x.kl || 0), 0), co: l.dong.every(x => x.co === 'Có' || x.co === 'Không cần'), nt: nt.has(l.ma) }; });
 }
+// Số gõ kiểu Việt Nam: "12.500" = 12500 (dấu chấm ngăn nghìn), "15,5" = 15,5. Không chắc thì NaN để hỏi lại, không đoán.
+export const soVn = s => {
+  s = String(s ?? '').trim().replace(/\s/g, '');
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) return +s.replace(/\./g, '').replace(',', '.');
+  if (/^\d+(,\d+)?$/.test(s)) return +s.replace(',', '.');
+  return /^\d+\.\d{1,2}$/.test(s) ? +s : NaN; // "12.5" (bàn phím số của máy) vẫn là 12,5; "12.500" đã xử lý ở trên
+};
 export const ngayVn = s => iso(s) ? iso(s).split('-').reverse().join('/') : String(s);
 
 // Việc còn thiếu của một lô, mỗi việc kèm nút { chu, o: {cột: giá trị} ghi lên mọi dòng của lô, viec: 'mau' | 'hong' (thêm việc nhắc), nt: nghiệm thu }.
-// Không đạt: lô ghi "Cấm dùng", đứng đầu, đến khi bấm Đã xử lý. Nghiệm thu chỉ mở khi hết việc khác (đã duyệt, có CO/CQ, mẫu đạt hoặc không cần mẫu).
+// Không đạt: lô ghi "Cấm dùng" (bê tông đã đổ rồi thì không cấm được: R28 không đạt ghi "Báo TVGS, khoan lõi"; R7 không đạt chỉ cảnh báo, R28 mới là kết luận),
+// thêm việc nhắc, đứng đầu đến khi bấm Đã xử lý. Nghiệm thu chỉ mở khi hết việc khác (đã duyệt, có CO/CQ, mẫu đạt hoặc không cần mẫu).
 export function canLam(l, dm) {
   if (l.nt || l.xl === 'Đã xử lý') return [];
   const v = [], d = dm.find(x => bo(x.ten) === bo(l.ten)), bt = laBeTong(l.ten);
-  const kq = (ten, cot) => [{ chu: ten + ' đạt', o: { [cot]: 'Đạt' } }, { chu: ten + ' không đạt', o: { [cot]: 'Không đạt', M: 'Cấm dùng' }, viec: 'hong' }];
-  if (l.xl === 'Cấm dùng') v.push({ chu: 'KHÔNG ĐẠT, CẤM DÙNG lô này', cam: true, nut: [{ chu: 'Đã xử lý xong', o: { M: 'Đã xử lý' } }] });
+  const kq = (ten, cot, xl) => [{ chu: ten + ' đạt', o: { [cot]: 'Đạt' } }, { chu: ten + ' không đạt', o: { [cot]: 'Không đạt', ...(xl && { M: xl }) }, viec: xl && 'hong' }];
+  if (l.xl) v.push({ chu: l.xl === 'Cấm dùng' ? 'KHÔNG ĐẠT, CẤM DÙNG lô này' : 'R28 KHÔNG ĐẠT: báo TVGS, khoan lõi kiểm định', cam: true, nut: [{ chu: 'Đã xử lý xong', o: { M: 'Đã xử lý' } }] });
+  if (bt && l.kq === 'Không đạt' && l.r28 === '') v.push({ chu: 'R7 không đạt: theo dõi kỹ, chờ R28 để kết luận', nut: [] });
   if (!d) v.push({ chu: 'Vật tư chưa có trong danh mục (chưa đệ trình)', nut: [] });
   else if (!d.duyet) v.push({ chu: 'Vật tư chưa được TVGS duyệt', nut: [] });
   if (!l.co) v.push({ chu: 'Chưa có CO/CQ', nut: [{ chu: 'Đã có CO/CQ', o: { F: 'Có' } }, { chu: 'Không cần CO/CQ', o: { F: 'Không cần' } }] });
   if (l.mau !== 'Có' && l.mau !== 'Không cần') v.push({ chu: bt ? 'Chưa đúc mẫu bê tông' : 'Chưa lấy mẫu thí nghiệm' + (d?.ts ? ` (tần suất: ${d.ts})` : ''), nut: [{ chu: bt ? 'Đã đúc mẫu' : 'Đã lấy mẫu', o: { G: 'Có' }, viec: bt ? 'mau' : '' }, { chu: 'Không cần mẫu', o: { G: 'Không cần' } }] });
-  else if (l.mau === 'Có' && l.kq === '') v.push({ chu: bt ? 'Chờ kết quả nén R7' : 'Chờ kết quả thí nghiệm', nut: kq(bt ? 'R7' : 'Mẫu', 'K') });
-  else if (l.mau === 'Có' && bt && l.r28 === '') v.push({ chu: 'Chờ kết quả nén R28', nut: kq('R28', 'L') });
+  else if (l.mau === 'Có' && l.kq === '') v.push({ chu: bt ? 'Chờ kết quả nén R7' : 'Chờ kết quả thí nghiệm', nut: kq(bt ? 'R7' : 'Mẫu', 'K', bt ? '' : 'Cấm dùng') });
+  else if (l.mau === 'Có' && bt && l.r28 === '') v.push({ chu: 'Chờ kết quả nén R28', nut: kq('R28', 'L', 'Báo TVGS, khoan lõi') });
   if (!v.length) v.push({ chu: 'Chưa nghiệm thu vật liệu đầu vào', nut: [{ chu: 'Đã nghiệm thu', nt: true }] });
   return v;
 }
@@ -97,7 +106,7 @@ function ve() {
     const tt = d.duyet ? `Đã duyệt ${ngayVn(d.duyet)}` : d.detrinh ? `Đã đệ trình ${ngayVn(d.detrinh)}, chờ duyệt${cho > 0 ? ` ${cho} ngày` : ''}` : 'Chưa đệ trình';
     th.append(tao('div', d.ten + (d.qc ? ` · ${d.qc}` : '')), tao('small', `${tt} · Đã về ${soDt(tong(lo, d.ten), d.dt, d.dv)}`)); el.append(th);
     if (!d.duyet) { const [chu, cot] = d.detrinh ? ['Đã duyệt', 'E'] : ['Đã đệ trình', 'D']; el.append(nutBam(chu, `${chu} ${d.ten}`, () => ghiDm(d, cot))); }
-    if (!d.dt) el.append(nutBam('Nhập dự toán', 'Nhập khối lượng dự toán ' + d.ten, () => ghiDm(d, 'H')));
+    el.append(nutBam(d.dt ? 'Sửa dự toán' : 'Nhập dự toán', 'Khối lượng dự toán ' + d.ten, () => ghiDm(d, 'H')));
     return el;
   }));
   $('vtl').replaceChildren(...dm.map((d, i) => new Option(d.ten + (d.qc ? ` · ${d.qc}` : '') + (d.dv ? ` (${d.dv})` : ''), i)));
@@ -128,8 +137,8 @@ const ghiO = data => h.api(sh('/values:batchUpdate'), h.json({ valueInputOption:
 async function ghiDm(d, cot) { // cột D, E: ngày; cột H: khối lượng dự toán
   let gt;
   if (cot === 'H') {
-    const s = prompt(`Khối lượng dự toán của ${d.ten} (${d.dv})`)?.trim().replace(',', '.'); if (s === undefined) return;
-    if (!((gt = parseFloat(s)) > 0)) return ms(`“${s}” không phải số lớn hơn 0.`);
+    const s = prompt(`Khối lượng dự toán của ${d.ten} (${d.dv}). Ví dụ 12.500 hoặc 15,5`, d.dt ? d.dt.toLocaleString('vi-VN') : ''); if (s === null) return;
+    if (!((gt = soVn(s)) > 0)) return ms(`“${s}” không đọc được thành số lớn hơn 0. Ví dụ 12.500 hoặc 15,5.`);
     await damBao('DMVATTU', DM); // danh mục tạo trước khi có cột dự toán
   } else { const s = hoiNgay(); if (!s) return; gt = ngayVn(s); }
   if (!await kiem('DMVATTU', [d])) return;
@@ -148,7 +157,7 @@ async function ghiLo(l, n) {
   try { // việc nhắc ghi sau cùng: lỗi ở đây không làm mất kết quả đã ghi
     const ct = $('ct').selectedOptions[0].text, goc = iso(l.ngay) || homNay();
     if (n.viec === 'mau') for (const r of [7, 28]) ghi = (await h.taoViec(`Nén mẫu R${r}: ${l.ten}, lô ${l.ma}`, ct, cong(goc, r))) || ghi;
-    if (n.viec === 'hong') ghi = await h.taoViec(`Xử lý lô không đạt: ${l.ten}, lô ${l.ma}`, ct, homNay());
+    if (n.viec === 'hong') ghi = await h.taoViec(`${laBeTong(l.ten) ? 'Báo TVGS, khoan lõi kiểm định' : 'Xử lý lô không đạt'}: ${l.ten}, lô ${l.ma}`, ct, homNay());
   } catch (e) { ghi = 'Chưa thêm được việc nhắc: ' + e.message; }
   await moVatTu(h); ms(`Đã ghi: ${l.ten}, lô ${l.ma}.` + (n.viec ? ' Đã thêm việc nhắc vào Việc cần làm.' : '') + (ghi ? ' ' + ghi : ''));
 }
@@ -168,7 +177,9 @@ export async function themVatTu() {
   if (dm.some(d => bo(d.ten) === bo(ten))) return ms(`“${ten}” đã có trong danh mục.`);
   try {
     await damBao('DMVATTU', DM);
-    await them('DMVATTU', [ten, $('vtqc').value.trim(), $('vtdv').value.trim(), '', '', $('vtts').value.trim(), '', parseFloat($('vtdt').value) || '']);
+    const dt = $('vtdt').value.trim() && soVn($('vtdt').value);
+    if (dt !== '' && !(dt > 0)) return ms(`Khối lượng dự toán “${$('vtdt').value}” không đọc được. Ví dụ 12.500 hoặc 15,5.`);
+    await them('DMVATTU', [ten, $('vtqc').value.trim(), $('vtdv').value.trim(), '', '', $('vtts').value.trim(), '', dt]);
     for (const id of ['vtten', 'vtqc', 'vtdv', 'vtts', 'vtdt']) $(id).value = '';
     await moVatTu(h); ms(`Đã thêm ${ten}. Khi nộp hồ sơ đệ trình, bấm “Đã đệ trình”.`);
   } catch (e) { ms(e.message); }
@@ -176,10 +187,10 @@ export async function themVatTu() {
 
 // Vật tư về: tải ảnh phiếu giao nhận lên 05_VATTU_DOITHICONG/PHIEU_GIAONHAN (tên CTxx-GN-yyyymmdd-01_TenVatTu.jpg) trước, rồi mới thêm một dòng VATTU.
 export async function luuVe() {
-  const d = dm[$('vtl').value], kl = parseFloat($('vtk').value), ngay = $('vtd').value, anh = [...$('vtp').files], ct = $('ct').value, ma = maCt();
+  const d = dm[$('vtl').value], kl = soVn($('vtk').value), ngay = $('vtd').value, anh = [...$('vtp').files], ct = $('ct').value, ma = maCt();
   if (!h?.id) return ms('Chưa mở được file nhật ký của công trình này.');
   if (!d) return ms('Thêm vật tư vào danh mục trước (mục bên dưới).');
-  if (!(kl > 0)) return ms('Nhập khối lượng lớn hơn 0.');
+  if (!(kl > 0)) return ms(`Khối lượng “${$('vtk').value}” không đọc được. Ví dụ 12.500 hoặc 15,5.`);
   if (!ngay) return ms('Chọn ngày về.');
   const maLo = $('vtlo').value.trim(), cu = lo.find(l => l.ma === maLo);
   if (cu && bo(cu.ten) !== bo(d.ten)) return ms(`Lô ${maLo} là lô ${cu.ten}, không phải ${d.ten}. Để trống ô Mã lô nếu là lô mới.`);
@@ -231,9 +242,14 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vattu.js')) { /
   a.ok(canLam(lo[3], dm)[0].nut[0].nt); // L3: dòng NGHIEMTHU không phải mã VATLIEU thì không tính
   a.deepEqual(chu(4), ['KHÔNG ĐẠT, CẤM DÙNG lô này']); a.ok(canLam(lo[4], dm)[0].cam);
   a.deepEqual(chu(5), []); a.deepEqual(chu(7), []);
-  a.deepEqual(chu(6), ['Chờ kết quả nén R28']); a.deepEqual(canLam(lo[6], dm)[0].nut[1].o, { L: 'Không đạt', M: 'Cấm dùng' });
+  a.deepEqual(chu(6), ['Chờ kết quả nén R28']); a.deepEqual(canLam(lo[6], dm)[0].nut[1].o, { L: 'Không đạt', M: 'Báo TVGS, khoan lõi' });
+  const r7 = canLam({ ...lo[6], kq: '' }, dm)[0].nut[1]; a.deepEqual(r7.o, { K: 'Không đạt' }); a.ok(!r7.viec); // R7 không đạt: không cấm, không sinh việc
+  a.deepEqual(canLam({ ...lo[6], kq: 'Không đạt' }, dm).map(x => x.chu), ['R7 không đạt: theo dõi kỹ, chờ R28 để kết luận', 'Chờ kết quả nén R28']);
+  a.deepEqual(canLam({ ...lo[6], r28: 'Không đạt', xl: 'Báo TVGS, khoan lõi' }, dm).map(x => x.chu), ['R28 KHÔNG ĐẠT: báo TVGS, khoan lõi kiểm định']);
   a.equal(canLam({ ...lo[6], mau: 'Chưa', kq: '' }, dm)[0].nut[0].viec, 'mau'); // đúc mẫu bê tông: thêm việc nén R7, R28
   a.equal(tong(lo, 'Xi măng PCB40'), 30); a.equal(ngayVn(46301), '06/10/2026'); a.equal(ngayVn('6/10/2026'), '06/10/2026');
+  for (const [x, y] of [['12.500', 12500], ['1.234.567,8', 1234567.8], ['15,5', 15.5], ['12.5', 12.5], ['20', 20], [' 3 ', 3]]) a.equal(soVn(x), y);
+  for (const x of ['abc', '1.2.3', '', '1,2,3', '-5']) a.ok(isNaN(soVn(x)));
   a.equal(soDt(19, 20, 'tấn'), '19/20 tấn (95%)'); a.equal(soDt(21, 20, 'tấn'), '21/20 tấn (105%), VƯỢT dự toán'); a.equal(soDt(5, 0, 'm3'), '5 m3');
   a.equal(soTiep('CT01-GN-20261006', []), '01'); a.equal(soTiep('CT01-GN-20261006', ['CT01-GN-20261006-01_A.jpg', 'CT01-GN-20261006-03_B.jpg', 'CT01-GN-20261007-09_C.jpg']), '04');
   a.equal(soTiep('L20261006', ['L20261006-1', 'L20261006-2', 'D5'], 1), '3');
