@@ -168,6 +168,16 @@
     </details>
     <h3>Danh mục vật tư</h3>
     <div id="vtdm"></div>
+    <details><summary>+ Phiếu yêu cầu vật tư</summary>
+    <p id="ycgy"></p>
+    <label for="ycl">Vật tư (có dự toán thì ghi số còn thiếu)</label><select id="ycl"></select>
+    <label for="ycsl">Số lượng</label><input id="ycsl" inputmode="decimal" placeholder="ví dụ 12.500 hoặc 15,5">
+    <label for="ycd">Ngày cần về</label><input id="ycd" type="date">
+    <label for="ycgc">Ghi chú (nếu có)</label><input id="ycgc">
+    <p><button id="ycthem" class="phu">Thêm vào phiếu</button></p>
+    <div id="ycds"></div>
+    <p><button id="ycgui">Lập phiếu và gửi</button></p>
+    </details>
     <details><summary>+ Thêm vật tư vào danh mục</summary>
     <label for="vtten">Tên vật tư</label><input id="vtten" placeholder="ví dụ: Xi măng PCB40">
     <label for="vtqc">Quy cách, nhãn hiệu</label><input id="vtqc">

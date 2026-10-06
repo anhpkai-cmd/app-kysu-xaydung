@@ -5,7 +5,7 @@ import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { url as urlTT, parse as parseTT, viTri, nhatKy, tomTat, canhBao, NGAY } from './thoitiet.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
 import { khoiQR, lamQR, moQR, inQR, sauBanMoi as qrSauBanMoi, laBanVe } from './qr.js';
-import { moVatTu, luuVe, themVatTu, demVatTu, soVn } from './vattu.js';
+import { moVatTu, luuVe, themVatTu, demVatTu, soVn, themYc, lapYc, veYc } from './vattu.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
 const $ = id => document.getElementById(id);
@@ -649,7 +649,7 @@ function doiCT() {
   try { localStorage.setItem('ct', $('ct').value); } catch {}
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
   const ct = $('ct').value;
-  moQR(); chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), sot: sotCap, id: nkId }); }); taiTT(); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
+  moQR(); chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), thuMucMau: () => thuMuc(gocId, MAU), dsMau: d => dsMau(g, d), lapMau: (m, ten, dir) => lap(g, m, ten, dir, ttTin()), sot: sotCap, id: nkId }); }); taiTT(); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
 khoiQR({ api, ls, thuMuc, json, tim, blob, ct: () => $('ct').value, say, hoi: t => confirm(t), q, FOLDER });
@@ -684,6 +684,8 @@ $('nkl').onclick = khoa('nkl', luuNhatKy);
 $('nkf').oninput = nkNhap;
 $('vtluu').onclick = khoa('vtluu', luuVe);
 $('vtthem').onclick = khoa('vtthem', themVatTu);
+$('ycthem').onclick = themYc;
+$('ycgui').onclick = khoa('ycgui', () => lapYc().catch(e => $('vtms').textContent = e.message), veYc); // sau khi khóa trả lại chữ nút thì vẽ lại số vật tư trên nút
 $('q').oninput = hien;
 $('vthem').onclick = khoa('vthem', themViec);
 docNhan();
