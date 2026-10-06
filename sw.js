@@ -1,5 +1,5 @@
 // Cài app ra màn hình + nhận file từ nút Chia sẻ của điện thoại (Zalo, Zalo → Chia sẻ → Sổ tay KS). Dữ liệu Drive luôn lấy mới.
-const V = 'v2', F = ['./', 'index.html', 'app.js', 'register.js', 'config.js', 'icon.svg'];
+const V = 'v3', F = ['./', 'index.html', 'app.js', 'register.js', 'viec.js', 'nhatky.js', 'anh.js', 'config.js', 'icon.svg']; // thêm file .js mới thì thêm vào đây, không thì mất sóng app trắng trang
 addEventListener('install', e => e.waitUntil(caches.open(V).then(c => c.addAll(F)).then(() => skipWaiting())));
 addEventListener('activate', e => e.waitUntil(clients.claim()));
 addEventListener('fetch', e => {
