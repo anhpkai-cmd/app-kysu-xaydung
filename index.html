@@ -47,7 +47,7 @@
   .anh th,.anh>div{min-width:0}
   #ttms:empty,#nkmsg:empty,#anms:empty,#sotms:empty,#tqms:empty,#vtms:empty{display:none}
   #tqd .cb,#sotn .cb{font-weight:600;color:var(--accent)}
-  #sotds{display:grid;gap:8px} #tnms:empty,#tnz[hidden]{display:none} #tnt{width:100%;box-sizing:border-box;font:inherit;color:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--card)}
+  #sotds{display:grid;gap:8px} #tnms:empty,#tnz[hidden]{display:none} #tnt,#hopt{width:100%;box-sizing:border-box;font:inherit;color:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--card)}
   .cot{flex-direction:column;align-items:stretch}
   .cot .nut{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
   summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
@@ -130,6 +130,8 @@
     <p id="ttms" role="status"></p>
     <div id="ttds"></div>
     <p><button id="ttnd" class="phu">Thông tư, nghị định</button></p>
+    <p><button id="hop" class="phu">Chuẩn bị họp chủ đầu tư</button></p>
+    <div id="hopkq" hidden><p>Bản tin để anh chuẩn bị họp. Xóa phần nội bộ trước khi gửi chủ đầu tư.</p><textarea id="hopt" rows="14"></textarea><p><button id="hopg">Chép / gửi (đã xem lại)</button></p><p>Ảnh mới nhất (chỉ tài khoản của anh mở được, không gửi kèm):</p><ul id="hopa"></ul></div>
     <details><summary>+ Thêm liên hệ hoặc thông tin</summary>
     <label for="ttnh">Loại</label><select id="ttnh"><option>Liên hệ</option><option>Thông tin</option></select>
     <label for="ttten">Tên (người liên hệ, hoặc tên mục như Địa chỉ)</label><input id="ttten">
