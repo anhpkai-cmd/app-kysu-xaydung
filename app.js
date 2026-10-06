@@ -183,6 +183,7 @@ function veHan() {
     }
     return el;
   }), ...(hanLoi.length ? [Object.assign(document.createElement('p'), { textContent: 'Không đọc được hạn giấy tờ của: ' + hanLoi.join(', ') })] : []));
+  veSot();
 }
 
 async function themViec() {
@@ -259,7 +260,7 @@ const nkApi = (id, p, opt) => api(`https://sheets.googleapis.com/v4/spreadsheets
 const nkKey = () => 'nk:' + $('ct').value; // bản nháp theo công trình, xóa khi lưu thành công
 function nkNhap() { try { localStorage.setItem(nkKey(), JSON.stringify({ d: $('nkd').value, f: NK.map((_, i) => $('nk' + i).value), vc: nkVc })); } catch {} }
 async function moNhatKy() {
-  const ct = $('ct').value; nkDm = []; // người dùng đổi công trình giữa chừng thì bỏ kết quả của công trình cũ
+  const ct = $('ct').value; nkDm = []; nkGhi = null; // người dùng đổi công trình giữa chừng thì bỏ kết quả của công trình cũ
   $('nk').hidden = false; $('nkf').hidden = true; nkId = null; nkVc = [];
   try {
     const f = await sheetCo(`name contains '${q($('ct').selectedOptions[0].text.split('_')[0])}-NK-NHATKY'`);
@@ -277,7 +278,7 @@ async function moNhatKy() {
     }));
     $('nkd').value = homNay(); $('nkmsg').textContent = ''; $('nkl').textContent = 'Lưu nhật ký vào ' + $('ct').selectedOptions[0].text;
     try { const n = JSON.parse(localStorage.getItem(nkKey())); if (n) { $('nkd').value = n.d; n.f.forEach((v, i) => $('nk' + i).value = v); nkVc = n.vc; $('nkmsg').textContent = 'Đã khôi phục phần nhật ký đang nhập dở.'; } } catch {}
-    $('nkf').hidden = false; hienVc();
+    $('nkf').hidden = false; hienVc(); sotNhatKy();
   } catch (e) { $('nkmsg').textContent = e.message; }
 }
 function hienVc() {
@@ -371,7 +372,7 @@ async function taiAnh() {
     const hm = new Map([...nkDm.map(([ma, ten]) => [ma, `${ma} · ${ten}`]), ['CHUNG', 'CHUNG · Toàn cảnh, việc chung'], ['ATLD', 'ATLD · An toàn lao động'], ['VATLIEU', 'VATLIEU · Vật liệu nhập về']]); // luôn có ba mục chung ở cuối
     $('anhm').replaceChildren(...[...hm].map(([ma, ten]) => new Option(ten, ma)));
     $('anms').textContent = anhDs.length ? `Có ${anhDs.length} ảnh chờ xếp trong 00_INBOX. Tick các ảnh cùng một hạng mục, chọn hạng mục, bấm Xếp; ảnh chưa tick vẫn ở lại cho lượt sau.` : 'Không có ảnh chờ xếp. Tải ảnh lên thư mục 00_INBOX của công trình bằng app Google Drive.';
-    $('anx').hidden = !anhDs.length; veAnh();
+    $('anx').hidden = !anhDs.length; veAnh(); veSot();
   } catch (e) { $('anms').textContent = e.message; }
 }
 function veAnh() {
@@ -431,6 +432,36 @@ async function xepAnh() {
   await taiAnh(); $('anms').textContent = `Đã xếp ${xong}/${dem} ảnh vào 09_HINHANH.${loi} ` + $('anms').textContent;
 }
 
+// ---- Hôm nay còn sót gì: gom việc, giấy tờ, nhật ký, ảnh vào một chỗ; nhắc 17h mỗi ngày qua Google Lịch (không có máy chủ nên Lịch chỉ nhắc mở app, nội dung xem trong app) ----
+let nkGhi = null; // nhật ký hôm nay đã ghi chưa (null = chưa biết)
+function veSot() {
+  const hom = homNay(), nhom = chia(viec, hom), han = hanDs.filter(d => isNaN(d.n) || d.n <= 7);
+  const dong = [
+    [nhom.quaHan.length + nhom.sapDen.filter(t => t.n === 0).length, 'việc quá hạn hoặc đến hạn hôm nay', '#viec'],
+    [han.length, 'giấy tờ sắp hết hạn (trong 7 ngày) hoặc đã quá hạn', '#han'],
+    [nkGhi === false ? 1 : 0, 'nhật ký hôm nay chưa ghi', '#nk'],
+    [anhDs.length, 'ảnh chờ xếp', '#anh'],
+  ].filter(([n]) => n);
+  $('sotds').replaceChildren(...(dong.length ? dong.map(([n, chu, href]) => { const l = document.createElement('a'); l.className = 'nutlk'; l.href = href; l.textContent = `${n} ${chu}`; return l; }) : [Object.assign(document.createElement('p'), { textContent: 'Hôm nay không còn gì sót.' })]));
+}
+async function sotNhatKy() { // nhật ký của công trình đang chọn đã có dòng hôm nay chưa
+  nkGhi = null;
+  if (nkId) try { const ngay = serial(homNay()); nkGhi = ((await nkApi(nkId, 'values/NGAY!A:A?valueRenderOption=UNFORMATTED_VALUE')).values || []).some(r => r[0] === ngay); } catch {}
+  veSot();
+}
+const BAN_TIN = 'Sổ tay kỹ sư: hôm nay còn sót gì';
+async function banTin() { // bật nhắc 17h thứ 2 đến thứ 7, chỉ tạo một lần
+  try {
+    const co = (await api(`${LICH}?q=${encodeURIComponent(BAN_TIN)}&maxResults=1`)).items?.some(e => e.status !== 'cancelled' && e.summary === BAN_TIN);
+    if (co) return $('sotms').textContent = 'Nhắc 17h mỗi ngày đã bật từ trước.';
+    const tz = 'Asia/Ho_Chi_Minh', hom = new Date(), bd = hom.getHours() >= 17 ? cong(homNay(), 1) : homNay(), url = location.origin + location.pathname;
+    await api(LICH, json({ summary: BAN_TIN, description: 'Mở app xem việc còn sót: ' + url, source: { title: 'Mở Sổ tay kỹ sư', url },
+      start: { dateTime: bd + 'T17:00:00', timeZone: tz }, end: { dateTime: bd + 'T17:10:00', timeZone: tz }, recurrence: ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA'],
+      reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 0 }] } }));
+    $('sotms').textContent = 'Đã bật nhắc 17h thứ 2 đến thứ 7 trên Google Lịch.';
+  } catch (e) { $('sotms').textContent = e.message; }
+}
+
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
 // ponytail: không có máy chủ nên không có refresh token, mỗi giờ phải xin lại một lần.
 const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth2.initTokenClient({
@@ -446,7 +477,7 @@ async function vao(resp) {
     const [goc] = await ls(`name='${ROOT_NAME}' and mimeType='${FOLDER}'`);
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
-    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false;
+    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false;
     try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec(); taiHan(cts);
@@ -481,6 +512,7 @@ $('ct').onchange = doiCT;
 $('ttt').onclick = khoa('ttt', themTT);
 $('nkt').onclick = themVc;
 $('anb').onclick = khoa('anb', xepAnh, tomTatAnh);
+$('sotb').onclick = khoa('sotb', banTin);
 $('anc').onclick = () => { const tat = anhDs.every(f => f.chon); anhDs.forEach(f => f.chon = !tat); veAnh(); };
 $('and').onclick = () => { anhDs.forEach(f => { if (f.chon && f.nguon === 'doan' && !f.ngaySua) f.ngaySua = f.ngay; }); veAnh(); };
 $('nkl').onclick = khoa('nkl', luuNhatKy);
