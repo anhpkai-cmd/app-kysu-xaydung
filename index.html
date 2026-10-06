@@ -35,6 +35,10 @@
   .doc>div{min-width:0;overflow-wrap:anywhere}
   .doc b{display:block;font-size:14px;color:var(--mute);font-weight:600}
   .doc small{color:var(--mute)}
+  .ycv{display:grid;grid-template-columns:1fr 6em;gap:8px}
+  #ycl label{color:var(--ink);font-size:16px;margin:0;display:flex;gap:10px;align-items:center}
+  #ycl input[type=checkbox]{min-height:24px;width:24px;flex:none}
+  [aria-invalid=true]{border:2px solid var(--accent)}
   .nut{display:grid;gap:8px}
   #nhan button{display:block;margin-top:8px;max-width:100%;height:auto;min-height:44px;padding:8px 12px;white-space:normal;text-align:left;overflow-wrap:anywhere}
   .phu{background:transparent;color:var(--ink);border:1px solid var(--rule)}
@@ -188,6 +192,16 @@
     </details>
     <h3>Danh mục vật tư</h3>
     <div id="vtdm"></div>
+    <details><summary>+ Phiếu yêu cầu vật tư</summary>
+    <p id="ycgy"></p>
+    <p>Đánh dấu các vật tư cần, ghi số lượng và đơn vị (vật tư có dự toán thì app điền sẵn số còn thiếu).</p>
+    <div id="ycl"></div><datalist id="ycdvs"><option>tấn<option>kg<option>bao<option>m3<option>m2<option>m<option>cây<option>viên<option>cái<option>lít</datalist>
+    <label for="ycd">Ngày cần về</label><input id="ycd" type="date">
+    <label for="ycgc">Ghi chú (nếu có)</label><input id="ycgc">
+    <p><button id="ycthem" class="phu">Thêm vào phiếu</button></p>
+    <div id="ycds"></div>
+    <p><button id="ycgui">Lập phiếu và gửi</button></p>
+    </details>
     <details><summary>+ Thêm vật tư vào danh mục</summary>
     <label for="vtten">Tên vật tư</label><input id="vtten" placeholder="ví dụ: Xi măng PCB40">
     <label for="vtqc">Quy cách, nhãn hiệu</label><input id="vtqc">

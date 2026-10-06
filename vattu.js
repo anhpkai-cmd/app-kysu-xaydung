@@ -57,25 +57,37 @@ export const tong = (lo, ten) => lo.filter(l => bo(l.ten) === bo(ten)).reduce((s
 export const soTiep = (goc, ten, rong = 2) => String(Math.max(0, ...ten.filter(n => n.startsWith(goc + '-')).map(n => +(n.slice(goc.length + 1).match(/^\d+/)?.[0] ?? 0))) + 1).padStart(rong, '0');
 
 // Lịch nghiệm thu tự sinh từ trang DANHMUC (tiến độ đã trình: cột F Kết thúc KH, G Lũy kế thực hiện): công việc sắp kết thúc trong `toi` ngày
-// hoặc đã quá ngày mà trang NGHIEMTHU chưa có dòng mã đó với Kết quả "Đạt". Mã chung (CHUNG, ATLD, VATLIEU) không có nghiệm thu công việc.
+// hoặc đã quá ngày (tối đa 30 ngày: công trình đang làm dở có nhiều việc đã nghiệm thu trên giấy, không ghi vào app) mà trang NGHIEMTHU chưa có dòng mã đó với Kết quả "Đạt". Mã chung (CHUNG, ATLD, VATLIEU) không có nghiệm thu công việc.
 export function lichNt(cv, nt, hom, toi = 14) {
   const xong = new Set((nt || []).slice(1).filter(r => r[4] === 'Đạt').map(r => r[1]));
   return (cv || []).slice(1).filter(r => r[0] && !['CHUNG', 'ATLD', 'VATLIEU'].includes(r[0]) && !xong.has(r[0]) && iso(r[5] ?? ''))
-    .map(r => ({ ma: r[0], ten: r[1] ?? '', kt: iso(r[5]), luyke: +r[6] || 0, n: conLai(r[5], hom) })).filter(x => x.n <= toi).sort((a, b) => a.n - b.n);
+    .map(r => ({ ma: r[0], ten: r[1] ?? '', kt: iso(r[5]), luyke: +r[6] || 0, n: conLai(r[5], hom) })).filter(x => x.n <= toi && x.n >= -30).sort((a, b) => a.n - b.n);
 }
 // Giấy tờ, số liệu còn thiếu trước buổi nghiệm thu (app tự kiểm được). ponytail: chưa soát ảnh, bản vẽ theo hạng mục; muốn soát thì đọc tên ảnh 09_HINHANH (có mã hạng mục).
 export const thieuNt = (x, lo, dm) => [
   ...(x.luyke > 0 ? [] : ['Chưa có khối lượng thực hiện trong nhật ký']),
-  ...(n => n ? [`Còn ${n} lô vật tư chưa nghiệm thu đầu vào (xem mục Vật tư)`] : [])(lo.filter(l => canLam(l, dm).length).length),
+  ...(n => n ? [`Có ${n} lô vật tư KHÔNG ĐẠT chưa xử lý (xem mục Vật tư)`] : [])(lo.filter(l => canLam(l, dm)[0]?.cam).length),
 ];
 const homNay = () => new Date().toLocaleDateString('sv-SE');
+
+// Phiếu yêu cầu vật tư. Gợi ý: công việc bắt đầu trong 7 ngày tới (theo tiến độ) và phần còn thiếu so với dự toán (dự toán trừ đã về).
+export const tuanToi = (cv, hom) => (cv || []).slice(1).filter(r => r[0] && iso(r[4] ?? '') && (n => n >= 0 && n <= 7)(conLai(r[4], hom))).map(r => `${r[1]} (${ngayVn(r[4])})`);
+export const conThieu = (d, lo) => d.dt > 0 ? Math.max(0, Math.round((d.dt - tong(lo, d.ten)) * 1000) / 1000) : 0;
+// Tin nhắn Zalo kèm link phiếu.
+export const tinPhieu = (so, ct, ds, link) => [`PHIẾU YÊU CẦU VẬT TƯ số ${so}`, `Công trình: ${ct}`, ...ds.map((x, i) => `${i + 1}. ${x.ten}${x.qc ? ' ' + x.qc : ''}: ${x.sl.toLocaleString('vi-VN')} ${x.dv}, cần ngày ${ngayVn(x.can)}${x.gc ? ' (' + x.gc + ')' : ''}`), `Phiếu: ${link}`].join('\n');
+// Mẫu đề xuất (app tạo một lần trong MAUBIEU_CONGTY, anh sửa trực tiếp trong Trang tính: thêm logo, đổi người nhận). Bảng vật tư chèn dưới dòng có ô "STT".
+// Thông tin công ty chỉ có tên và số điện thoại (kho mã công khai: không ghi mã số thuế, tài khoản).
+export const MAU_YC = 'PHIEU-YEU-CAU-VAT-TU';
+const MAU_YC_DONG = [['CÔNG TY CỔ PHẦN ĐẦU TƯ XÂY DỰNG HẠ TẦNG 889', '', '', '', '', 'Số: {{Số phiếu}}'], ['Điện thoại: 0911472472', '', '', '', '', '{{Ngày dài}}'], ['Công trình: {{Công trình}}'], [],
+  ['PHIẾU YÊU CẦU VẬT TƯ'], ['Kính gửi: Bộ phận Vật tư công ty. Đồng gửi: Chỉ huy trưởng công trường.'], ['Ban chỉ huy công trường đề nghị cung cấp các vật tư sau:'],
+  ['STT', 'Tên vật tư', 'Quy cách', 'ĐV', 'Số lượng', 'Ngày cần', 'Ghi chú'], [], ['Người yêu cầu', '', '', 'Chỉ huy trưởng', '', 'Bộ phận Vật tư'], ['(ký, ghi rõ họ tên)', '', '', '(ký, ghi rõ họ tên)', '', '(ký, ghi rõ họ tên)']];
 
 // Đọc cả file (chỉ đọc, trang chưa có thì coi như trống). Dùng cho mục Vật tư và khung Còn sót.
 export async function docFile(api, id) {
   const sh = `https://sheets.googleapis.com/v4/spreadsheets/${id}`;
   const co = (await api(`${sh}?fields=sheets.properties.title`)).sheets.map(s => s.properties.title).filter(t => ['VATTU', 'DMVATTU', 'NGHIEMTHU', 'DANHMUC'].includes(t));
   const v = Object.fromEntries(await Promise.all(co.map(async t => [t, (await api(`${sh}/values/${t}?valueRenderOption=UNFORMATTED_VALUE`)).values || []])));
-  return { dau: Object.fromEntries(co.map(t => [t, v[t][0] || []])), dm: docDm(v.DMVATTU), lo: docLo(v.VATTU, v.NGHIEMTHU), lich: lichNt(v.DANHMUC, v.NGHIEMTHU, homNay()) };
+  return { dau: Object.fromEntries(co.map(t => [t, v[t][0] || []])), dm: docDm(v.DMVATTU), lo: docLo(v.VATTU, v.NGHIEMTHU), lich: lichNt(v.DANHMUC, v.NGHIEMTHU, homNay()), cv: v.DANHMUC || [] };
 }
 // Cho khung Còn sót: số lô cấm dùng và số lô chưa xong (bỏ qua lô chỉ còn chờ kết quả thí nghiệm, vì đó là việc của phòng thí nghiệm).
 const dem = (dm, lo, lich) => {
@@ -85,7 +97,7 @@ const dem = (dm, lo, lich) => {
 export const demVatTu = async (api, id) => { const { dm, lo, lich } = await docFile(api, id); return dem(dm, lo, lich); };
 
 // ---- Phần giao diện. h: hàm dùng chung của app.js (api, ls, thuMuc, json, taiLen, taoViec) và id file nhật ký ----
-let h, dm = [], lo = [], lich = [], dau = {}, treo = null; // dau: dòng tiêu đề từng trang đã có; treo: ảnh phiếu đã tải nhưng chưa ghi được dòng
+let h, dm = [], lo = [], lich = [], cv = [], phieu = [], dau = {}, treo = null; // dau: dòng tiêu đề từng trang đã có; treo: ảnh phiếu đã tải nhưng chưa ghi được dòng
 const $ = x => document.getElementById(x), ms = t => $('vtms').textContent = t || '';
 const maCt = () => $('ct').selectedOptions[0].text.split('_')[0];
 const sh = p => `https://sheets.googleapis.com/v4/spreadsheets/${h.id}${p}`;
@@ -101,7 +113,7 @@ export async function moVatTu(ham) {
   try {
     const f = await docFile(h.api, h.id); // đọc thì không ghi: trang thiếu chỉ được tạo khi lưu
     if ($('ct').value !== ct) return;
-    ({ dau, dm, lo, lich } = f); ms(); ve(); h.sot?.({ vt: dem(dm, lo, lich) }); // khung Còn sót theo kịp sau mỗi lần ghi
+    ({ dau, dm, lo, lich, cv } = f); ms(); ve(); h.sot?.({ vt: dem(dm, lo, lich) }); // khung Còn sót theo kịp sau mỗi lần ghi
   } catch (e) { ms(e.message); }
 }
 
@@ -116,20 +128,37 @@ function ve() {
     el.append(th, nut); return el;
   }));
   $('vtdm').replaceChildren(...(dm.length ? [] : [tao('p', 'Chưa có vật tư nào trong danh mục. Thêm vật tư đầu tiên bên dưới.')]), ...dm.map(d => {
-    const el = tao('div', '', 'doc'), th = tao('div'), cho = d.detrinh && !d.duyet && iso(d.detrinh) ? (Date.parse(homNay()) - Date.parse(iso(d.detrinh))) / 864e5 : 0;
+    const el = tao('div', '', 'doc cot'), th = tao('div'), nut = tao('div', '', 'nut'), cho = d.detrinh && !d.duyet && iso(d.detrinh) ? (Date.parse(homNay()) - Date.parse(iso(d.detrinh))) / 864e5 : 0;
     const tt = d.duyet ? `Đã duyệt ${ngayVn(d.duyet)}` : d.detrinh ? `Đã đệ trình ${ngayVn(d.detrinh)}, chờ duyệt${cho > 0 ? ` ${cho} ngày` : ''}` : 'Chưa đệ trình';
-    th.append(tao('div', d.ten + (d.qc ? ` · ${d.qc}` : '')), tao('small', `${tt} · Đã về ${soDt(tong(lo, d.ten), d.dt, d.dv)}`)); el.append(th);
-    if (!d.duyet) { const [chu, cot] = d.detrinh ? ['Đã duyệt', 'E'] : ['Đã đệ trình', 'D']; el.append(nutBam(chu, `${chu} ${d.ten}`, () => ghiDm(d, cot))); }
-    el.append(nutBam(d.dt ? 'Sửa dự toán' : 'Nhập dự toán', 'Khối lượng dự toán ' + d.ten, () => ghiDm(d, 'H')));
+    th.append(tao('div', d.ten + (d.qc ? ` · ${d.qc}` : '')), tao('small', `${tt} · Đã về ${soDt(tong(lo, d.ten), d.dt, d.dv)}`)); el.append(th, nut); // tên trên, nút dưới: khỏi bị ép hẹp trên điện thoại
+    if (!d.duyet) { const [chu, cot] = d.detrinh ? ['Đã duyệt', 'E'] : ['Đã đệ trình', 'D']; nut.append(nutBam(chu, `${chu} ${d.ten}`, () => ghiDm(d, cot))); }
+    nut.append(nutBam(d.dt ? 'Sửa dự toán' : 'Nhập dự toán', 'Khối lượng dự toán ' + d.ten, () => ghiDm(d, 'H')));
     return el;
   }));
   $('ntds').replaceChildren(...(lich.length ? [] : [tao('p', 'Không có công việc nào cần nghiệm thu trong 14 ngày tới (theo ngày kết thúc trong trang DANHMUC của file nhật ký).')]), ...lich.map(x => {
     const el = tao('div', '', 'doc cot'), th = tao('div'), nut = tao('div', '', 'nut'), viec = `Nghiệm thu: ${x.ten} (${x.ma})`;
     th.append(tao('div', x.ten), tao('small', `${x.ma} · kết thúc theo tiến độ ${ngayVn(x.kt)} · ${nhan(x.n)}`), ...thieuNt(x, lo, dm).map(t => tao('div', '• ' + t)));
-    if (!h.coViec?.(viec)) nut.append(nutBam('Nhắc tôi', 'Nhắc nghiệm thu ' + x.ten, async () => { const g = await h.taoViec(viec, $('ct').selectedOptions[0].text, x.n > 0 ? x.kt : homNay()); await moVatTu(h); ms(g || `Đã thêm việc “${viec}”, Google Lịch nhắc trước 3 ngày và 1 ngày.`); }));
+    if (!h.coViec?.(viec)) nut.append(nutBam('Nhắc tôi', 'Nhắc nghiệm thu ' + x.ten, async () => { // kèm việc mời TVGS trước 1 ngày: bước hay quên nhất
+      const tenCt = $('ct').selectedOptions[0].text, g1 = await h.taoViec(`Mời TVGS nghiệm thu: ${x.ten} (${x.ma})`, tenCt, x.n > 1 ? cong(x.kt, -1) : homNay()), g = (await h.taoViec(viec, tenCt, x.n > 0 ? x.kt : homNay())) || g1;
+      await moVatTu(h); ms(g || `Đã thêm 2 việc: mời TVGS trước 1 ngày và “${viec}”. Google Lịch sẽ nhắc.`);
+    }));
+    nut.append(nutBam('Mời TVGS', 'Gửi lời mời TVGS nghiệm thu ' + x.ten, () => moiTvgs(x)));
     nut.append(nutBam('Đã nghiệm thu', 'Đã nghiệm thu ' + x.ten, () => ghiNt(x)));
     el.append(th, nut); return el;
   }));
+  const tt = tuanToi(cv, homNay());
+  $('ycgy').textContent = tt.length ? 'Tuần tới bắt đầu theo tiến độ: ' + tt.join('; ') + '.' : '';
+  $('ycl').replaceChildren(...dm.map(d => { // mỗi vật tư một dòng: đánh dấu, số lượng, đơn vị (sửa được, ví dụ đặt thép theo cây thay vì kg)
+    const el = tao('div', '', 'doc cot'), nhan = tao('label'), chon = tao('input'), sl = tao('input'), dv = tao('input'), thieu = conThieu(d, lo), v = tao('div', '', 'ycv');
+    chon.type = 'checkbox'; nhan.append(chon, ' ' + d.ten + (d.qc ? ` · ${d.qc}` : '') + (thieu ? ` (còn thiếu ${thieu.toLocaleString('vi-VN')} ${d.dv})` : ''));
+    sl.inputMode = 'decimal'; sl.placeholder = 'Số lượng'; sl.setAttribute('aria-label', 'Số lượng ' + d.ten);
+    dv.value = d.dv; dv.placeholder = 'Đơn vị'; dv.setAttribute('list', 'ycdvs'); dv.setAttribute('aria-label', 'Đơn vị ' + d.ten);
+    chon.onchange = () => { if (chon.checked && !sl.value && thieu) sl.value = thieu.toLocaleString('vi-VN'); };
+    sl.oninput = () => { chon.checked = sl.value.trim() !== ''; sl.removeAttribute('aria-invalid'); };
+    el.yc = () => chon.checked && { d, o: sl, sl: sl.value, dv: dv.value.trim(), xoa: () => { chon.checked = false; sl.value = ''; dv.value = d.dv; } };
+    v.append(sl, dv); el.append(nhan, v); return el;
+  }));
+  veYc();
   $('vtl').replaceChildren(...dm.map((d, i) => new Option(d.ten + (d.qc ? ` · ${d.qc}` : '') + (d.dv ? ` (${d.dv})` : ''), i)));
   goiYLo();
 }
@@ -182,6 +211,62 @@ async function ghiLo(l, n) {
   } catch (e) { ghi = 'Chưa thêm được việc nhắc: ' + e.message; }
   await moVatTu(h); ms(`Đã ghi: ${l.ten}, lô ${l.ma}.` + (n.viec ? ' Đã thêm việc nhắc vào Việc cần làm.' : '') + (ghi ? ' ' + ghi : ''));
 }
+
+export function veYc() {
+  $('ycds').replaceChildren(...phieu.map((x, i) => {
+    const el = tao('div', '', 'doc'), b = tao('button', 'Bỏ', 'phu'); b.setAttribute('aria-label', 'Bỏ ' + x.ten + ' khỏi phiếu');
+    b.onclick = () => { phieu.splice(i, 1); veYc(); };
+    el.append(tao('span', `${i + 1}. ${x.ten} · ${x.sl.toLocaleString('vi-VN')} ${x.dv} · cần ${ngayVn(x.can)}`), b); return el;
+  }));
+  $('ycgui').textContent = `Lập phiếu (${phieu.length} vật tư) và gửi`;
+}
+export function themYc() {
+  const ds = [...$('ycl').children].map(el => el.yc()).filter(Boolean), can = $('ycd').value;
+  if (!ds.length) return ms(dm.length ? 'Đánh dấu ít nhất một vật tư.' : 'Thêm vật tư vào danh mục trước.');
+  const sai = ds.find(x => !(soVn(x.sl) > 0)); if (sai) return sai.o.setAttribute('aria-invalid', 'true'), sai.o.focus(), ms(sai.sl.trim() ? `Số lượng ${sai.d.ten} “${sai.sl}” không đọc được. Ví dụ 12.500 hoặc 15,5.` : `Ghi số lượng cho ${sai.d.ten}.`);
+  const thieuDv = ds.find(x => !x.dv); if (thieuDv) return ms(`Ghi đơn vị cho ${thieuDv.d.ten}.`);
+  if (!can) return ms('Chọn ngày cần vật tư về.');
+  for (const x of ds) { phieu.push({ ten: x.d.ten, qc: x.d.qc, dv: x.dv, sl: soVn(x.sl), can, gc: $('ycgc').value.trim() }); x.xoa(); }
+  $('ycgc').value = ''; ms(); veYc();
+}
+// Lập phiếu từ mẫu (dùng chung cách điền mẫu của Văn bản gửi đi), chèn bảng vật tư, gửi link qua Zalo, thêm việc "<vật tư> về" theo ngày cần.
+export async function lapYc() {
+  if (!h?.id) return ms('Chưa mở được file nhật ký của công trình này.');
+  if (!phieu.length) return ms('Thêm ít nhất một vật tư vào phiếu.');
+  const ct = $('ct').value, tenCt = $('ct').selectedOptions[0].text, ds = [...phieu]; // tenCt: tên thư mục (việc cần làm lọc theo nó); ten: tên công trình thật ghi trên phiếu
+  let ten = h.tenCt();
+  if (ten === '(tên công trình)') { if (!confirm(`Trang Thông tin chưa có dòng "Tên công trình", phiếu sẽ ghi "${tenCt}". Vẫn lập phiếu?`)) return; ten = tenCt; }
+  ms('Đang lập phiếu...');
+  const goc = await h.thuMucMau(), mau = (await h.dsMau(goc)).find(f => f.name.startsWith(MAU_YC)) || await taoMauYc(goc);
+  const dir = await h.thuMuc(ct, '05_VATTU_DOITHICONG/PHIEU_YEUCAU'), so = `${maCt()}-YC-VT-${homNay().replaceAll('-', '')}`;
+  const ma = `${so}-${soTiep(so, (await h.ls(`'${dir}' in parents and name contains '${so}'`)).map(f => f.name))}`;
+  const f = await h.lapMau(mau, ma + '_PhieuYeuCauVatTu', dir);
+  const sh2 = `https://sheets.googleapis.com/v4/spreadsheets/${f.id}`, tab = (await h.api(`${sh2}?fields=sheets.properties`)).sheets[0].properties;
+  const v = (await h.api(`${sh2}/values/'${tab.title}'!A1:A60`)).values || [], stt = v.findIndex(r => String(r[0] ?? '').trim().toUpperCase() === 'STT');
+  if (stt < 0) throw new Error(`Mẫu ${mau.name} thiếu dòng tiêu đề bảng có ô "STT" ở cột A.`);
+  await h.api(`${sh2}:batchUpdate`, h.json({ requests: [{ insertDimension: { range: { sheetId: tab.sheetId, dimension: 'ROWS', startIndex: stt + 1, endIndex: stt + 1 + ds.length }, inheritFromBefore: true } },
+    ...[['Số phiếu', ma], ['Công trình', ten]].map(([t, gt]) => ({ findReplace: { find: `{{${t}}}`, replacement: gt, allSheets: true } }))] }));
+  await h.api(`${sh2}/values/'${tab.title}'!A${stt + 2}?valueInputOption=RAW`, { ...h.json({ values: ds.map((x, i) => [i + 1, x.ten, x.qc, x.dv, x.sl, ngayVn(x.can), x.gc]) }), method: 'PUT' });
+  phieu = []; veYc();
+  let ghi = '';
+  for (const x of ds) try { ghi = (await h.taoViec(`${x.ten} về (phiếu ${ma})`, tenCt, x.can)) || ghi; } catch (e) { ghi = 'Chưa thêm được việc nhắc: ' + e.message; }
+  const thieu = f.thieu.filter(t => !['{{Số phiếu}}', '{{Công trình}}'].includes(t));
+  ms(`Đã lập ${ma} trong 05_VATTU_DOITHICONG/PHIEU_YEUCAU, đã thêm việc nhắc vật tư về theo ngày cần.` + (thieu.length ? ` Mẫu còn chỗ chưa điền: ${thieu.join(', ')}.` : '') + (ghi ? ' ' + ghi : ''));
+  if (!confirm(`Gửi phiếu ${ma}?\nBất kỳ ai có link đều xem được phiếu này.`)) return;
+  await h.api(`https://www.googleapis.com/drive/v3/files/${f.id}/permissions`, h.json({ role: 'reader', type: 'anyone' }));
+  const tin = tinPhieu(ma, ten, ds, f.webViewLink);
+  try { if (navigator.share) await navigator.share({ title: ma, text: tin }); else { await navigator.clipboard.writeText(tin); ms(`Đã chép nội dung phiếu ${ma}, dán vào Zalo để gửi.`); } } catch (e) { if (e.name !== 'AbortError') ms(`Phiếu ${ma} đã lập nhưng máy không cho chia sẻ (${e.message}). Link phiếu: ${f.webViewLink}`); }
+}
+async function taoMauYc(goc) { // tạo mẫu đề xuất một lần; từ lần sau dùng mẫu (anh có thể đã sửa) trong MAUBIEU_CONGTY
+  const t = await h.api('https://sheets.googleapis.com/v4/spreadsheets', h.json({ properties: { title: MAU_YC }, sheets: [{ properties: { title: 'PHIEU' },
+    data: [{ startRow: 0, startColumn: 0, rowData: MAU_YC_DONG.map(r => ({ values: r.map(x => ({ userEnteredValue: { stringValue: x } })) })) }] }] }));
+  const { parents } = await h.api(`https://www.googleapis.com/drive/v3/files/${t.spreadsheetId}?fields=parents`);
+  await h.api(`https://www.googleapis.com/drive/v3/files/${t.spreadsheetId}?addParents=${goc}&removeParents=${parents.join(',')}&fields=id`, { method: 'PATCH' });
+  return { id: t.spreadsheetId, name: MAU_YC, mimeType: 'application/vnd.google-apps.spreadsheet' };
+}
+
+// Mời TVGS: mở mẫu "Mời nghiệm thu" của Tin nhắn soạn sẵn (tin.js: tên công trình thật, người nhận, nút mở Zalo), điền sẵn công việc và ngày.
+const moiTvgs = x => h.moiNt(`${x.ten} (${x.ma})`, ngayVn(x.n > 0 ? x.kt : cong(homNay(), 1)));
 
 // Nghiệm thu công việc: thêm một dòng NGHIEMTHU (ngày, mã, nội dung, kết quả Đạt, số biên bản). Chỉ thêm dòng, không sửa dòng cũ.
 async function ghiNt(x) {
@@ -284,7 +369,13 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vattu.js')) { /
   const lc = lichNt(cv, [NT, [46300, 'CB-1', 'x', '', 'Hẹn lại'], [46301, 'HM1-1', 'x', '', 'Không đạt']], '2026-10-06');
   a.deepEqual(lc.map(x => [x.ma, x.n]), [['CB-1', -3], ['HM1-1', 4]]); // hẹn lại, không đạt vẫn còn; HM1-2 ngày số 46330 = 04/11 (quá 14 ngày); không ngày thì bỏ
   a.deepEqual(lichNt(cv, [NT, [46300, 'CB-1', 'x', '', 'Đạt']], '2026-10-06').map(x => x.ma), ['HM1-1']);
-  a.deepEqual(thieuNt(lc[1], lo, dm), ['Chưa có khối lượng thực hiện trong nhật ký', 'Còn 6 lô vật tư chưa nghiệm thu đầu vào (xem mục Vật tư)']); a.deepEqual(thieuNt(lc[0], [], dm), []);
+  a.deepEqual(thieuNt(lc[1], lo, dm), ['Chưa có khối lượng thực hiện trong nhật ký', 'Có 1 lô vật tư KHÔNG ĐẠT chưa xử lý (xem mục Vật tư)']);
+  a.deepEqual(lichNt([['Mã'], ['A', 'Cũ', '', 0, '', '01/09/2026'], ['B', 'Vừa qua', '', 0, '', '06/09/2026']], [], '2026-10-06').map(x => x.ma), ['B']); // quá 30 ngày thì bỏ
+  a.deepEqual(tuanToi(cv, '2026-10-06'), ['Lợp mái (11/10/2026)']); // CB-1, HM1-1 đã bắt đầu; ô Bắt đầu trống thì bỏ
+  a.equal(conThieu({ ten: 'Xi măng PCB40', dt: 50 }, lo), 20); a.equal(conThieu({ ten: 'Xi măng PCB40', dt: 10 }, lo), 0); a.equal(conThieu({ ten: 'X', dt: 0 }, lo), 0);
+  a.equal(tinPhieu('CT01-YC-VT-20261006-01', 'CT01_ChoHieuLe', [{ ten: 'Thép D10', qc: 'CB300', dv: 'kg', sl: 1200, can: '2026-10-09', gc: '' }], 'https://x'),
+    'PHIẾU YÊU CẦU VẬT TƯ số CT01-YC-VT-20261006-01\nCông trình: CT01_ChoHieuLe\n1. Thép D10 CB300: 1.200 kg, cần ngày 09/10/2026\nPhiếu: https://x');
+  a.ok(MAU_YC_DONG.some(r => r[0] === 'STT'));
   a.equal(soDt(19, 20, 'tấn'), '19/20 tấn (95%)'); a.equal(soDt(21, 20, 'tấn'), '21/20 tấn (105%), VƯỢT dự toán'); a.equal(soDt(5, 0, 'm3'), '5 m3');
   a.equal(soTiep('CT01-GN-20261006', []), '01'); a.equal(soTiep('CT01-GN-20261006', ['CT01-GN-20261006-01_A.jpg', 'CT01-GN-20261006-03_B.jpg', 'CT01-GN-20261007-09_C.jpg']), '04');
   a.equal(soTiep('L20261006', ['L20261006-1', 'L20261006-2', 'D5'], 1), '3');
