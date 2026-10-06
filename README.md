@@ -34,7 +34,7 @@ App giữ phiên đăng nhập trên máy (khoảng 1 giờ). Hết hạn, app t
 
 ## Nhật ký ngày
 
-Mục "Nhật ký ngày" ghi vào Google Sheet `CTxx-NK-NHATKY_2026` (trang NGAY và KHOILUONG), tìm theo mã công trình đang chọn. Nếu trên Drive mới chỉ có file Excel, app tự chuyển thành Google Sheet (giữ nguyên file Excel). App chỉ thêm dòng mới; ngày đã có thì không ghi đè. Chạy `node nhatky.js` để tự kiểm tra đổi ngày.
+Mục "Nhật ký ngày" ghi vào Google Sheet `CTxx-NK-NHATKY_2026` (trang NGAY và KHOILUONG), tìm theo mã công trình đang chọn. Nếu trên Drive mới chỉ có file Excel, app tự chuyển thành Google Sheet (giữ nguyên file Excel). App chỉ thêm dòng mới, không ghi đè. Khối lượng còn gõ trong ô mà chưa bấm "Thêm việc vào ngày" thì tự được thêm khi bấm Lưu; số gõ kiểu Việt Nam (12.500 là mười hai nghìn năm trăm, 15,5 là mười lăm phẩy năm), không đọc được thì báo để sửa. Ngày đã có trong nhật ký: bấm Lưu chỉ thêm khối lượng còn thiếu (sau khi hỏi), các ô nhật ký đã có không bị sửa. Chạy `node nhatky.js` để tự kiểm tra đổi ngày.
 
 ## Hạn giấy tờ
 
