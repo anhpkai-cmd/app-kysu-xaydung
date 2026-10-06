@@ -1,7 +1,7 @@
 import { CLIENT_ID, ROOT_NAME } from './config.js';
 import { NK, serial } from './nhatky.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
-import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan } from './viec.js';
+import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
 const $ = id => document.getElementById(id);
 const FOLDER = 'application/vnd.google-apps.folder', SHEET = 'application/vnd.google-apps.spreadsheet';
@@ -150,6 +150,37 @@ async function taiViec() {
   const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dong(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
   $('dsv').replaceChildren(...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen), ...muc('Sau đó', nhom.sau), ...muc('Chưa có hạn', nhom.khongHan));
   if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên bên dưới.';
+  veHan();
+}
+
+// Giấy tờ có ngày hết hiệu lực (cột "Hạn hiệu lực" trong sổ đăng ký) còn ≤ 30 ngày, đã quá hạn, hoặc ngày không đọc được; gom từ mọi công trình.
+let hanDs = [], hanLoi = [];
+async function taiHan(cts) {
+  const hom = homNay(); hanLoi = [];
+  hanDs = (await Promise.all(cts.map(async c => {
+    try {
+      const s = await sheetCo(`'${c.id}' in parents and name contains '_SODANGKY'`);
+      return s ? parse((await api(`https://sheets.googleapis.com/v4/spreadsheets/${s.id}/values/DANHMUC?valueRenderOption=UNFORMATTED_VALUE`)).values).map(d => ({ ...d, ct: c.name, n: conLai(d.han, hom) })) : [];
+    } catch { hanLoi.push(c.name); return []; } // một công trình lỗi không chặn các công trình khác, nhưng phải báo
+  }))).flat().filter(d => d.han !== '' && (isNaN(d.n) || d.n <= 30)).sort((x, y) => (isNaN(x.n) ? -Infinity : x.n) - (isNaN(y.n) ? -Infinity : y.n));
+  veHan();
+}
+const ngayVn = han => iso(han).split('-').reverse().join('/');
+function veHan() {
+  const tieu = t => Object.assign(document.createElement('h3'), { textContent: t });
+  $('han').replaceChildren(...(hanDs.length ? [tieu(`Giấy tờ sắp hết hạn (${hanDs.length})`)] : []), ...hanDs.map(d => {
+    const el = document.createElement('div'); el.className = 'doc';
+    const th = document.createElement('div'), t = document.createElement('div'), s = document.createElement('small');
+    const ten = `Gia hạn: ${d.ten}`, dat = viec.some(v => v.ten.startsWith(ten) && v.ct === d.ct); // đã có việc nhắc đang mở thì không nhắc lại
+    t.textContent = d.ten; s.textContent = isNaN(d.n) ? `${d.ct} · ${d.ma} · Ngày hạn không đọc được (“${d.han}”), sửa trong sổ` : `${d.ct} · ${d.ma} · ${nhanHan(d.n)} (${ngayVn(d.han)})${dat ? ' · Đã đặt nhắc' : ''}`; th.append(t, s); el.append(th);
+    if (!isNaN(d.n) && !dat) {
+      const b = document.createElement('button'); b.className = 'phu'; b.textContent = 'Nhắc tôi'; b.setAttribute('aria-label', 'Tạo việc nhắc gia hạn ' + d.ten);
+      // gia hạn cần làm hồ sơ vài tuần: nhắc trước 14 ngày so với ngày hết hiệu lực (không lùi về quá khứ)
+      b.onclick = () => { $('vten').value = `${ten} (hết ${ngayVn(d.han)})`; $('vct').value = d.ct; $('vhan').value = d.n > 14 ? cong(d.han, -14) : homNay(); $('vten').focus(); say('Kiểm tra rồi bấm Thêm việc để tạo nhắc trên Google Lịch.'); };
+      el.append(b);
+    }
+    return el;
+  }), ...(hanLoi.length ? [Object.assign(document.createElement('p'), { textContent: 'Không đọc được hạn giấy tờ của: ' + hanLoi.join(', ') })] : []));
 }
 
 async function themViec() {
@@ -223,12 +254,17 @@ async function chonCT() {
 // Nhật ký ngày: ghi vào file CTxx-NK-NHATKY (Google Sheet) trang NGAY và KHOILUONG; chỉ thêm dòng mới, không sửa dòng cũ.
 let nkId, nkDm = [], nkVc = [];
 const nkApi = (id, p, opt) => api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/${p}`, opt);
+const nkKey = () => 'nk:' + $('ct').value; // bản nháp theo công trình, xóa khi lưu thành công
+function nkNhap() { try { localStorage.setItem(nkKey(), JSON.stringify({ d: $('nkd').value, f: NK.map((_, i) => $('nk' + i).value), vc: nkVc })); } catch {} }
 async function moNhatKy() {
+  const ct = $('ct').value; // người dùng đổi công trình giữa chừng thì bỏ kết quả của công trình cũ
   $('nk').hidden = false; $('nkf').hidden = true; nkId = null; nkVc = [];
   try {
     const f = await sheetCo(`name contains '${q($('ct').selectedOptions[0].text.split('_')[0])}-NK-NHATKY'`);
     if (!f) return $('nkmsg').textContent = 'Công trình này chưa có Google Sheet nhật ký (đặt file CTxx-NK-NHATKY, Excel hoặc Google Sheet, trong thư mục công trình trên Drive).';
-    nkId = f.id; nkDm = ((await nkApi(nkId, 'values/DANHMUC!A2:C')).values || []).filter(r => r[0]);
+    const dm = ((await nkApi(f.id, 'values/DANHMUC!A2:C')).values || []).filter(r => r[0]);
+    if ($('ct').value !== ct) return;
+    nkId = f.id; nkDm = dm;
     $('nkv').replaceChildren(...nkDm.map(([ma, ten, dv]) => new Option(`${ma} · ${ten}${dv ? ' (' + dv + ')' : ''}`, ma)));
     $('nkc').replaceChildren(...NK.flatMap(([ten, kieu], i) => {
       const l = document.createElement('label'); l.htmlFor = 'nk' + i; l.textContent = ten;
@@ -237,20 +273,22 @@ async function moNhatKy() {
       if (Array.isArray(kieu)) o.append(...kieu.map(x => new Option(x))); else if (kieu === 'n') Object.assign(o, { type: 'number', min: 0, step: 1, inputMode: 'numeric' });
       return [l, o];
     }));
-    $('nkd').value = homNay(); $('nkmsg').textContent = ''; $('nkf').hidden = false; hienVc();
+    $('nkd').value = homNay(); $('nkmsg').textContent = ''; $('nkl').textContent = 'Lưu nhật ký vào ' + $('ct').selectedOptions[0].text;
+    try { const n = JSON.parse(localStorage.getItem(nkKey())); if (n) { $('nkd').value = n.d; n.f.forEach((v, i) => $('nk' + i).value = v); nkVc = n.vc; $('nkmsg').textContent = 'Đã khôi phục phần nhật ký đang nhập dở.'; } } catch {}
+    $('nkf').hidden = false; hienVc();
   } catch (e) { $('nkmsg').textContent = e.message; }
 }
 function hienVc() {
   $('nkds').replaceChildren(...nkVc.map((v, i) => {
     const el = document.createElement('div'); el.className = 'doc'; const t = document.createElement('span'); t.textContent = `${v.ma} · ${v.kl}`;
     const b = document.createElement('button'); b.className = 'phu'; b.textContent = 'Bỏ'; b.setAttribute('aria-label', 'Bỏ ' + t.textContent);
-    b.onclick = () => { nkVc.splice(i, 1); hienVc(); }; el.append(t, b); return el;
+    b.onclick = () => { nkVc.splice(i, 1); hienVc(); nkNhap(); }; el.append(t, b); return el;
   }));
 }
 function themVc() {
   const kl = parseFloat($('nkk').value);
   if (!(kl > 0)) return $('nkmsg').textContent = 'Nhập khối lượng lớn hơn 0.';
-  nkVc.push({ ma: $('nkv').value, kl }); $('nkk').value = ''; $('nkmsg').textContent = ''; hienVc();
+  nkVc.push({ ma: $('nkv').value, kl }); $('nkk').value = ''; $('nkmsg').textContent = ''; hienVc(); nkNhap();
 }
 async function luuNhatKy() {
   if (!$('nkd').value) return $('nkmsg').textContent = 'Chọn ngày.';
@@ -262,8 +300,57 @@ async function luuNhatKy() {
     const data = [{ range: `NGAY!A${n}:L${n}`, values: [[ngay, ...ov]] }];
     nkVc.forEach((v, i) => { const m = b.length + 1 + i; data.push({ range: `KHOILUONG!A${m}:B${m}`, values: [[ngay, v.ma]] }, { range: `KHOILUONG!E${m}`, values: [[v.kl]] }); }); // cột C, D là công thức, không ghi đè
     await nkApi(nkId, 'values:batchUpdate', json({ valueInputOption: 'RAW', data }));
-    $('nkmsg').textContent = `Đã lưu nhật ký ngày ${$('nkd').value} (${nkVc.length} việc).`; nkVc = []; hienVc();
+    $('nkmsg').textContent = `Đã lưu nhật ký ngày ${$('nkd').value} (${nkVc.length} việc).`; nkVc = []; hienVc(); try { localStorage.removeItem(nkKey()); } catch {}
   } catch (e) { $('nkmsg').textContent = e.message; }
+}
+
+// Thông tin công trình: trang THONGTIN trong _SODANGKY của công trình (Nhóm = Liên hệ hoặc Thông tin). Sửa, xóa dòng thì làm trực tiếp trong Trang tính.
+const TT = ['Nhóm', 'Tên', 'Chi tiết', 'Điện thoại'], ttMs = t => $('ttms').textContent = t || '';
+let ttSo, ttCo;
+async function taiTT() {
+  ttMs(); ttSo = null; $('ttds').replaceChildren();
+  try {
+    const so = await sheetCo(`'${$('ct').value}' in parents and name contains '_SODANGKY'`);
+    if (!so) return ttMs('Công trình này chưa có _SODANGKY.');
+    ttCo = (await api(`https://sheets.googleapis.com/v4/spreadsheets/${so.id}?fields=sheets.properties.title`)).sheets.some(s => s.properties.title === 'THONGTIN');
+    const v = ttCo ? (await api(`https://sheets.googleapis.com/v4/spreadsheets/${so.id}/values/THONGTIN`)).values : []; // đọc thì không ghi: trang chỉ được tạo khi bấm Thêm lần đầu
+    ttSo = so.id;
+    const dong = (v || []).slice(1).filter(r => r[1]);
+    $('ttds').replaceChildren(...['Liên hệ', 'Thông tin'].flatMap(nhom => {
+      const ds = dong.filter(r => (r[0] || 'Thông tin') === nhom);
+      return ds.length ? [Object.assign(document.createElement('h3'), { textContent: nhom }), ...ds.map(([, ten, ct = '', dt = '']) => {
+        const el = document.createElement('div'); el.className = 'doc';
+        const th = document.createElement('div'), t = document.createElement('div'), s = document.createElement('small');
+        t.textContent = ten; s.textContent = [ct, dt].filter(Boolean).join(' · '); th.append(t, s); el.append(th);
+        const sdt = (dt.match(/\+?\d[\d .\-]{7,}\d/)?.[0] ?? '').replace(/[^\d+]/g, ''); // lấy số đầu tiên nếu ô ghi nhiều số
+        if (sdt.length >= 6) { // chỉ giữ số và dấu +, nên đưa vào địa chỉ gọi/Zalo được
+          const nut = document.createElement('div'); nut.className = 'nut';
+          for (const [chu, href] of [['Gọi', 'tel:' + sdt], ['Zalo', 'https://zalo.me/' + sdt.replace('+', '')]]) {
+            const l = document.createElement('a'); l.className = 'nutlk'; l.textContent = chu; l.href = href; l.setAttribute('aria-label', `${chu} ${ten}`);
+            if (chu === 'Zalo') l.target = '_blank', l.rel = 'noopener'; nut.append(l);
+          }
+          el.append(nut);
+        }
+        return el;
+      })] : [];
+    }));
+    if (!dong.length) ttMs('Chưa có thông tin nào. Thêm liên hệ hoặc thông tin đầu tiên bên dưới.');
+  } catch (e) { ttMs(e.message); }
+}
+async function themTT() {
+  const ten = $('ttten').value.trim();
+  if (!ten) return ttMs('Gõ tên (người liên hệ hoặc tên mục như Địa chỉ).');
+  if (!ttSo) return ttMs('Chưa mở được thông tin công trình này.');
+  try {
+    const sh = `https://sheets.googleapis.com/v4/spreadsheets/${ttSo}`;
+    if (!ttCo) { // lần đầu: tạo trang THONGTIN rồi mới thêm
+      await api(`${sh}:batchUpdate`, json({ requests: [{ addSheet: { properties: { title: 'THONGTIN' } } }] }));
+      await api(`${sh}/values/THONGTIN!A1:D1?valueInputOption=RAW`, { ...json({ values: [TT] }), method: 'PUT' }); ttCo = true;
+    }
+    await api(`${sh}/values/THONGTIN:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [[$('ttnh').value, ten, $('ttct2').value.trim(), $('ttdt').value.trim()]] }));
+    for (const id of ['ttten', 'ttct2', 'ttdt']) $(id).value = '';
+    await taiTT(); ttMs('Đã thêm.');
+  } catch (e) { ttMs(e.message); }
 }
 
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
@@ -281,12 +368,27 @@ async function vao(resp) {
     const [goc] = await ls(`name='${ROOT_NAME}' and mimeType='${FOLDER}'`);
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
-    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false;
+    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false;
+    try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
-    viecId = await soViec(goc.id); await taiViec();
-    chonCT(); moNhatKy();
+    viecId = await soViec(goc.id); await taiViec(); taiHan(cts);
+    $('tt').hidden = false;
+    doiCT();
   } catch (e) { say(e.message); }
 }
+
+// Một ô chọn công trình chung cho cả trang: tài liệu, thông tin, nhật ký cùng theo, nhớ lần chọn cuối.
+function doiCT() {
+  try { localStorage.setItem('ct', $('ct').value); } catch {}
+  $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
+  chonCT(); moNhatKy(); taiTT();
+}
+// Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
+const khoa = (id, fn) => async () => {
+  const b = $(id), chu = b.textContent; if (b.disabled) return;
+  b.disabled = true; b.textContent = 'Đang lưu...';
+  try { await fn(); } finally { b.disabled = false; b.textContent = chu; }
+};
 
 $('vao').onclick = () => {
   if (!CLIENT_ID) return say('Chưa điền CLIENT_ID trong config.js (xem README).');
@@ -297,10 +399,12 @@ try { // mở lại app: còn token thì dùng luôn, hết hạn thì thử xin
   if (luu?.het > Date.now()) vao({ access_token: luu.token, het: luu.het });
   else if (luu) addEventListener('load', () => dangNhap({ prompt: 'none' }, r => r.error || vao(r)));
 } catch {}
-$('ct').onchange = () => { chonCT(); moNhatKy(); };
+$('ct').onchange = doiCT;
+$('ttt').onclick = khoa('ttt', themTT);
 $('nkt').onclick = themVc;
-$('nkl').onclick = luuNhatKy;
+$('nkl').onclick = khoa('nkl', luuNhatKy);
+$('nkf').oninput = nkNhap;
 $('q').oninput = hien;
-$('vthem').onclick = themViec;
+$('vthem').onclick = khoa('vthem', themViec);
 docNhan();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');

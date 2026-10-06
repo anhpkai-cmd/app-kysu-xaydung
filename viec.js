@@ -5,13 +5,17 @@ export const parse = values => (values || []).slice(1)
   .map((r, i) => ({ ten: r[0] ?? '', ct: r[1] ?? '', han: r[2] ?? '', tt: r[3] ?? '', ghichu: r[4] ?? '', lich: r[5] ?? '', dong: i + 2 }))
   .filter(t => t.ten && t.tt !== 'Xong');
 
-// Hạn nhập là yyyy-mm-dd (ô chọn ngày) hoặc dd/mm/yyyy (gõ tay trong Trang tính).
+// Hạn là số ngày của Google Sheets (đọc không định dạng, chắc nhất), yyyy-mm-dd (ô chọn ngày) hoặc dd/mm/yyyy (gõ tay). Ngày không có thật (tháng 13, ngày 32) cho NaN, không đoán.
 const ngay = s => {
+  if (typeof s === 'number') return Date.UTC(1899, 11, 30) + Math.round(s) * 864e5;
+  const d = (y, m, n) => { const t = Date.UTC(y, m - 1, n); return new Date(t).getUTCMonth() === m - 1 ? t : NaN; };
   let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
-  if (m) return Date.UTC(+m[1], m[2] - 1, +m[3]);
+  if (m) return d(+m[1], +m[2], +m[3]);
   m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
-  return m ? Date.UTC(+m[3], m[2] - 1, +m[1]) : NaN;
+  return m ? d(+m[3], +m[2], +m[1]) : NaN;
 };
+export const iso = s => isNaN(ngay(s)) ? '' : new Date(ngay(s)).toISOString().slice(0, 10); // về yyyy-mm-dd cho ô chọn ngày
+export const cong = (s, n) => new Date(ngay(s) + n * 864e5).toISOString().slice(0, 10); // cộng (trừ) n ngày
 export const conLai = (han, homNay) => Math.round((ngay(han) - ngay(homNay)) / 864e5); // NaN nếu chưa có hạn
 
 export function chia(tasks, homNay, sap = 3) {
@@ -33,7 +37,8 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('viec.js')) { //
   a.equal(t[3].dong, 5);
   a.equal(conLai('2026-10-07', '2026-10-06'), 1);
   a.equal(conLai('07/10/2026', '2026-10-06'), 1);
-  a.ok(isNaN(conLai('', '2026-10-06')));
+  a.ok(isNaN(conLai('', '2026-10-06'))); a.equal(iso('07/10/2026'), '2026-10-07'); a.equal(iso('abc'), '');
+  a.equal(conLai(46387, '2026-10-06'), 86); a.equal(iso(46387), '2026-12-31'); a.ok(isNaN(conLai('12/31/2026', '2026-10-06'))); a.ok(isNaN(conLai('31/12/26', '2026-10-06'))); a.equal(cong('2026-12-31', -14), '2026-12-17');
   const g = chia(t, '2026-10-06');
   a.deepEqual(g.quaHan.map(x => x.ten), ['A']); a.deepEqual(g.sapDen.map(x => x.ten), ['B']);
   a.deepEqual(g.sau.map(x => x.ten), ['C']); a.deepEqual(g.khongHan.map(x => x.ten), ['D']);
