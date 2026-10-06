@@ -376,12 +376,12 @@ function hienVc() {
     b.onclick = () => { nkVc.splice(i, 1); hienVc(); nkNhap(); }; el.append(t, b); return el;
   }));
 }
-// Họp an toàn 5 phút: gợi ý chủ đề theo việc trong ngày (không có thì theo các hạng mục của công trình), ảnh tổ đội vào 09_HINHANH, dòng ghi sẵn vào ô Sự cố, ATLĐ của nhật ký
+// Họp an toàn 5 phút: gợi ý chủ đề theo việc trong ngày (không có thì theo việc đến hạn hôm nay, ngày nóng trên 35 độ thì nắng nóng), ảnh tổ đội vào 09_HINHANH, dòng ghi sẵn vào ô Sự cố, ATLĐ của nhật ký
 const hatNk = NK.findIndex(([t]) => t === 'Sự cố, ATLĐ');
 function hatVe() {
-  const ten = ma => nkDm.find(d => d[0] === ma)?.[1] ?? ma, goc = nkVc.length ? nkVc.map(v => ten(v.ma)) : nkDm.map(d => d[1]), giu = $('hatc').value && $('hatc').dataset.tay;
+  const ten = ma => nkDm.find(d => d[0] === ma)?.[1] ?? ma, ct = $('ct').selectedOptions[0]?.text, hom = homNay(), goc = nkVc.length ? nkVc.map(v => ten(v.ma)) : viec.filter(t => t.ct === ct && !isNaN(conLai(t.han, hom)) && conLai(t.han, hom) <= 0).map(t => t.ten), giu = $('hatc').value && $('hatc').dataset.tay;
   if (!$('hatc').options.length) $('hatc').replaceChildren(...tatCa.map(c => new Option(c.ten)));
-  if (!giu) $('hatc').value = goiY(goc).ten; // người dùng đã tự chọn thì không đổi lại
+  if (!giu) $('hatc').value = goiY(goc, tqDs[0]?.nong).ten; // người dùng đã tự chọn thì không đổi lại
   $('haty').replaceChildren(...tatCa.find(c => c.ten === $('hatc').value).y.map(t => Object.assign(document.createElement('li'), { textContent: t })));
 }
 $('hatc').onchange = () => { $('hatc').dataset.tay = 1; hatVe(); };
@@ -647,7 +647,7 @@ function veTT() {
   const cb = cbTT();
   const p = t => Object.assign(document.createElement('p'), { textContent: t });
   $('tqd').replaceChildren(...tqDs.map((d, i) => p(`${NGAY[i]}: ${tomTat(d)}`)), ...cb.map(t => Object.assign(p('Cảnh báo: ' + t), { className: 'cb' })));
-  veSot();
+  veSot(); hatVe(); // việc và thời tiết vừa đổi: gợi ý họp an toàn tính lại
 }
 async function taiTQ() {
   const ct = $('ct').value; tqDs = []; tqMs(); veTT();
