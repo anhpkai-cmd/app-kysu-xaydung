@@ -9,7 +9,7 @@ export const dongPS = v => [v.ngay, v.ai, v.vaiTro, v.nd, v.vt, v.kl, v.dv, v.an
 export const docPS = v => (v || []).slice(1).map((r, i) => ({ ngay: r[0] ?? '', ai: r[1] ?? '', nd: r[3] ?? '', kl: [r[5], r[6]].filter(Boolean).join(' '), tt: r[8] ?? '', dong: i + 2 })).filter(x => x.nd);
 export const tinPS = (v, tenCT) => `Kính gửi ${v.ai || 'anh/chị'}${v.vaiTro ? ` (${v.vaiTro})` : ''}, nhà thầu xin xác nhận lại: ngày ${v.ngay} tại công trình ${tenCT}${v.vt ? `, vị trí ${v.vt}` : ''}, anh/chị có yêu cầu: ${v.nd}.`
   + (v.kl ? ` Khối lượng ước tính: ${v.kl} ${v.dv}.`.replace(/ \./, '.') : '')
-  + ' Đây là công việc phát sinh ngoài hợp đồng, nhà thầu sẽ triển khai và tập hợp vào hồ sơ phát sinh để thanh toán. Nếu có gì chưa đúng, anh/chị phản hồi giúp trong ngày. Trân trọng.';
+  + ' Đây là công việc phát sinh ngoài hợp đồng, nhà thầu sẽ tập hợp vào hồ sơ phát sinh để thanh toán. Anh/chị vui lòng trả lời "Đồng ý" để nhà thầu triển khai, nếu có gì chưa đúng xin phản hồi giúp. Trân trọng.';
 
 // Gắn vào giao diện. h: { api, json, taiLen, thuMuc, ctx: () => ({ so, ct, ma, tenCT, tt }) } (ctx đọc lúc bấm nên đổi công trình không giữ số liệu cũ).
 let h;
@@ -28,7 +28,8 @@ export async function moPS(ham) {
   h = ham; ms(); $('psm').hidden = true; $('psds').replaceChildren(); $('psk').hidden = true;
   const { so, tt } = h.ctx();
   $('psais').replaceChildren(...tt.filter(r => r[0] === 'Liên hệ' && r[1]).map(r => new Option(r[2] ? `${r[1]} (${r[2]})` : r[1], r[1])));
-  if (!$('psd').value) $('psd').valueAsDate = new Date();
+  const hom = () => $('psd').value = new Date().toLocaleDateString('sv-SE'); // ngày theo giờ máy (valueAsDate lấy giờ UTC, 0h-7h ra hôm qua)
+  hom(); $('psf').ontoggle = () => $('psf').open && hom(); // mở form là lấy lại ngày hôm nay, app để qua đêm không giữ ngày cũ
   if (!so) return ms('Công trình này chưa có _SODANGKY, chưa ghi được sổ phát sinh.');
   try {
     const gid = await coTrang(so);
@@ -72,7 +73,7 @@ export async function ghiPS() {
 if (typeof process !== 'undefined' && process.argv[1]?.endsWith('phatsinh.js')) { // chạy: node phatsinh.js
   const a = await import('node:assert/strict');
   const v = { ngay: '06/10/2026', ai: 'Anh Hùng', vaiTro: 'Giám sát, Cty ABC', nd: 'làm thêm rãnh thoát nước', vt: 'trục A-B', kl: '12', dv: 'm' };
-  a.equal(tinPS(v, 'Chợ Hiếu Lễ'), 'Kính gửi Anh Hùng (Giám sát, Cty ABC), nhà thầu xin xác nhận lại: ngày 06/10/2026 tại công trình Chợ Hiếu Lễ, vị trí trục A-B, anh/chị có yêu cầu: làm thêm rãnh thoát nước. Khối lượng ước tính: 12 m. Đây là công việc phát sinh ngoài hợp đồng, nhà thầu sẽ triển khai và tập hợp vào hồ sơ phát sinh để thanh toán. Nếu có gì chưa đúng, anh/chị phản hồi giúp trong ngày. Trân trọng.');
+  a.equal(tinPS(v, 'Chợ Hiếu Lễ'), 'Kính gửi Anh Hùng (Giám sát, Cty ABC), nhà thầu xin xác nhận lại: ngày 06/10/2026 tại công trình Chợ Hiếu Lễ, vị trí trục A-B, anh/chị có yêu cầu: làm thêm rãnh thoát nước. Khối lượng ước tính: 12 m. Đây là công việc phát sinh ngoài hợp đồng, nhà thầu sẽ tập hợp vào hồ sơ phát sinh để thanh toán. Anh/chị vui lòng trả lời "Đồng ý" để nhà thầu triển khai, nếu có gì chưa đúng xin phản hồi giúp. Trân trọng.');
   const t = tinPS({ ...v, vaiTro: '', vt: '', kl: '' }, 'X'); a.ok(t.startsWith('Kính gửi Anh Hùng, nhà thầu') && t.includes('tại công trình X, anh/chị') && !t.includes('Khối lượng'));
   a.equal(tinPS({ ...v, dv: '' }, 'X').includes('ước tính: 12. Đây'), true);
   a.deepEqual(dongPS(v), ['06/10/2026', 'Anh Hùng', 'Giám sát, Cty ABC', 'làm thêm rãnh thoát nước', 'trục A-B', '12', 'm', '', 'Chờ xác nhận']);
