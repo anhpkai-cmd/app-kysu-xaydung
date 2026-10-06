@@ -95,12 +95,12 @@ Giới hạn: thay nội dung phải tải file về máy rồi tải lại lên
 
 Mục "Lịch nghiệm thu" tự liệt kê các công việc trong trang `DANHMUC` của file nhật ký (lấy từ tiến độ đã trình) có ngày **Kết thúc KH** trong 14 ngày tới hoặc đã qua không quá 30 ngày, mà trang `NGHIEMTHU` chưa có dòng mã đó với Kết quả "Đạt".
 - Mỗi việc ghi những gì còn thiếu mà app tự kiểm được: chưa có khối lượng thực hiện trong nhật ký, còn lô vật tư KHÔNG ĐẠT chưa xử lý.
-- **Nhắc tôi** thêm việc "Mời TVGS nghiệm thu: ..." (trước 1 ngày) và "Nghiệm thu: ..." vào Việc cần làm, hạn là ngày kết thúc. **Mời TVGS** hỏi giờ hẹn rồi mở Chia sẻ (Zalo) với lời mời soạn sẵn (Google Lịch nhắc trước 3 ngày, 1 ngày). **Đã nghiệm thu** hỏi ngày và số biên bản rồi thêm một dòng vào `NGHIEMTHU` (không sửa dòng cũ).
+- **Nhắc tôi** thêm việc "Mời TVGS nghiệm thu: ..." (trước 1 ngày) và "Nghiệm thu: ..." vào Việc cần làm, hạn là ngày kết thúc. **Mời TVGS** mở mẫu "Mời nghiệm thu" của Tin nhắn soạn sẵn, điền sẵn công việc và ngày (Google Lịch nhắc trước 3 ngày, 1 ngày). **Đã nghiệm thu** hỏi ngày và số biên bản rồi thêm một dòng vào `NGHIEMTHU` (không sửa dòng cũ).
 - Khung **Còn sót** đếm việc cần nghiệm thu trong 2 ngày tới hoặc đã quá ngày.
 
 ## Phiếu yêu cầu vật tư
 
-Trong mục Vật tư, **+ Phiếu yêu cầu vật tư** gợi ý các công việc tuần tới theo tiến độ và vật tư còn thiếu so với dự toán. Chọn vật tư, số lượng, ngày cần, bấm **Thêm vào phiếu**, rồi **Lập phiếu và gửi**:
+Trong mục Vật tư, **+ Phiếu yêu cầu vật tư** gợi ý các công việc tuần tới theo tiến độ và vật tư còn thiếu so với dự toán. Đánh dấu một hay nhiều vật tư, ghi số lượng và đơn vị (đơn vị lấy sẵn từ danh mục, sửa được), chọn ngày cần, bấm **Thêm vào phiếu**, rồi **Lập phiếu và gửi**. Phiếu ghi tên công trình theo dòng "Tên công trình" trong trang Thông tin:
 - Lần đầu app tạo mẫu `PHIEU-YEU-CAU-VAT-TU` trong `CONGTRINH/_CHUNG/MAUBIEU_CONGTY` (gửi Bộ phận Vật tư công ty, đồng gửi Chỉ huy trưởng). Anh sửa mẫu này tùy ý, chỉ cần giữ dòng tiêu đề bảng có ô **STT** ở cột A; các ô `{{Tên mục}}` điền như văn bản gửi đi.
 - Phiếu lưu ở `05_VATTU_DOITHICONG/PHIEU_YEUCAU`, tên `CTxx-YC-VT-yyyymmdd-01_PhieuYeuCauVatTu`. Mỗi vật tư thêm một việc "<vật tư> về (phiếu ...)" vào ngày cần.
 - Gửi: app hỏi trước khi mở link cho người có link xem, rồi mở Chia sẻ (Zalo) với nội dung phiếu và link.

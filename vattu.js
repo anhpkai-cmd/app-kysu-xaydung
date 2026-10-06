@@ -128,11 +128,11 @@ function ve() {
     el.append(th, nut); return el;
   }));
   $('vtdm').replaceChildren(...(dm.length ? [] : [tao('p', 'Chưa có vật tư nào trong danh mục. Thêm vật tư đầu tiên bên dưới.')]), ...dm.map(d => {
-    const el = tao('div', '', 'doc'), th = tao('div'), cho = d.detrinh && !d.duyet && iso(d.detrinh) ? (Date.parse(homNay()) - Date.parse(iso(d.detrinh))) / 864e5 : 0;
+    const el = tao('div', '', 'doc cot'), th = tao('div'), nut = tao('div', '', 'nut'), cho = d.detrinh && !d.duyet && iso(d.detrinh) ? (Date.parse(homNay()) - Date.parse(iso(d.detrinh))) / 864e5 : 0;
     const tt = d.duyet ? `Đã duyệt ${ngayVn(d.duyet)}` : d.detrinh ? `Đã đệ trình ${ngayVn(d.detrinh)}, chờ duyệt${cho > 0 ? ` ${cho} ngày` : ''}` : 'Chưa đệ trình';
-    th.append(tao('div', d.ten + (d.qc ? ` · ${d.qc}` : '')), tao('small', `${tt} · Đã về ${soDt(tong(lo, d.ten), d.dt, d.dv)}`)); el.append(th);
-    if (!d.duyet) { const [chu, cot] = d.detrinh ? ['Đã duyệt', 'E'] : ['Đã đệ trình', 'D']; el.append(nutBam(chu, `${chu} ${d.ten}`, () => ghiDm(d, cot))); }
-    el.append(nutBam(d.dt ? 'Sửa dự toán' : 'Nhập dự toán', 'Khối lượng dự toán ' + d.ten, () => ghiDm(d, 'H')));
+    th.append(tao('div', d.ten + (d.qc ? ` · ${d.qc}` : '')), tao('small', `${tt} · Đã về ${soDt(tong(lo, d.ten), d.dt, d.dv)}`)); el.append(th, nut); // tên trên, nút dưới: khỏi bị ép hẹp trên điện thoại
+    if (!d.duyet) { const [chu, cot] = d.detrinh ? ['Đã duyệt', 'E'] : ['Đã đệ trình', 'D']; nut.append(nutBam(chu, `${chu} ${d.ten}`, () => ghiDm(d, cot))); }
+    nut.append(nutBam(d.dt ? 'Sửa dự toán' : 'Nhập dự toán', 'Khối lượng dự toán ' + d.ten, () => ghiDm(d, 'H')));
     return el;
   }));
   $('ntds').replaceChildren(...(lich.length ? [] : [tao('p', 'Không có công việc nào cần nghiệm thu trong 14 ngày tới (theo ngày kết thúc trong trang DANHMUC của file nhật ký).')]), ...lich.map(x => {
@@ -148,9 +148,17 @@ function ve() {
   }));
   const tt = tuanToi(cv, homNay());
   $('ycgy').textContent = tt.length ? 'Tuần tới bắt đầu theo tiến độ: ' + tt.join('; ') + '.' : '';
-  $('ycl').replaceChildren(...dm.map((d, i) => new Option(d.ten + (d.qc ? ` · ${d.qc}` : '') + (conThieu(d, lo) ? ` (còn thiếu ${conThieu(d, lo).toLocaleString('vi-VN')} ${d.dv})` : ''), i)));
-  $('ycl').onchange = () => { const d = dm[$('ycl').value]; $('ycsl').value = d && conThieu(d, lo) ? conThieu(d, lo).toLocaleString('vi-VN') : ''; };
-  $('ycl').onchange(); veYc();
+  $('ycl').replaceChildren(...dm.map(d => { // mỗi vật tư một dòng: đánh dấu, số lượng, đơn vị (sửa được, ví dụ đặt thép theo cây thay vì kg)
+    const el = tao('div', '', 'doc cot'), nhan = tao('label'), chon = tao('input'), sl = tao('input'), dv = tao('input'), thieu = conThieu(d, lo), v = tao('div', '', 'ycv');
+    chon.type = 'checkbox'; nhan.append(chon, ' ' + d.ten + (d.qc ? ` · ${d.qc}` : '') + (thieu ? ` (còn thiếu ${thieu.toLocaleString('vi-VN')} ${d.dv})` : ''));
+    sl.inputMode = 'decimal'; sl.placeholder = 'Số lượng'; sl.setAttribute('aria-label', 'Số lượng ' + d.ten);
+    dv.value = d.dv; dv.placeholder = 'Đơn vị'; dv.setAttribute('list', 'ycdvs'); dv.setAttribute('aria-label', 'Đơn vị ' + d.ten);
+    chon.onchange = () => { if (chon.checked && !sl.value && thieu) sl.value = thieu.toLocaleString('vi-VN'); };
+    sl.oninput = () => { chon.checked = sl.value.trim() !== ''; sl.removeAttribute('aria-invalid'); };
+    el.yc = () => chon.checked && { d, o: sl, sl: sl.value, dv: dv.value.trim(), xoa: () => { chon.checked = false; sl.value = ''; dv.value = d.dv; } };
+    v.append(sl, dv); el.append(nhan, v); return el;
+  }));
+  veYc();
   $('vtl').replaceChildren(...dm.map((d, i) => new Option(d.ten + (d.qc ? ` · ${d.qc}` : '') + (d.dv ? ` (${d.dv})` : ''), i)));
   goiYLo();
 }
@@ -213,17 +221,19 @@ export function veYc() {
   $('ycgui').textContent = `Lập phiếu (${phieu.length} vật tư) và gửi`;
 }
 export function themYc() {
-  const d = dm[$('ycl').value], sl = soVn($('ycsl').value), can = $('ycd').value;
-  if (!d) return ms('Thêm vật tư vào danh mục trước.');
-  if (!(sl > 0)) return ms(`Số lượng “${$('ycsl').value}” không đọc được. Ví dụ 12.500 hoặc 15,5.`);
+  const ds = [...$('ycl').children].map(el => el.yc()).filter(Boolean), can = $('ycd').value;
+  if (!ds.length) return ms(dm.length ? 'Đánh dấu ít nhất một vật tư.' : 'Thêm vật tư vào danh mục trước.');
+  const sai = ds.find(x => !(soVn(x.sl) > 0)); if (sai) return sai.o.setAttribute('aria-invalid', 'true'), sai.o.focus(), ms(sai.sl.trim() ? `Số lượng ${sai.d.ten} “${sai.sl}” không đọc được. Ví dụ 12.500 hoặc 15,5.` : `Ghi số lượng cho ${sai.d.ten}.`);
+  const thieuDv = ds.find(x => !x.dv); if (thieuDv) return ms(`Ghi đơn vị cho ${thieuDv.d.ten}.`);
   if (!can) return ms('Chọn ngày cần vật tư về.');
-  phieu.push({ ten: d.ten, qc: d.qc, dv: d.dv, sl, can, gc: $('ycgc').value.trim() }); $('ycgc').value = ''; ms(); veYc();
+  for (const x of ds) { phieu.push({ ten: x.d.ten, qc: x.d.qc, dv: x.dv, sl: soVn(x.sl), can, gc: $('ycgc').value.trim() }); x.xoa(); }
+  $('ycgc').value = ''; ms(); veYc();
 }
 // Lập phiếu từ mẫu (dùng chung cách điền mẫu của Văn bản gửi đi), chèn bảng vật tư, gửi link qua Zalo, thêm việc "<vật tư> về" theo ngày cần.
 export async function lapYc() {
   if (!h?.id) return ms('Chưa mở được file nhật ký của công trình này.');
   if (!phieu.length) return ms('Thêm ít nhất một vật tư vào phiếu.');
-  const ct = $('ct').value, tenCt = $('ct').selectedOptions[0].text, ds = [...phieu];
+  const ct = $('ct').value, tenCt = $('ct').selectedOptions[0].text, ten = h.tenCt(), ds = [...phieu]; // tenCt: tên thư mục (việc cần làm lọc theo nó); ten: tên công trình thật ghi trên phiếu
   ms('Đang lập phiếu...');
   const goc = await h.thuMucMau(), mau = (await h.dsMau(goc)).find(f => f.name.startsWith(MAU_YC)) || await taoMauYc(goc);
   const dir = await h.thuMuc(ct, '05_VATTU_DOITHICONG/PHIEU_YEUCAU'), so = `${maCt()}-YC-VT-${homNay().replaceAll('-', '')}`;
@@ -233,7 +243,7 @@ export async function lapYc() {
   const v = (await h.api(`${sh2}/values/'${tab.title}'!A1:A60`)).values || [], stt = v.findIndex(r => String(r[0] ?? '').trim().toUpperCase() === 'STT');
   if (stt < 0) throw new Error(`Mẫu ${mau.name} thiếu dòng tiêu đề bảng có ô "STT" ở cột A.`);
   await h.api(`${sh2}:batchUpdate`, h.json({ requests: [{ insertDimension: { range: { sheetId: tab.sheetId, dimension: 'ROWS', startIndex: stt + 1, endIndex: stt + 1 + ds.length }, inheritFromBefore: true } },
-    ...[['Số phiếu', ma], ['Công trình', tenCt]].map(([t, gt]) => ({ findReplace: { find: `{{${t}}}`, replacement: gt, allSheets: true } }))] }));
+    ...[['Số phiếu', ma], ['Công trình', ten]].map(([t, gt]) => ({ findReplace: { find: `{{${t}}}`, replacement: gt, allSheets: true } }))] }));
   await h.api(`${sh2}/values/'${tab.title}'!A${stt + 2}?valueInputOption=RAW`, { ...h.json({ values: ds.map((x, i) => [i + 1, x.ten, x.qc, x.dv, x.sl, ngayVn(x.can), x.gc]) }), method: 'PUT' });
   phieu = []; veYc();
   let ghi = '';
@@ -242,7 +252,7 @@ export async function lapYc() {
   ms(`Đã lập ${ma} trong 05_VATTU_DOITHICONG/PHIEU_YEUCAU, đã thêm việc nhắc vật tư về theo ngày cần.` + (thieu.length ? ` Mẫu còn chỗ chưa điền: ${thieu.join(', ')}.` : '') + (ghi ? ' ' + ghi : ''));
   if (!confirm(`Gửi phiếu ${ma}?\nBất kỳ ai có link đều xem được phiếu này.`)) return;
   await h.api(`https://www.googleapis.com/drive/v3/files/${f.id}/permissions`, h.json({ role: 'reader', type: 'anyone' }));
-  const tin = tinPhieu(ma, tenCt, ds, f.webViewLink);
+  const tin = tinPhieu(ma, ten, ds, f.webViewLink);
   try { if (navigator.share) await navigator.share({ title: ma, text: tin }); else { await navigator.clipboard.writeText(tin); ms(`Đã chép nội dung phiếu ${ma}, dán vào Zalo để gửi.`); } } catch (e) { if (e.name !== 'AbortError') ms(`Phiếu ${ma} đã lập nhưng máy không cho chia sẻ (${e.message}). Link phiếu: ${f.webViewLink}`); }
 }
 async function taoMauYc(goc) { // tạo mẫu đề xuất một lần; từ lần sau dùng mẫu (anh có thể đã sửa) trong MAUBIEU_CONGTY
@@ -253,13 +263,8 @@ async function taoMauYc(goc) { // tạo mẫu đề xuất một lần; từ l�
   return { id: t.spreadsheetId, name: MAU_YC, mimeType: 'application/vnd.google-apps.spreadsheet' };
 }
 
-// Lời mời nghiệm thu gửi TVGS qua Zalo (nút Chia sẻ của máy), hỏi giờ hẹn.
-export const tinMoi = (ct, x, gio) => `Kính gửi Tư vấn giám sát,\nBan chỉ huy công trường ${ct} kính mời TVGS nghiệm thu công việc: ${x.ten} (${x.ma}), lúc ${gio}.\nTrân trọng.`;
-async function moiTvgs(x) {
-  const gio = prompt('Giờ và ngày hẹn nghiệm thu', `8h00 ngày ${ngayVn(x.n > 0 ? x.kt : homNay())}`)?.trim(); if (!gio) return;
-  const tin = tinMoi($('ct').selectedOptions[0].text, x, gio);
-  try { if (navigator.share) await navigator.share({ text: tin }); else { await navigator.clipboard.writeText(tin); ms('Đã chép lời mời, dán vào Zalo để gửi TVGS.'); } } catch (e) { if (e.name !== 'AbortError') throw e; }
-}
+// Mời TVGS: mở mẫu "Mời nghiệm thu" của Tin nhắn soạn sẵn (tin.js: tên công trình thật, người nhận, nút mở Zalo), điền sẵn công việc và ngày.
+const moiTvgs = x => h.moiNt(`${x.ten} (${x.ma})`, ngayVn(x.n > 0 ? x.kt : cong(homNay(), 1)));
 
 // Nghiệm thu công việc: thêm một dòng NGHIEMTHU (ngày, mã, nội dung, kết quả Đạt, số biên bản). Chỉ thêm dòng, không sửa dòng cũ.
 async function ghiNt(x) {
@@ -364,7 +369,6 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vattu.js')) { /
   a.deepEqual(lichNt(cv, [NT, [46300, 'CB-1', 'x', '', 'Đạt']], '2026-10-06').map(x => x.ma), ['HM1-1']);
   a.deepEqual(thieuNt(lc[1], lo, dm), ['Chưa có khối lượng thực hiện trong nhật ký', 'Có 1 lô vật tư KHÔNG ĐẠT chưa xử lý (xem mục Vật tư)']);
   a.deepEqual(lichNt([['Mã'], ['A', 'Cũ', '', 0, '', '01/09/2026'], ['B', 'Vừa qua', '', 0, '', '06/09/2026']], [], '2026-10-06').map(x => x.ma), ['B']); // quá 30 ngày thì bỏ
-  a.equal(tinMoi('CT01_ChoHieuLe', { ten: 'Tháo mái', ma: 'HM1-1' }, '8h00 ngày 07/10/2026'), 'Kính gửi Tư vấn giám sát,\nBan chỉ huy công trường CT01_ChoHieuLe kính mời TVGS nghiệm thu công việc: Tháo mái (HM1-1), lúc 8h00 ngày 07/10/2026.\nTrân trọng.'); a.deepEqual(thieuNt(lc[0], [], dm), []);
   a.deepEqual(tuanToi(cv, '2026-10-06'), ['Lợp mái (11/10/2026)']); // CB-1, HM1-1 đã bắt đầu; ô Bắt đầu trống thì bỏ
   a.equal(conThieu({ ten: 'Xi măng PCB40', dt: 50 }, lo), 20); a.equal(conThieu({ ten: 'Xi măng PCB40', dt: 10 }, lo), 0); a.equal(conThieu({ ten: 'X', dt: 0 }, lo), 0);
   a.equal(tinPhieu('CT01-YC-VT-20261006-01', 'CT01_ChoHieuLe', [{ ten: 'Thép D10', qc: 'CB300', dv: 'kg', sl: 1200, can: '2026-10-09', gc: '' }], 'https://x'),
