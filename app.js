@@ -199,7 +199,14 @@ async function giaHan(d) {
   } catch (e) { say(e.message); }
 }
 const ngayVn = han => iso(han).split('-').reverse().join('/');
+function veSap() { // Trang chủ: việc đến hạn trong những ngày tới và giấy tờ, thiết bị sắp hết hạn (hôm nay và quá hạn đã nằm ở khung Còn sót)
+  const vc = chia(viec, homNay(), 7).sapDen.filter(t => t.n > 0), gt = hanDs.filter(d => d.n >= 0);
+  const g = d => Object.assign(document.createElement('a'), { className: 'nutlk', href: '#han', textContent: `${d.ct}: ${d.ten}, ${nhanHan(d.n)}` });
+  $('sapds').replaceChildren(...vc.map(t => dongViec(t, nhanHan(t.n))), ...gt.map(g));
+  $('sap').hidden = !vc.length && !gt.length;
+}
 function veHan() {
+  veSap();
   const qh = chia(viec, homNay()).quaHan.length + hanDs.filter(d => d.n < 0).length; $('vdot').textContent = qh || ''; $('vdot').setAttribute('aria-label', qh + ' mục quá hạn'); // chấm đỏ ở tab Việc = việc quá hạn + giấy tờ, thiết bị quá hạn (đúng số người dùng thấy)
   const tieu = t => Object.assign(document.createElement('h3'), { textContent: t });
   $('han').replaceChildren(...(hanDs.length ? [tieu(`Giấy tờ sắp hết hạn (${hanDs.length})`)] : []), ...hanDs.map(d => {
@@ -721,7 +728,7 @@ async function vao(resp) {
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
     gocId = goc.id;
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
-    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('tn').hidden = false; $('ps').hidden = false; $('qr').hidden = false; $('tq').hidden = false;
+    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('nhanh').hidden = false; $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('tn').hidden = false; $('ps').hidden = false; $('qr').hidden = false; $('tq').hidden = false;
     try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec(); taiHan(cts); sotQuet(cts);
