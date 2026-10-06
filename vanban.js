@@ -67,9 +67,10 @@ const chuCua = (g, f) => g.api(`https://www.googleapis.com/drive/v3/files/${f.id
 export async function docChu(g, ds) {
   const f = ds.find(f => f.mimeType === DOC) || ds.find(f => WORD.test(f.name)) || ds.find(f => /\.pdf$/i.test(f.name)) || ds.find(f => f.mimeType === SHEET) || ds.find(f => EXCEL.test(f.name));
   if (!f) return null;
-  if (f.mimeType === DOC || f.mimeType === SHEET) return chuCua(g, f);
+  const kq = async x => ({ chu: await chuCua(g, x), trangDau: x.mimeType === SHEET }); // trangDau: bảng tính chỉ đọc được trang đầu, phải nói rõ
+  if (f.mimeType === DOC || f.mimeType === SHEET) return kq(f);
   const tam = await g.api(`https://www.googleapis.com/drive/v3/files/${f.id}/copy?ocrLanguage=vi&fields=id,mimeType`, g.json({ mimeType: EXCEL.test(f.name) ? SHEET : DOC, name: '_TAM-SOAT_' + f.name, parents: [await g.tam()] }));
-  try { return await chuCua(g, tam); } finally { await g.api(`https://www.googleapis.com/drive/v3/files/${tam.id}`, { method: 'DELETE' }).catch(() => {}); }
+  try { return await kq(tam); } finally { await g.api(`https://www.googleapis.com/drive/v3/files/${tam.id}`, { method: 'DELETE' }).catch(() => {}); }
 }
 
 // Lập văn bản: chép mẫu (Word/Excel thì chuyển sang Google Docs/Trang tính) vào thư mục đích, điền {{Tên mục}} từ trang Thông tin,
