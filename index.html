@@ -39,6 +39,15 @@
   #nhan button{display:block;margin-top:8px;max-width:100%;height:auto;min-height:44px;padding:8px 12px;white-space:normal;text-align:left;overflow-wrap:anywhere}
   .phu{background:transparent;color:var(--ink);border:1px solid var(--rule)}
   #nhan,#msg{color:var(--ink);background:var(--card);border-left:3px solid var(--accent);padding:8px 12px;margin:0 0 var(--gap)}
+  body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+  [data-tab]{display:none}
+  body[data-t=tc] [data-tab=tc],body[data-t=td] [data-tab=td],body[data-t=vi] [data-tab=vi],body[data-t=nk] [data-tab=nk],body[data-t=kh] [data-tab=kh]{display:block}
+  [hidden]{display:none!important}
+  nav{position:fixed;inset:auto 0 0 0;display:grid;grid-template-columns:repeat(5,1fr);background:var(--card);border-top:1px solid var(--rule);padding-bottom:env(safe-area-inset-bottom)}
+  nav a{min-height:56px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;color:var(--mute);text-decoration:none}
+  nav a[aria-current]{color:var(--accent);font-weight:700;box-shadow:inset 0 3px var(--accent)}
+  .hang{display:grid;gap:8px}
+  .nutlk{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:8px;border:1px solid var(--rule);background:var(--card);color:var(--ink);text-decoration:none;font-weight:600}
   #msg:empty,#nhan:empty{display:none}
   @media (prefers-reduced-motion:no-preference){button{transition:filter .15s}}
 </style>
@@ -48,7 +57,13 @@
 <main>
   <p id="nhan" role="status" hidden></p>
   <p id="msg" role="status">Bấm “Đăng nhập Google” để xem sổ đăng ký công trình.</p>
-  <section id="viec" hidden>
+  <section id="tc" data-tab="tc">
+    <h2 id="tcd"></h2>
+    <p id="tcn">Đăng nhập để xem việc hôm nay.</p>
+    <div id="tcv"></div>
+    <p class="hang"><a class="nutlk" href="#vi">Thêm việc</a><a class="nutlk" href="#nk">Ghi nhật ký hôm nay</a><a class="nutlk" href="#td">Tìm tài liệu</a></p>
+  </section>
+  <section id="viec" data-tab="vi" hidden>
     <h2>Việc cần làm</h2>
     <div id="dsv"></div>
     <label for="vten">Việc mới</label><input id="vten" placeholder="ví dụ: Gia hạn bảo lãnh thực hiện hợp đồng">
@@ -56,13 +71,36 @@
     <label for="vhan">Hạn (có hạn thì điện thoại sẽ nhắc qua Google Lịch)</label><input id="vhan" type="date">
     <p><button id="vthem">Thêm việc</button></p>
   </section>
-  <div id="loc" hidden>
+  <div id="loc" data-tab="td" hidden>
     <h2>Tài liệu</h2>
     <label for="ct">Công trình</label><select id="ct"></select>
     <label for="q">Tìm tài liệu</label><input id="q" type="search" placeholder="ví dụ: móng, cọc, KC-005">
   </div>
-  <div id="ds"></div>
+  <div id="ds" data-tab="td"></div>
+  <section id="nk" data-tab="nk" hidden>
+    <h2>Nhật ký ngày</h2>
+    <p id="nkmsg" role="status"></p>
+    <div id="nkf" hidden>
+      <label for="nkd">Ngày</label><input id="nkd" type="date">
+      <div id="nkc"></div>
+      <h3>Việc làm trong ngày</h3>
+      <div id="nkds"></div>
+      <label for="nkv">Công việc</label><select id="nkv"></select>
+      <label for="nkk">Khối lượng</label><input id="nkk" type="number" min="0" step="any" inputmode="decimal">
+      <p><button id="nkt" class="phu">Thêm việc vào ngày</button></p>
+      <p><button id="nkl">Lưu nhật ký</button></p>
+    </div>
+  </section>
+  <section id="kh" data-tab="kh">
+    <h2>Sắp có</h2>
+    <p class="doc"><span>Hồ sơ chủ đầu tư<br><small>Đối chiếu hồ sơ với mẫu, báo thiếu file, theo dõi các vòng sửa.</small></span></p>
+    <p class="doc"><span>Ảnh hiện trường và báo cáo tuần, tháng<br><small>Xếp ảnh theo ngày, điền báo cáo vào mẫu Excel của công ty.</small></span></p>
+    <p class="doc"><span>Hợp đồng, báo giá, biên bản<br><small>Tạo nhanh bằng một lần bấm.</small></span></p>
+  </section>
 </main>
+<nav aria-label="Các mục">
+  <a href="#tc">Trang chủ</a><a href="#td">Tài liệu</a><a href="#vi">Việc</a><a href="#nk">Nhật ký</a><a href="#kh">Thêm</a>
+</nav>
 <input id="chon" type="file" hidden>
 <script type="module" src="app.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>

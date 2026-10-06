@@ -1,4 +1,5 @@
 import { CLIENT_ID, ROOT_NAME } from './config.js';
+import { NK, serial } from './nhatky.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan } from './viec.js';
 
@@ -110,6 +111,13 @@ function hienNhan() {
 }
 
 // ---- Việc cần làm: Trang tính _CONGVIEC (trong thư mục CONGTRINH) + sự kiện Google Lịch để điện thoại tự nhắc hạn ----
+const TAB = ['tc', 'td', 'vi', 'nk', 'kh']; // trang chủ, tài liệu, việc, nhật ký, thêm
+function mo() { // hiện đúng mục theo #tên trên địa chỉ; sai tên thì về Trang chủ
+  const t = TAB.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'tc';
+  document.body.dataset.t = t;
+  document.querySelectorAll('nav a').forEach(a => a.toggleAttribute('aria-current', a.hash === '#' + t));
+  scrollTo(0, 0);
+}
 const homNay = () => new Date().toLocaleDateString('sv-SE'); // yyyy-mm-dd theo giờ máy
 const LICH = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 
@@ -123,21 +131,27 @@ async function soViec(goc) {
   return t.spreadsheetId;
 }
 
+const dongViec = (t, han) => {
+  const el = document.createElement('div'); el.className = 'doc';
+  const th = document.createElement('div');
+  const a = document.createElement('div'); a.textContent = t.ten;
+  const b = document.createElement('small'); b.textContent = [t.ct, han ?? t.han].filter(Boolean).join(' · ');
+  th.append(a, b);
+  const x = document.createElement('button'); x.className = 'phu'; x.textContent = 'Xong'; x.setAttribute('aria-label', 'Xong việc: ' + t.ten);
+  x.onclick = () => xong(t);
+  el.append(th, x); return el;
+};
+const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dongViec(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
+
 async function taiViec() {
   viec = parseViec((await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC`)).values);
-  const nhom = chia(viec, homNay()), dong = (t, han) => {
-    const el = document.createElement('div'); el.className = 'doc';
-    const th = document.createElement('div');
-    const a = document.createElement('div'); a.textContent = t.ten;
-    const b = document.createElement('small'); b.textContent = [t.ct, han ?? t.han].filter(Boolean).join(' · ');
-    th.append(a, b);
-    const x = document.createElement('button'); x.className = 'phu'; x.textContent = 'Xong'; x.setAttribute('aria-label', 'Xong việc: ' + t.ten);
-    x.onclick = () => xong(t);
-    el.append(th, x); return el;
-  };
-  const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dong(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
+  const nhom = chia(viec, homNay());
   $('dsv').replaceChildren(...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen), ...muc('Sau đó', nhom.sau), ...muc('Chưa có hạn', nhom.khongHan));
-  if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên bên dưới.';
+  if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên ở mục Việc.';
+  // Trang chủ: chỉ việc cần để mắt hôm nay (quá hạn + trong 3 ngày tới)
+  const gap = nhom.quaHan.length + nhom.sapDen.length;
+  $('tcn').textContent = gap ? `${nhom.quaHan.length} việc quá hạn, ${nhom.sapDen.length} việc đến hạn trong 3 ngày tới.` : 'Hôm nay không có việc quá hạn hay sắp đến hạn.';
+  $('tcv').replaceChildren(...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen));
 }
 
 async function themViec() {
@@ -208,6 +222,52 @@ async function chonCT() {
   } catch (e) { say(e.message); }
 }
 
+// Nhật ký ngày: ghi vào file CTxx-NK-NHATKY (Google Sheet) trang NGAY và KHOILUONG; chỉ thêm dòng mới, không sửa dòng cũ.
+let nkId, nkDm = [], nkVc = [];
+const nkApi = (id, p, opt) => api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/${p}`, opt);
+async function moNhatKy() {
+  $('nk').hidden = false; $('nkf').hidden = true; nkId = null; nkVc = [];
+  try {
+    const [f] = await ls(`name contains '${q($('ct').selectedOptions[0].text.split('_')[0])}-NK-NHATKY' and mimeType='${SHEET}'`);
+    if (!f) return $('nkmsg').textContent = 'Công trình này chưa có Google Sheet nhật ký (mở file CTxx-NK-NHATKY trên Drive → Lưu thành Google Trang tính).';
+    nkId = f.id; nkDm = ((await nkApi(nkId, 'values/DANHMUC!A2:C')).values || []).filter(r => r[0]);
+    $('nkv').replaceChildren(...nkDm.map(([ma, ten, dv]) => new Option(`${ma} · ${ten}${dv ? ' (' + dv + ')' : ''}`, ma)));
+    $('nkc').replaceChildren(...NK.flatMap(([ten, kieu], i) => {
+      const l = document.createElement('label'); l.htmlFor = 'nk' + i; l.textContent = ten;
+      const o = Array.isArray(kieu) ? document.createElement('select') : document.createElement('input');
+      o.id = 'nk' + i;
+      if (Array.isArray(kieu)) o.append(...kieu.map(x => new Option(x))); else if (kieu === 'n') Object.assign(o, { type: 'number', min: 0, step: 1, inputMode: 'numeric' });
+      return [l, o];
+    }));
+    $('nkd').value = homNay(); $('nkmsg').textContent = ''; $('nkf').hidden = false; hienVc();
+  } catch (e) { $('nkmsg').textContent = e.message; }
+}
+function hienVc() {
+  $('nkds').replaceChildren(...nkVc.map((v, i) => {
+    const el = document.createElement('div'); el.className = 'doc'; const t = document.createElement('span'); t.textContent = `${v.ma} · ${v.kl}`;
+    const b = document.createElement('button'); b.className = 'phu'; b.textContent = 'Bỏ'; b.setAttribute('aria-label', 'Bỏ ' + t.textContent);
+    b.onclick = () => { nkVc.splice(i, 1); hienVc(); }; el.append(t, b); return el;
+  }));
+}
+function themVc() {
+  const kl = parseFloat($('nkk').value);
+  if (!(kl > 0)) return $('nkmsg').textContent = 'Nhập khối lượng lớn hơn 0.';
+  nkVc.push({ ma: $('nkv').value, kl }); $('nkk').value = ''; $('nkmsg').textContent = ''; hienVc();
+}
+async function luuNhatKy() {
+  if (!$('nkd').value) return $('nkmsg').textContent = 'Chọn ngày.';
+  try {
+    const ngay = serial($('nkd').value), cot = async tr => ((await nkApi(nkId, `values/${tr}!A:A?valueRenderOption=UNFORMATTED_VALUE`)).values || []);
+    const [a, b] = await Promise.all([cot('NGAY'), cot('KHOILUONG')]);
+    if (a.some(r => r[0] === ngay)) return $('nkmsg').textContent = `Ngày ${$('nkd').value} đã có trong nhật ký. Muốn sửa thì mở sheet sửa trực tiếp, app không ghi đè.`;
+    const n = a.length + 1, ov = NK.map((_, i) => { const v = $('nk' + i).value; return v !== '' && $('nk' + i).type === 'number' ? +v : v; });
+    const data = [{ range: `NGAY!A${n}:L${n}`, values: [[ngay, ...ov]] }];
+    nkVc.forEach((v, i) => { const m = b.length + 1 + i; data.push({ range: `KHOILUONG!A${m}:B${m}`, values: [[ngay, v.ma]] }, { range: `KHOILUONG!E${m}`, values: [[v.kl]] }); }); // cột C, D là công thức, không ghi đè
+    await nkApi(nkId, 'values:batchUpdate', json({ valueInputOption: 'RAW', data }));
+    $('nkmsg').textContent = `Đã lưu nhật ký ngày ${$('nkd').value} (${nkVc.length} việc).`; nkVc = []; hienVc();
+  } catch (e) { $('nkmsg').textContent = e.message; }
+}
+
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
 // ponytail: không có máy chủ nên không có refresh token, mỗi giờ phải xin lại một lần.
 const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth2.initTokenClient({
@@ -226,7 +286,7 @@ async function vao(resp) {
     $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false;
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec();
-    chonCT();
+    chonCT(); moNhatKy();
   } catch (e) { say(e.message); }
 }
 
@@ -239,7 +299,11 @@ try { // mở lại app: còn token thì dùng luôn, hết hạn thì thử xin
   if (luu?.het > Date.now()) vao({ access_token: luu.token, het: luu.het });
   else if (luu) addEventListener('load', () => dangNhap({ prompt: 'none' }, r => r.error || vao(r)));
 } catch {}
-$('ct').onchange = chonCT;
+$('ct').onchange = () => { chonCT(); moNhatKy(); };
+$('tcd').textContent = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric' });
+addEventListener('hashchange', mo); mo();
+$('nkt').onclick = themVc;
+$('nkl').onclick = luuNhatKy;
 $('q').oninput = hien;
 $('vthem').onclick = themViec;
 docNhan();
