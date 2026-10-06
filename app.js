@@ -32,8 +32,10 @@ function hien() {
     x.onclick = () => xem(d);
     const m = document.createElement('button'); m.className = 'phu'; m.textContent = 'Bản mới'; m.setAttribute('aria-label', 'Tải bản mới của ' + d.ma);
     m.onclick = () => chonFile(d);
+    const tr = document.createElement('button'); tr.className = 'phu'; tr.textContent = 'Bị trả'; tr.setAttribute('aria-label', 'Ghi lý do bị trả ' + d.ma);
+    tr.onclick = () => biTra(d);
     const th = document.createElement('div'); th.append(b, t, s);
-    const nut = document.createElement('div'); nut.className = 'nut'; nut.append(x, g, m);
+    const nut = document.createElement('div'); nut.className = 'nut'; nut.append(x, g, m, tr);
     el.append(th, nut);
     return el;
   }));
@@ -234,24 +236,38 @@ async function moTab(lay, bao = say) {
 }
 const xem = d => moTab(async () => { const [f] = await tim(d); if (f) say(); return f?.webViewLink; });
 
+// Lý do chủ đầu tư trả hồ sơ: ghi vào NHATKY_GUINHAN (Nhận, "Bị trả: ..."); lần Gửi sau app nhắc lại các lý do đã gặp của công trình.
+const TRA = 'Bị trả: ';
+const guiNhan = (so, dong) => api(`https://sheets.googleapis.com/v4/spreadsheets/${so}/values/NHATKY_GUINHAN:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [dong] }));
+async function biTra(d) {
+  const ly = (prompt(`Chủ đầu tư/TVGS trả ${d.ma} (${d.rev}) vì lý do gì?\nVí dụ: Giá trị hợp đồng không khớp QĐ, thiếu chữ ký TVGS`) || '').trim();
+  if (!ly) return;
+  try { await guiNhan(soId, [new Date().toLocaleDateString('en-GB'), d.ma, d.rev, 'Nhận', 'Chủ đầu tư', '', TRA + ly, '']); say(`Đã ghi. Lần gửi sau app sẽ nhắc: ${ly}`); }
+  catch (e) { say('Chưa ghi được vào NHATKY_GUINHAN: ' + e.message); }
+}
+// ponytail: đọc cả trang mỗi lần Gửi; sổ vài nghìn dòng vẫn nhanh
+const lyDoTra = async so => [...new Set(((await api(`https://sheets.googleapis.com/v4/spreadsheets/${so}/values/NHATKY_GUINHAN!G:G`)).values || []).map(r => r[0] || '').filter(x => x.startsWith(TRA)).map(x => x.slice(TRA.length)))].slice(-5);
+
 async function gui(d) {
   try {
     const ds = await tim(d), [f] = ds, so = soId;
     if (!f) return;
-    let soatXong = '\n\nChưa soát: file không phải văn bản (Word, PDF, Google Docs).', canh = []; // soát trước khi gửi: lỗi soát không chặn việc gửi, nhưng phải báo
+    let soatXong = '\n\nChưa soát: file không phải văn bản (Word, Excel, PDF, Google Docs).', canh = []; // soát trước khi gửi: lỗi soát không chặn việc gửi, nhưng phải báo
     const bqKhoa = 'bq:' + d.ma, bq = (() => { try { return JSON.parse(localStorage.getItem(bqKhoa)) || []; } catch { return []; } })(); // cảnh báo anh đã xác nhận "đúng rồi" cho tài liệu này
     try {
       say('Đang soát văn bản với thông tin công trình...');
       const van = await docChu(g, ds), tt = ttTin();
       if (van != null) {
         const kq = soat(van, tt), lech = kq.lech.filter(x => !bq.includes(x)), thieu = kq.thieu.filter(x => !bq.includes(x)); canh = [...lech, ...thieu];
-        soatXong = !/\p{L}{3}/u.test(van) ? '\n\nKhông đọc được chữ trong file (bản scan mờ?), chưa soát được.' : !tt.length ? '\n\nChưa soát: trang Thông tin công trình chưa có mục nào.' : !lech.length && !thieu.length ? '\n\nĐã soát: khớp thông tin công trình.'
-          : (lech.length ? '\n\n⚠ CÓ THỂ SAI:\n' + lech.join('\n') : '') + (thieu.length ? '\n\nKhông thấy trong văn bản (bỏ qua nếu văn bản không cần):\n' + thieu.join('\n') : '')
+        const chuaTT = tt.length ? '' : '\n\nChưa so được với thông tin công trình: trang Thông tin chưa có mục nào.';
+        soatXong = !/\p{L}{3}/u.test(van) ? '\n\nKhông đọc được chữ trong file (bản scan mờ?), chưa soát được.' : !lech.length && !thieu.length ? chuaTT || '\n\nĐã soát: khớp thông tin công trình.'
+          : chuaTT + (lech.length ? '\n\n⚠ CÓ THỂ SAI:\n' + lech.join('\n') : '') + (thieu.length ? '\n\nKhông thấy trong văn bản (bỏ qua nếu văn bản không cần):\n' + thieu.join('\n') : '')
             + '\n\nBấm OK nghĩa là các dòng trên đúng rồi, lần sau tài liệu này không nhắc lại.';
       }
     } catch (e) { soatXong = `\n\nChưa soát được: ${e.message}`; }
+    const tra = await lyDoTra(so).catch(() => []);
     say();
-    if (!confirm(`Gửi "${f.name}"?\nBất kỳ ai có link đều xem được file này.${soatXong}`)) return;
+    if (!confirm(`Gửi "${f.name}"?\nBất kỳ ai có link đều xem được file này.${soatXong}${tra.length ? '\n\nNhớ kiểm lại, hồ sơ công trình này từng bị trả vì:\n' + tra.map(x => '• ' + x).join('\n') : ''}`)) return;
     if (canh.length) try { localStorage.setItem(bqKhoa, JSON.stringify([...bq, ...canh])); } catch {}
     await api(`https://www.googleapis.com/drive/v3/files/${f.id}/permissions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' }) });
     say();
@@ -260,8 +276,7 @@ async function gui(d) {
     if (navigator.share) await navigator.share({ title: ten, url: f.webViewLink });
     else { await navigator.clipboard.writeText(f.webViewLink); say('Đã chép link ' + ten); }
     try { // sổ gửi nhận: trả lời "đã gửi bản nào chưa"; người nhận chọn trong bảng chia sẻ nên app không biết, để trống
-      await api(`https://sheets.googleapis.com/v4/spreadsheets/${so}/values/NHATKY_GUINHAN:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
-        json({ values: [[new Date().toLocaleDateString('en-GB'), d.ma, d.rev, 'Gửi', '', navigator.share ? 'Chia sẻ link' : 'Chép link', ten, '']] }));
+      await guiNhan(so, [new Date().toLocaleDateString('en-GB'), d.ma, d.rev, 'Gửi', '', navigator.share ? 'Chia sẻ link' : 'Chép link', ten, '']);
     } catch (e) { say(`Đã gửi, nhưng chưa ghi được vào sổ NHATKY_GUINHAN: ${e.message}`); }
   } catch (e) { if (e.name !== 'AbortError') say(e.message); }
 }
