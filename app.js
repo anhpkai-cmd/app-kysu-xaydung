@@ -398,7 +398,7 @@ async function taiTT() {
     ttCo = (await api(`https://sheets.googleapis.com/v4/spreadsheets/${so.id}?fields=sheets.properties.title`)).sheets.some(s => s.properties.title === 'THONGTIN');
     const v = ttCo ? (await api(`https://sheets.googleapis.com/v4/spreadsheets/${so.id}/values/THONGTIN`)).values : []; // đọc thì không ghi: trang chỉ được tạo khi bấm Thêm lần đầu
     ttSo = so.id;
-    const dong = ttDong = (v || []).slice(1).filter(r => r[1]);
+    const dong = ttDong = (v || []).slice(1).filter(r => r[1]); if ($('tnd').open) tnVe(true); // tin đang mở: soạn lại với thông tin vừa đọc
     $('ttds').replaceChildren(...['Liên hệ', 'Thông tin'].flatMap(nhom => {
       const ds = dong.filter(r => (r[0] || 'Thông tin') === nhom);
       return ds.length ? [Object.assign(document.createElement('h3'), { textContent: nhom }), ...ds.map(([, ten, ct = '', dt = '']) => {
@@ -673,7 +673,7 @@ async function themHan() {
 }
 // ---- Tin nhắn Zalo soạn sẵn (xem tin.js): thông tin lấy lúc mở khung và lúc đổi ô, nên không phụ thuộc thứ tự tải ----
 const tnCtx = () => {
-  const hom = homNay(), ten = $('ct').selectedOptions[0]?.text ?? '', tenCT = ttDong.find(r => /^tên công trình$/i.test(r[1]))?.[2] || ten.split('_').slice(1).join(' ') || ten;
+  const hom = homNay(), ten = $('ct').selectedOptions[0]?.text ?? '', tenCT = ttDong.find(r => /^tên công trình$/i.test(r[1]))?.[2] || '(tên công trình)';
   return { tenCT, hom: dmy(hom), mai: dmy(cong(hom, 1)), tt: ttDong, thoiTiet: { hom: tqDs[0] && tomTat(tqDs[0]), mai: tqDs[1] && tomTat(tqDs[1]) },
     viecMai: viec.filter(t => (!t.ct || t.ct === 'Chung' || t.ct === ten) && conLai(t.han, hom) === 1).map(t => t.ten) };
 };
@@ -689,6 +689,7 @@ function tnVe(moi) {
       return [l, o];
     }));
   }
+  $('tncb').hidden = c.tenCT !== '(tên công trình)'; // chưa có tên: nhắc ghi, không tự in tên thư mục
   $('tnt').value = soan(m, tnV, c);
   const z = zalo(m, c); $('tnz').hidden = !z; if (z) { $('tnz').href = z.href; $('tnz').textContent = 'Mở Zalo của ' + z.ten; }
 }
@@ -728,6 +729,7 @@ async function vao(resp) {
 
 // Một ô chọn công trình chung cho cả trang: tài liệu, thông tin, nhật ký cùng theo, nhớ lần chọn cuối.
 function doiCT() {
+  setTimeout(() => $('tnd').open && tnVe(true)); // đổi công trình: soạn lại tin (người nhận, tên công trình) sau khi các phần kia đã xóa dữ liệu cũ
   try { localStorage.setItem('ct', $('ct').value); } catch {}
   $('hopkq').hidden = true; // bản tin họp của công trình cũ
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
