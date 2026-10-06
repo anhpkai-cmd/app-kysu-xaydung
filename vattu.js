@@ -90,10 +90,8 @@ export async function docFile(api, id) {
   return { dau: Object.fromEntries(co.map(t => [t, v[t][0] || []])), dm: docDm(v.DMVATTU), lo: docLo(v.VATTU, v.NGHIEMTHU), lich: lichNt(v.DANHMUC, v.NGHIEMTHU, homNay()), cv: v.DANHMUC || [] };
 }
 // Cho khung Còn sót: số lô cấm dùng và số lô chưa xong (bỏ qua lô chỉ còn chờ kết quả thí nghiệm, vì đó là việc của phòng thí nghiệm).
-const dem = (dm, lo, lich) => {
-  const v = lo.map(l => canLam(l, dm)).filter(x => x.length);
-  return { nt: lich.filter(x => x.n <= 2).length, cam: v.filter(x => x[0].cam).length, can: v.filter(x => !x[0].cam && !x.every(y => y.chu.startsWith('Chờ kết quả'))).length };
-};
+export const chuY = (dm, lo) => lo.map(l => ({ l, c: canLam(l, dm) })).filter(x => x.c.length && (x.c[0].cam || !x.c.every(y => y.chu.startsWith('Chờ kết quả')))); // lô cần chú ý: cấm dùng hoặc chưa xong thủ tục; dem đếm, sổ bàn giao liệt kê
+const dem = (dm, lo, lich) => { const v = chuY(dm, lo); return { nt: lich.filter(x => x.n <= 2).length, cam: v.filter(x => x.c[0].cam).length, can: v.filter(x => !x.c[0].cam).length }; };
 export const demVatTu = async (api, id) => { const { dm, lo, lich } = await docFile(api, id); return dem(dm, lo, lich); };
 
 // ---- Phần giao diện. h: hàm dùng chung của app.js (api, ls, thuMuc, json, taiLen, taoViec) và id file nhật ký ----

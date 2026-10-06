@@ -4,6 +4,7 @@ import { soat, docChu, lap, dsMau } from './vanban.js';
 import { banHop } from './hop.js';
 import { banBaoCao } from './baocao.js';
 import { banGiao } from './bangiao.js';
+import { goiY, tatCa, dongNk } from './atld.js';
 import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { url as urlTT, parse as parseTT, viTri, nhatKy, tomTat, canhBao, NGAY } from './thoitiet.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
@@ -11,7 +12,7 @@ import { khoiQR, lamQR, moQR, inQR, sauBanMoi as qrSauBanMoi, laBanVe } from './
 import { LOAI as LOAI_HAN, dong as dongHan, COT_HAN } from './han.js';
 import { MAU as MAU_TIN, dmy, macDinh, soan, zalo } from './tin.js';
 import { moPS, ghiPS, docPS, CHO as PS_CHO } from './phatsinh.js';
-import { docFile, canLam, moVatTu, luuVe, themVatTu, demVatTu, soVn, themYc, lapYc, veYc } from './vattu.js';
+import { docFile, chuY, ngayVn as ngayVt, moVatTu, luuVe, themVatTu, demVatTu, soVn, themYc, lapYc, veYc } from './vattu.js';
 import { moCC, doiThang, sauLap, lapCC } from './chamcong.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
@@ -347,13 +348,14 @@ const nkKey = () => 'nk:' + $('ct').value; // bản nháp theo công trình, xó
 function nkNhap() { try { localStorage.setItem(nkKey(), JSON.stringify({ d: $('nkd').value, f: NK.map((_, i) => $('nk' + i).value), vc: nkVc })); } catch {} }
 async function moNhatKy() {
   const ct = $('ct').value; nkDm = []; // người dùng đổi công trình giữa chừng thì bỏ kết quả của công trình cũ
-  $('nk').hidden = false; $('nkf').hidden = true; nkId = null; nkVc = [];
+  $('nk').hidden = false; $('hat').hidden = false; delete $('hatc').dataset.tay; $('nkf').hidden = true; nkId = null; nkVc = [];
   try {
     const f = await sheetCo(`name contains '${q($('ct').selectedOptions[0].text.split('_')[0])}-NK-NHATKY'`);
     if (!f) return $('nkmsg').textContent = 'Công trình này chưa có Google Sheet nhật ký (đặt file CTxx-NK-NHATKY, Excel hoặc Google Sheet, trong thư mục công trình trên Drive).';
     const dm = ((await nkApi(f.id, 'values/DANHMUC!A2:C')).values || []).filter(r => r[0]);
     if ($('ct').value !== ct) return;
     nkId = f.id; nkDm = dm;
+    hatVe();
     $('nkv').replaceChildren(...nkDm.map(([ma, ten, dv]) => new Option(`${ma} · ${ten}${dv ? ' (' + dv + ')' : ''}`, ma)));
     $('nkc').replaceChildren(...NK.flatMap(([ten, kieu], i) => {
       const l = document.createElement('label'); l.htmlFor = 'nk' + i; l.textContent = ten;
@@ -368,12 +370,37 @@ async function moNhatKy() {
   } catch (e) { $('nkmsg').textContent = e.message; }
 }
 function hienVc() {
+  hatVe();
   $('nkds').replaceChildren(...nkVc.map((v, i) => {
     const el = document.createElement('div'); el.className = 'doc'; const t = document.createElement('span'); t.textContent = `${v.ma} · ${v.kl}`;
     const b = document.createElement('button'); b.className = 'phu'; b.textContent = 'Bỏ'; b.setAttribute('aria-label', 'Bỏ ' + t.textContent);
     b.onclick = () => { nkVc.splice(i, 1); hienVc(); nkNhap(); }; el.append(t, b); return el;
   }));
 }
+// Họp an toàn 5 phút: gợi ý chủ đề theo việc trong ngày (không có thì theo việc đến hạn hôm nay, ngày nóng trên 35 độ thì nắng nóng), ảnh tổ đội vào 09_HINHANH, dòng ghi sẵn vào ô Sự cố, ATLĐ của nhật ký
+const hatNk = NK.findIndex(([t]) => t === 'Sự cố, ATLĐ');
+function hatVe() {
+  const ten = ma => nkDm.find(d => d[0] === ma)?.[1] ?? ma, ct = $('ct').selectedOptions[0]?.text, hom = homNay(), goc = nkVc.length ? nkVc.map(v => ten(v.ma)) : viec.filter(t => t.ct === ct && !isNaN(conLai(t.han, hom)) && conLai(t.han, hom) <= 0).map(t => t.ten), giu = $('hatc').value && $('hatc').dataset.tay;
+  if (!$('hatc').options.length) $('hatc').replaceChildren(...tatCa.map(c => new Option(c.ten)));
+  if (!giu) $('hatc').value = goiY(goc, tqDs[0]?.nong).ten; // người dùng đã tự chọn thì không đổi lại
+  $('haty').replaceChildren(...tatCa.find(c => c.ten === $('hatc').value).y.map(t => Object.assign(document.createElement('li'), { textContent: t })));
+}
+$('hatc').onchange = () => { $('hatc').dataset.tay = 1; hatVe(); };
+$('hatb').onclick = async () => {
+  const f = $('hata').files[0], ct = $('ct').value, ma = maCT({ name: $('ct').selectedOptions[0].text }), ngay = homNay(), chu = $('hatc').value, ms = t => $('hatms').textContent = t;
+  if (!f) return ms('Chụp hoặc chọn ảnh tổ đội trước.');
+  $('hatb').disabled = true; ms('Đang lưu ảnh...');
+  try {
+    const dir = await thuMuc(ct, `09_HINHANH/${ngay.slice(0, 7)}/${ngay}`), stt = sttTiep(ma, ngay, (await ls(`'${dir}' in parents`)).map(x => x.name));
+    const ten = tenAnh(ma, ngay, stt, 'ATLD', 'HopAnToan', f.name);
+    await taiLen(ten, dir, f);
+    $('hata').value = '';
+    if ($('ct').value === ct && !$('nkf').hidden && $('nkd').value === ngay) { $('nk' + hatNk).value = dongNk($('nk' + hatNk).value, chu); nkNhap(); ms(`Đã lưu ảnh ${ten} và ghi vào ô Sự cố, ATLĐ của nhật ký. Bấm Lưu nhật ký để chốt.`); }
+    else ms(`Đã lưu ảnh ${ten}. Nhật ký hôm nay chưa mở nên chưa ghi dòng họp an toàn, hãy ghi tay vào ô Sự cố, ATLĐ.`);
+  } catch (e) { ms('Chưa lưu được ảnh: ' + e.message); }
+  $('hatb').disabled = false;
+};
+
 function themVc() { // trả true nếu đã thêm (hoặc không có gì để thêm là lỗi)
   const kl = soVn($('nkk').value);
   if (!(kl > 0)) return $('nkmsg').textContent = `“${$('nkk').value}” không đọc được thành số lớn hơn 0. Ví dụ 12.500 hoặc 15,5.`, false;
@@ -621,7 +648,7 @@ function veTT() {
   const cb = cbTT();
   const p = t => Object.assign(document.createElement('p'), { textContent: t });
   $('tqd').replaceChildren(...tqDs.map((d, i) => p(`${NGAY[i]}: ${tomTat(d)}`)), ...cb.map(t => Object.assign(p('Cảnh báo: ' + t), { className: 'cb' })));
-  veSot();
+  veSot(); hatVe(); // việc và thời tiết vừa đổi: gợi ý họp an toàn tính lại
 }
 async function taiTQ() {
   const ct = $('ct').value; tqDs = []; tqMs(); veTT();
@@ -661,14 +688,14 @@ async function hop(kieu) { // kieu: 'bc' báo cáo 1 trang cho giám đốc, 'bg
   $('hopn').textContent = bc ? 'Báo cáo nội bộ gửi giám đốc. App chưa lưu số tiền nên báo cáo không có phần tiền.' : bg ? 'Trang bàn giao cho người thay. Kiểm tra lại trước khi gửi, đây là số liệu app đọc được.' : 'Bản tin để anh chuẩn bị họp. Xóa phần nội bộ trước khi gửi chủ đầu tư.';
   if (bg) {
     const f = nkId ? await docFile(api, nkId).catch(() => null) : null;
-    $('hopt').value = banGiao({ ...d, den: $('bgden').value, lich: f && f.lich, vt: f && { cam: f.lo.filter(l => canLam(l, f.dm)[0]?.cam).length, can: f.lo.filter(l => { const c = canLam(l, f.dm); return c.length && !c[0].cam && !c.every(y => y.chu.startsWith('Chờ kết quả')); }).length }, lien: ttDong });
+    $('hopt').value = banGiao({ ...d, den: $('bgden').value, lich: f && f.lich, vt: f && chuY(f.dm, f.lo).map(({ l, c }) => ({ cam: !!c[0].cam, ten: l.ten, ma: l.ma, ngay: ngayVt(l.ngay), chu: c[0].chu })), han: hanDs.filter(x => x.ct === ten), ps: psv && docPS(psv).filter(x => x.tt === PS_CHO).map(x => `${x.ngay} ${x.ai}: ${x.nd}`), lien: ttDong });
   } else $('hopt').value = bc ? banBaoCao({ ...d, han: hanDs.filter(x => x.ct === ten), cam, ps: psv && docPS(psv).filter(x => x.tt === PS_CHO).map(x => `${x.ngay} ${x.ai}: ${x.nd}${x.kl ? ', ' + x.kl : ''}`) }) : banHop(d);
   $('hopa').replaceChildren(...anh.map(f => { const li = document.createElement('li'), a = li.appendChild(document.createElement('a')); a.href = f.webViewLink; a.target = '_blank'; a.textContent = f.name; return li; }));
   $('hopkq').hidden = false;
 }
 async function guiHop() {
   const t = $('hopt').value;
-  try { if (navigator.share) await navigator.share({ text: t }); else { await navigator.clipboard.writeText(t); ttMs('Đã chép bản tin họp, dán vào Zalo.'); } }
+  try { if (navigator.share) await navigator.share({ text: t }); else { await navigator.clipboard.writeText(t); ttMs('Đã chép, dán vào Zalo.'); } }
   catch (e) { if (e.name !== 'AbortError') ttMs(e.message); }
 }
 
