@@ -84,3 +84,9 @@ Mục "Vật tư" ghi vào file nhật ký `CTxx-NK-NHATKY` của công trình (
 - **Nghiệm thu** (chỉ mở khi đã duyệt, đủ CO/CQ, mẫu đạt): thêm một dòng mã VATLIEU vào trang `NGHIEMTHU`.
 - Khung **Còn sót** đếm lô cấm dùng và lô chưa xong của mọi công trình.
 - Trước khi ghi, app đọc lại các dòng đó; sheet vừa bị sửa ở nơi khác thì không ghi mà tải lại. Chạy `node vattu.js` để tự kiểm tra.
+
+## Mã QR bản vẽ
+
+Ở mỗi tài liệu có nút **QR**. Bấm (sau khi xác nhận cảnh báo: **ai có mã QR đều xem được bản vẽ, không cần đăng nhập Google**) thì app tạo một bản sao cố định của bản hiện hành trong thư mục `QR_HIENHANH` của công trình, mở quyền "ai có link xem được" và hiện mã QR ở mục "Mã QR bản vẽ". Quét mã bằng camera là mở file trên Drive. Khi bấm **Bản mới** cho tài liệu đó, app thay nội dung và tên của chính file QR (một yêu cầu duy nhất) nên mã QR in sẵn vẫn đúng; tên file ghi "bản R03 ngày ...", Drive hiện tên này trên đầu khi mở. Nếu chưa chuyển được sang bản mới, app báo CHÚ Ý (mã vẫn mở bản cũ) và bấm QR ở tài liệu để thử lại. **Thu hồi** gỡ quyền xem (quét không mở được), **Bật lại** mở lại. Tick các mã rồi bấm **In tờ A4**: mỗi ô một mã, tên và Rev in to để cắt dán.
+
+Giới hạn: thay nội dung phải tải file về máy rồi tải lại lên (bản vẽ vài chục MB trên 4G sẽ chậm); tài liệu dạng Google Docs không thay được tự động. Thư viện tạo mã `qrcode.mjs` (qrcode-generator 2.0.4, MIT) để nguyên bản; mã sinh ra đã được kiểm bằng máy đọc QR (jsQR). `node qr.js` tự kiểm tra.

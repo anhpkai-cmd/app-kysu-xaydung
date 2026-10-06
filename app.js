@@ -4,6 +4,7 @@ import { soat, docChu, lap, dsMau } from './vanban.js';
 import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { url as urlTT, parse as parseTT, viTri, nhatKy, tomTat, canhBao, NGAY } from './thoitiet.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
+import { khoiQR, lamQR, moQR, inQR, sauBanMoi as qrSauBanMoi } from './qr.js';
 import { moVatTu, luuVe, themVatTu, demVatTu } from './vattu.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
@@ -18,6 +19,7 @@ const api = async (url, opt = {}) => {
 };
 const ls = async (q, cot = 'id,name,mimeType,webViewLink') => (await api(`https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=files(${cot})&q=` + encodeURIComponent(q + ' and trashed=false'))).files;
 const say = t => $('msg').textContent = t || '';
+const blob = async url => { const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } }); if (!r.ok) throw new Error('Lỗi tải file ' + r.status); return r.blob(); };
 
 function hien() {
   const kq = loc(docs, $('q').value);
@@ -37,7 +39,8 @@ function hien() {
     const tr = document.createElement('button'); tr.className = 'phu'; tr.textContent = 'Bị trả'; tr.setAttribute('aria-label', 'Ghi lý do bị trả ' + d.ma);
     tr.onclick = () => biTra(d);
     const th = document.createElement('div'); th.append(b, t, s);
-    const nut = document.createElement('div'); nut.className = 'nut'; nut.append(x, g, m, tr);
+    const nut = document.createElement('div'); nut.className = 'nut'; const qr = document.createElement('button'); qr.className = 'phu'; qr.textContent = 'QR'; qr.setAttribute('aria-label', 'Mã QR của ' + d.ma); qr.onclick = () => lamQR(d);
+    nut.append(x, g, m, tr, qr);
     el.append(th, nut);
     return el;
   }));
@@ -102,7 +105,8 @@ async function tai(d, file) {
       { range: `DANHMUC!${c('Ngày rev')}${d.dong}`, values: [[new Date().toLocaleDateString('en-GB')]] }] }));
     if (file.khoa) await (await caches.open('chia-se')).delete(file.khoa);
     nhan = nhan.filter(f => f !== file); hienNhan();
-    await chonCT(); say(`Đã lưu ${ten}.`);
+    const qrTin = await qrSauBanMoi(d, rev, { ...moi, name: ten, mimeType: file.mimeType || file.type }, new Date().toLocaleDateString('en-GB')); // mã QR của tài liệu (nếu có) chuyển sang bản vừa lưu
+    await chonCT(); say(`Đã lưu ${ten}.${qrTin}`);
   } catch (e) { say(`Lỗi khi ${buoc}: ${e.message}`); }
 }
 
@@ -624,7 +628,7 @@ async function vao(resp) {
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
     gocId = goc.id;
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
-    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('tq').hidden = false;
+    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('qr').hidden = false; $('tq').hidden = false;
     try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec(); taiHan(cts); sotQuet(cts);
@@ -639,9 +643,11 @@ function doiCT() {
   try { localStorage.setItem('ct', $('ct').value); } catch {}
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
   const ct = $('ct').value;
-  chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, sot: sotCap, id: nkId }); }); taiTT(); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
+  moQR(); chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, sot: sotCap, id: nkId }); }); taiTT(); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
+khoiQR({ api, ls, thuMuc, json, tim, blob, ct: () => $('ct').value, say, hoi: t => confirm(t), q, FOLDER });
+$('qri').onclick = inQR;
 const khoa = (id, fn, sau) => async () => {
   const b = $(id), chu = b.textContent; if (b.disabled) return;
   b.disabled = true; b.textContent = 'Đang lưu...';
