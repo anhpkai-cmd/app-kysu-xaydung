@@ -2,22 +2,14 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#f6f3ee">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f6fa">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg">
 <title>Sổ tay kỹ sư</title>
+<script>try{document.documentElement.dataset.skin=localStorage.getItem("skin")==="dark"?"dark":"light"}catch{document.documentElement.dataset.skin="light"}</script>
 <style>
   /* Hallmark · audit pass · một màu nhấn (cam an toàn), nền/mực pha cùng tông, không #000/#fff */
-  :root{
-    --paper:oklch(97% .01 75); --card:oklch(99% .006 75); --ink:oklch(22% .012 75);
-    --mute:oklch(48% .012 75); --rule:oklch(88% .012 75); --accent:oklch(55% .17 45); --on-accent:oklch(98% .01 75);
-    --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --gap:16px;
-  }
-  @media (prefers-color-scheme:dark){:root{
-    --paper:oklch(16% .01 75); --card:oklch(21% .012 75); --ink:oklch(94% .008 75);
-    --mute:oklch(72% .012 75); --rule:oklch(32% .012 75); --accent:oklch(72% .16 50); --on-accent:oklch(16% .01 75);
-  }}
   html,body{overflow-x:clip}
   body{font:16px/1.5 var(--font);margin:0;background:var(--paper);color:var(--ink)}
   header{display:flex;gap:var(--gap);align-items:center;justify-content:space-between;padding:12px var(--gap);border-bottom:1px solid var(--rule)}
@@ -61,21 +53,22 @@
   #qrtrang{display:grid;grid-template-columns:1fr 1fr;gap:8mm}
   @media print{body{background:#fff;color:#000} body>*:not(#qrtrang){display:none!important} #qrtrang>div{break-inside:avoid;text-align:center;border:1px dashed #000;padding:4mm} #qrtrang svg{width:60mm;height:60mm} #qrtrang p{font-size:14pt;font-weight:700;margin:2mm 0}}
 </style>
+<link rel="stylesheet" href="khung.css">
 </head>
 <body>
-<header><h1>Sổ tay kỹ sư</h1><button id="vao">Đăng nhập Google</button></header>
+<header><h1>Sổ tay kỹ sư</h1><button id="vao">Đăng nhập Google</button>
+  <div id="cts" hidden><label for="ct">Công trình đang làm</label><select id="ct"></select></div></header>
 <main>
   <p id="nhan" role="status" hidden></p>
   <p id="msg" role="status">Bấm “Đăng nhập Google” để xem sổ đăng ký công trình.</p>
-  <div id="cts" hidden><label for="ct">Công trình đang làm</label><select id="ct"></select></div>
-  <section id="sot" hidden>
+  <section id="sot" data-s="home" hidden>
     <h2>Hôm nay còn sót gì</h2>
     <div id="sotds"></div>
     <div id="sotn"></div>
     <p id="sotms" role="status"></p>
     <p><button id="sotb" class="phu">Nhắc tôi lúc 17h mỗi ngày</button></p>
   </section>
-  <section id="tn" hidden>
+  <section id="tn" data-s="tn" hidden>
     <h2>Tin nhắn soạn sẵn</h2>
     <details id="tnd"><summary>Soạn tin Zalo (nghiệm thu, tổ đội, dừng vì mưa, nhà cung cấp)</summary>
     <label for="tnm">Loại tin</label><select id="tnm"></select>
@@ -86,7 +79,7 @@
     <p><button id="tnc">Chép tin</button> <a id="tnz" class="nutlk" hidden target="_blank" rel="noopener">Mở Zalo</a></p>
     </details>
   </section>
-  <section id="ps" hidden>
+  <section id="ps" data-s="ps" hidden>
     <h2>Phát sinh, chỉ đạo hiện trường</h2>
     <p id="psms" role="status"></p>
     <details id="psf"><summary>+ Ghi yêu cầu miệng (CĐT, TVGS bảo làm thêm, đổi vật liệu...)</summary>
@@ -105,7 +98,7 @@
     <div id="psds"></div>
     <p><a id="psm" class="nutlk" hidden target="_blank" rel="noopener">Mở sổ phát sinh (làm phụ lục)</a></p>
   </section>
-  <section id="tq" hidden>
+  <section id="tq" data-s="home" hidden>
     <h2>Thời tiết công trình</h2>
     <div id="tqd"></div>
     <p id="tqms" role="status"></p>
@@ -114,7 +107,7 @@
     <p><button id="tql" class="phu">Lưu vị trí</button> <button id="tqg" class="phu">Lấy vị trí máy</button></p>
     </details>
   </section>
-  <section id="viec" hidden>
+  <section id="viec" data-s="viec" hidden>
     <h2>Việc cần làm</h2>
     <div id="dsv"></div>
     <div id="han"></div>
@@ -130,7 +123,7 @@
     <label for="vhan">Hạn (có hạn thì điện thoại sẽ nhắc qua Google Lịch)</label><input id="vhan" type="date">
     <p><button id="vthem">Thêm việc</button></p>
   </section>
-  <div id="loc" hidden>
+  <div id="loc" data-s="bv" hidden>
     <h2>Tài liệu</h2>
     <label for="q">Tìm tài liệu</label><input id="q" type="search" placeholder="ví dụ: móng, cọc, KC-005">
     <details id="vb"><summary>+ Lập văn bản từ mẫu (hợp đồng, báo giá, biên bản)</summary>
@@ -140,8 +133,9 @@
     <p><button id="vbl">Lập văn bản</button></p>
     </details>
   </div>
-  <div id="ds"></div>
-  <section id="qr" hidden>
+  <div id="ds" data-s="bv"></div>
+  <p data-s="bv"><a class="nutlk" href="#qr">Mã QR bản vẽ</a></p>
+  <section id="qr" data-s="qr" hidden>
     <h2>Mã QR bản vẽ</h2>
     <p>Dán mã ở công trường: tổ trưởng quét bằng camera là mở đúng bản vẽ hiện hành, không cần đăng nhập. Ai có mã QR đều xem được, nên chỉ dán nơi nội bộ.</p>
     <p id="qrms" role="status"></p>
@@ -149,7 +143,7 @@
     <p><button id="qri" class="phu">In tờ A4 các mã đã chọn</button></p>
     <p class="hint">Nếu điện thoại không in được, mở app trên máy tính để in.</p>
   </section>
-  <section id="tt" hidden>
+  <section id="tt" data-s="tt" hidden>
     <h2>Thông tin công trình</h2>
     <p id="ttms" role="status"></p>
     <div id="ttds"></div>
@@ -164,7 +158,7 @@
     <p><button id="ttt">Thêm</button></p>
     </details>
   </section>
-  <section id="anh" hidden>
+  <section id="anh" data-s="anh" hidden>
     <h2>Ảnh hiện trường</h2>
     <p id="anms" role="status"></p>
     <div id="anx" hidden>
@@ -177,7 +171,8 @@
       <p><button id="anb">Xếp ảnh đã tick</button></p>
     </div>
   </section>
-  <section id="nk" hidden>
+  <p data-s="nk"><a class="nutlk" href="#anh">Xếp ảnh hiện trường</a></p>
+  <section id="nk" data-s="nk" hidden>
     <h2>Nhật ký ngày</h2>
     <p id="nkmsg" role="status"></p>
     <div id="nkf" hidden>
@@ -191,11 +186,11 @@
       <p><button id="nkl">Lưu nhật ký</button></p>
     </div>
   </section>
-  <section id="ntl" hidden>
+  <section id="ntl" data-s="ntl" hidden>
     <h2>Lịch nghiệm thu</h2>
     <div id="ntds"></div>
   </section>
-  <section id="vt" hidden>
+  <section id="vt" data-s="vt" hidden>
     <h2>Vật tư</h2>
     <p id="vtms" role="status"></p>
     <div id="vtcan"></div>
@@ -230,7 +225,19 @@
     <p><button id="vtthem">Thêm vật tư</button></p>
     </details>
   </section>
-  <section id="cc" hidden>
+  <section id="more" data-s="more">
+    <h2>Hồ sơ và tin nhắn</h2>
+    <div class="luoi"><a href="#tn">Tin nhắn Zalo<small>Soạn sẵn</small></a></div>
+    <h2>Công trường</h2>
+    <div class="luoi"><a href="#vt">Vật tư<small>Nhập, lấy mẫu</small></a><a href="#ntl">Lịch nghiệm thu<small>Sắp tới</small></a><a href="#cc">Chấm công<small>Tổ đội theo tháng</small></a><a href="#ps">Phát sinh<small>Yêu cầu miệng, chỉ đạo</small></a><a href="#tt">Thông tin công trình<small>Liên hệ, họp CĐT</small></a></div>
+    <h2>Khác</h2>
+    <div class="luoi"><a href="#cai">Cài đặt<small>Giao diện</small></a></div>
+  </section>
+  <section id="cai" data-s="cai">
+    <h2>Giao diện</h2>
+    <div class="luoi"><button data-skin="light">Sáng</button><button data-skin="dark">Tối</button></div>
+  </section>
+  <section id="cc" data-s="cc" hidden>
     <h2>Chấm công tổ đội</h2>
     <p>Cộng số người các nhóm đã ghi trong Nhật ký ngày. Nghỉ nửa buổi tính nửa công, nghỉ cả ngày không tính.</p>
     <label for="cct">Tháng</label><input id="cct" type="month">
@@ -239,8 +246,16 @@
     <p><button id="cclap">Lập bảng công gửi tổ trưởng ký</button></p>
   </section>
 </main>
+<nav aria-label="Menu chính">
+  <a href="#home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Trang chủ</a>
+  <a href="#bv"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>Bản vẽ</a>
+  <a href="#viec"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 12l3 3 5-6"/></svg>Việc<span class=dot id=vdot></span></a>
+  <a href="#nk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>Nhật ký</a>
+  <a href="#more"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>Thêm</a>
+</nav>
 <div id="qrtrang" hidden></div>
 <input id="chon" type="file" hidden>
+<script type="module" src="khung.js"></script>
 <script type="module" src="app.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 </body>
