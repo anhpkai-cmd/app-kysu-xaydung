@@ -4,6 +4,7 @@ import { soat, docChu, lap, dsMau } from './vanban.js';
 import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { url as urlTT, parse as parseTT, viTri, nhatKy, tomTat, canhBao, NGAY } from './thoitiet.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
+import { moVatTu, luuVe, themVatTu, demVatTu } from './vattu.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
 const $ = id => document.getElementById(id);
@@ -33,8 +34,10 @@ function hien() {
     x.onclick = () => xem(d);
     const m = document.createElement('button'); m.className = 'phu'; m.textContent = 'Bản mới'; m.setAttribute('aria-label', 'Tải bản mới của ' + d.ma);
     m.onclick = () => chonFile(d);
+    const tr = document.createElement('button'); tr.className = 'phu'; tr.textContent = 'Bị trả'; tr.setAttribute('aria-label', 'Ghi lý do bị trả ' + d.ma);
+    tr.onclick = () => biTra(d);
     const th = document.createElement('div'); th.append(b, t, s);
-    const nut = document.createElement('div'); nut.className = 'nut'; nut.append(x, g, m);
+    const nut = document.createElement('div'); nut.className = 'nut'; nut.append(x, g, m, tr);
     el.append(th, nut);
     return el;
   }));
@@ -69,6 +72,11 @@ function chonFile(d) {
   const o = $('chon'); o.onchange = () => { const f = o.files[0]; o.value = ''; if (f) tai(d, f); }; o.click();
 }
 
+// Tải một file lên thư mục Drive (dùng cho Bản mới và ảnh phiếu giao nhận vật tư).
+const taiLen = (ten, dir, file, b = 'ranh' + Date.now()) => api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+  method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b },
+  body: new Blob([`--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({ name: ten, parents: [dir] })}\r\n--${b}\r\nContent-Type: ${file.type || 'application/octet-stream'}\r\n\r\n`, file, `\r\n--${b}--`]),
+});
 // Bản mới của một tài liệu: tải lên thư mục HIENHANH với tên chuẩn, chuyển bản cũ sang LUUTRU (không xóa gì), ghi Rev vào sổ.
 async function tai(d, file) {
   let buoc = 'chuẩn bị';
@@ -83,12 +91,8 @@ async function tai(d, file) {
     if (!confirm(`Lưu "${file.name}" thành:\n${ten}\nvào ${d.dir}.` + (cu.length ? `\n\nChuyển sang LUUTRU (không xóa): ${cu.map(f => f.name).join(', ')}` : ''))) return;
     say('Đang tải lên...'); buoc = 'lưu file';
     // ponytail: tải một lần (multipart), ổn đến vài chục MB; file lớn hơn cần tải theo đợt (resumable).
-    const b = 'ranh' + Date.now();
     // file đã nằm trên Drive (hộp 00_INBOX): chỉ đổi tên và chuyển thư mục, không tải lại. File từ máy/Zalo: tải lên.
-    const moi = file.cha ? await api(`https://www.googleapis.com/drive/v3/files/${file.id}?addParents=${dir}&removeParents=${file.cha}&fields=id`, { ...json({ name: ten }), method: 'PATCH' }) : await api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-      method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b },
-      body: new Blob([`--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({ name: ten, parents: [dir] })}\r\n--${b}\r\nContent-Type: ${file.type || 'application/octet-stream'}\r\n\r\n`, file, `\r\n--${b}--`]),
-    });
+    const moi = file.cha ? await api(`https://www.googleapis.com/drive/v3/files/${file.id}?addParents=${dir}&removeParents=${file.cha}&fields=id`, { ...json({ name: ten }), method: 'PATCH' }) : await taiLen(ten, dir, file);
     buoc = 'chuyển bản cũ sang LUUTRU (file mới đã nằm trong HIENHANH)';
     for (const f of cu) if (f.id !== moi.id) await api(`https://www.googleapis.com/drive/v3/files/${f.id}?addParents=${luu}&removeParents=${dir}&fields=id`, { method: 'PATCH' });
     buoc = 'ghi Rev vào sổ (file đã lưu xong)';
@@ -147,7 +151,7 @@ const dongViec = (t, han) => { // một dòng việc có nút Xong (dùng ở m�
   const b = document.createElement('small'); b.textContent = [t.ct, han ?? t.han].filter(Boolean).join(' · ');
   th.append(a, b);
   const x = document.createElement('button'); x.className = 'phu'; x.textContent = 'Xong'; x.setAttribute('aria-label', 'Xong việc: ' + t.ten);
-  x.onclick = () => xong(t);
+  x.onclick = async () => { x.disabled = true; await xong(t); x.disabled = false; }; // khóa ngay: bấm hai lần không xóa nhắc Lịch hai lần
   el.append(th, x); return el;
 };
 async function taiViec() {
@@ -190,10 +194,8 @@ function veHan() {
   veSot();
 }
 
-async function themViec() {
-  const ten = $('vten').value.trim(), ct = $('vct').value, han = $('vhan').value;
-  if (!ten) return say('Gõ tên việc trước.');
-  try {
+// Thêm một việc (kèm nhắc Lịch nếu có hạn) rồi tải lại danh sách; trả về lời báo khi chưa tạo được nhắc Lịch. Mục Vật tư cũng gọi hàm này.
+async function taoViec(ten, ct, han) {
     let lich = '', ghi = '';
     if (han) try { // ponytail: múi giờ cố định Việt Nam; sửa hạn tay trong Trang tính không tự cập nhật Lịch
       const tz = 'Asia/Ho_Chi_Minh';
@@ -201,8 +203,15 @@ async function themViec() {
         reminders: { useDefault: false, overrides: [0, 1440, 4320].map(minutes => ({ method: 'popup', minutes })) } }))).id; // nhắc lúc 8h sáng ngày hạn, 1 ngày và 3 ngày trước
     } catch (e) { ghi = 'Chưa tạo được nhắc trên Google Lịch: ' + e.message; }
     await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [[ten, ct, han, 'Mở', ghi, lich]] }));
+    await taiViec(); return ghi;
+}
+async function themViec() {
+  const ten = $('vten').value.trim(), ct = $('vct').value, han = $('vhan').value;
+  if (!ten) return say('Gõ tên việc trước.');
+  try {
+    const ghi = await taoViec(ten, ct, han);
     $('vten').value = ''; $('vhan').value = '';
-    await taiViec(); say(ghi || 'Đã thêm việc.');
+    say(ghi || 'Đã thêm việc.');
   } catch (e) { say(e.message); }
 }
 
@@ -236,24 +245,38 @@ async function moTab(lay, bao = say) {
 }
 const xem = d => moTab(async () => { const [f] = await tim(d); if (f) say(); return f?.webViewLink; });
 
+// Lý do chủ đầu tư trả hồ sơ: ghi vào NHATKY_GUINHAN (Nhận, "Bị trả: ..."); lần Gửi sau app nhắc lại các lý do đã gặp của công trình.
+const TRA = 'Bị trả: ';
+const guiNhan = (so, dong) => api(`https://sheets.googleapis.com/v4/spreadsheets/${so}/values/NHATKY_GUINHAN:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [dong] }));
+async function biTra(d) {
+  const ly = (prompt(`Chủ đầu tư/TVGS trả ${d.ma} (${d.rev}) vì lý do gì?\nVí dụ: Giá trị hợp đồng không khớp QĐ, thiếu chữ ký TVGS`) || '').trim();
+  if (!ly) return;
+  try { await guiNhan(soId, [new Date().toLocaleDateString('en-GB'), d.ma, d.rev, 'Nhận', 'Chủ đầu tư', '', TRA + ly, '']); say(`Đã ghi. Lần gửi sau app sẽ nhắc: ${ly}`); }
+  catch (e) { say('Chưa ghi được vào NHATKY_GUINHAN: ' + e.message); }
+}
+// ponytail: đọc cả trang mỗi lần Gửi; sổ vài nghìn dòng vẫn nhanh
+const lyDoTra = async so => [...new Set(((await api(`https://sheets.googleapis.com/v4/spreadsheets/${so}/values/NHATKY_GUINHAN!G:G`)).values || []).map(r => r[0] || '').filter(x => x.startsWith(TRA)).map(x => x.slice(TRA.length)))].slice(-5);
+
 async function gui(d) {
   try {
     const ds = await tim(d), [f] = ds, so = soId;
     if (!f) return;
-    let soatXong = '\n\nChưa soát: file không phải văn bản (Word, PDF, Google Docs).', canh = []; // soát trước khi gửi: lỗi soát không chặn việc gửi, nhưng phải báo
+    let soatXong = '\n\nChưa soát: file không phải văn bản (Word, Excel, PDF, Google Docs).', canh = []; // soát trước khi gửi: lỗi soát không chặn việc gửi, nhưng phải báo
     const bqKhoa = 'bq:' + d.ma, bq = (() => { try { return JSON.parse(localStorage.getItem(bqKhoa)) || []; } catch { return []; } })(); // cảnh báo anh đã xác nhận "đúng rồi" cho tài liệu này
     try {
       say('Đang soát văn bản với thông tin công trình...');
       const van = await docChu(g, ds), tt = ttTin();
       if (van != null) {
         const kq = soat(van, tt), lech = kq.lech.filter(x => !bq.includes(x)), thieu = kq.thieu.filter(x => !bq.includes(x)); canh = [...lech, ...thieu];
-        soatXong = !/\p{L}{3}/u.test(van) ? '\n\nKhông đọc được chữ trong file (bản scan mờ?), chưa soát được.' : !tt.length ? '\n\nChưa soát: trang Thông tin công trình chưa có mục nào.' : !lech.length && !thieu.length ? '\n\nĐã soát: khớp thông tin công trình.'
-          : (lech.length ? '\n\n⚠ CÓ THỂ SAI:\n' + lech.join('\n') : '') + (thieu.length ? '\n\nKhông thấy trong văn bản (bỏ qua nếu văn bản không cần):\n' + thieu.join('\n') : '')
+        const chuaTT = tt.length ? '' : '\n\nChưa so được với thông tin công trình: trang Thông tin chưa có mục nào.';
+        soatXong = !/\p{L}{3}/u.test(van) ? '\n\nKhông đọc được chữ trong file (bản scan mờ?), chưa soát được.' : !lech.length && !thieu.length ? chuaTT || '\n\nĐã soát: khớp thông tin công trình.'
+          : chuaTT + (lech.length ? '\n\n⚠ CÓ THỂ SAI:\n' + lech.join('\n') : '') + (thieu.length ? '\n\nKhông thấy trong văn bản (bỏ qua nếu văn bản không cần):\n' + thieu.join('\n') : '')
             + '\n\nBấm OK nghĩa là các dòng trên đúng rồi, lần sau tài liệu này không nhắc lại.';
       }
     } catch (e) { soatXong = `\n\nChưa soát được: ${e.message}`; }
+    const tra = await lyDoTra(so).catch(() => []);
     say();
-    if (!confirm(`Gửi "${f.name}"?\nBất kỳ ai có link đều xem được file này.${soatXong}`)) return;
+    if (!confirm(`Gửi "${f.name}"?\nBất kỳ ai có link đều xem được file này.${soatXong}${tra.length ? '\n\nNhớ kiểm lại, hồ sơ công trình này từng bị trả vì:\n' + tra.map(x => '• ' + x).join('\n') : ''}`)) return;
     if (canh.length) try { localStorage.setItem(bqKhoa, JSON.stringify([...bq, ...canh])); } catch {}
     await api(`https://www.googleapis.com/drive/v3/files/${f.id}/permissions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' }) });
     say();
@@ -262,8 +285,7 @@ async function gui(d) {
     if (navigator.share) await navigator.share({ title: ten, url: f.webViewLink });
     else { await navigator.clipboard.writeText(f.webViewLink); say('Đã chép link ' + ten); }
     try { // sổ gửi nhận: trả lời "đã gửi bản nào chưa"; người nhận chọn trong bảng chia sẻ nên app không biết, để trống
-      await api(`https://sheets.googleapis.com/v4/spreadsheets/${so}/values/NHATKY_GUINHAN:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
-        json({ values: [[new Date().toLocaleDateString('en-GB'), d.ma, d.rev, 'Gửi', '', navigator.share ? 'Chia sẻ link' : 'Chép link', ten, '']] }));
+      await guiNhan(so, [new Date().toLocaleDateString('en-GB'), d.ma, d.rev, 'Gửi', '', navigator.share ? 'Chia sẻ link' : 'Chép link', ten, '']);
     } catch (e) { say(`Đã gửi, nhưng chưa ghi được vào sổ NHATKY_GUINHAN: ${e.message}`); }
   } catch (e) { if (e.name !== 'AbortError') say(e.message); }
 }
@@ -499,6 +521,7 @@ async function sotQuet(cts) { // quét mọi công trình, chỉ đọc (không 
     try { // chưa có Google Sheet nhật ký thì để null: không biết thì không báo ổn
       const [f] = await ls(`name contains '${q(r.ma)}-NK-NHATKY' and mimeType='${SHEET}'`, 'id'); // file nằm sâu (03_CHATLUONG/NK_NHATKY_TC), tìm theo tên như moNhatKy
       if (f) r.nk = ((await nkApi(f.id, 'values/NGAY!A:A?valueRenderOption=UNFORMATTED_VALUE')).values || []).some(v => v[0] === ngay);
+      if (f) r.vt = await demVatTu(api, f.id).catch(() => null); // null: chưa kiểm tra được vật tư
     } catch {}
     try {
       const [h] = await ls(`'${c.id}' in parents and mimeType='${FOLDER}' and name='00_INBOX'`, 'id');
@@ -510,22 +533,25 @@ async function sotQuet(cts) { // quét mọi công trình, chỉ đọc (không 
 }
 function veSot() {
   const hom = homNay(), nhom = chia(viec, hom), han = hanDs.filter(d => isNaN(d.n) || d.n <= 7);
-  const dong = [ // việc quá hạn trước, ảnh sau cùng
+  const dong = [ // giấy tờ, nhật ký, vật tư, ảnh (lô vật tư cấm dùng và việc hôm nay được vẽ riêng ở trên)
     [han.length, (x => `${x} giấy tờ sắp hết hạn (trong 7 ngày) hoặc đã quá hạn`), '#han'],
     [hanLoi.length, () => 'Chưa kiểm tra được hạn giấy tờ của: ' + hanLoi.join(', '), '#han'],
     ...sotCt.filter(c => c.nk === false).map(c => [1, () => c.ma + ' chưa ghi nhật ký hôm nay', '#nk', c.id]),
     ...sotCt.filter(c => c.nk === null).map(c => [1, () => 'Chưa kiểm tra được nhật ký ' + c.ma + ' (chưa có Google Sheet nhật ký hoặc mất sóng)', '#nk', c.id]),
+    ...sotCt.filter(c => c.vt?.can).map(c => [c.vt.can, x => `${c.ma}: ${x} lô vật tư chưa xong (CO/CQ, lấy mẫu, nghiệm thu)`, '#vt', c.id]),
+    ...sotCt.filter(c => c.vt === null).map(c => [1, () => 'Chưa kiểm tra được vật tư của ' + c.ma, '#vt', c.id]),
     ...sotCt.filter(c => c.anh === null).map(c => [1, () => 'Chưa kiểm tra được ảnh chờ của ' + c.ma, '#anh', c.id]),
     ...sotCt.filter(c => c.anh > 0).map(c => [c.anh, x => `${c.ma}: ${x} ảnh chờ xếp`, '#anh', c.id]),
   ].filter(([n]) => n);
   const homVc = [...nhom.quaHan, ...nhom.sapDen.filter(t => t.n === 0)]; // việc quá hạn hoặc đến hạn hôm nay, tick Xong ngay tại đây
-  $('sotds').replaceChildren(...homVc.map(t => dongViec(t, nhanHan(t.n))), ...(dong.length ? dong.map(([n, chu, href, id]) => {
+  const lk = ([n, chu, href, id]) => {
     const l = document.createElement('a'); l.className = 'nutlk'; l.href = href; l.textContent = chu(n);
     if (id) l.onclick = () => { if ($('ct').value !== id) { $('ct').value = id; doiCT(); } }; // nhảy tới đúng công trình
     return l;
-  }) : homVc.length ? [] : [Object.assign(document.createElement('p'), { textContent: sotXong ? 'Hôm nay không còn gì sót.' : 'Đang kiểm tra các công trình...' })]));
+  }, cam = sotCt.filter(c => c.vt?.cam).map(c => [c.vt.cam, x => `${c.ma}: ${x} lô vật tư KHÔNG ĐẠT, cấm dùng`, '#vt', c.id]), toi = 5; // cấm dùng luôn đứng trên cùng; tối đa 5 việc, còn lại gom một dòng
+  $('sotds').replaceChildren(...cam.map(lk), ...homVc.slice(0, toi).map(t => dongViec(t, nhanHan(t.n))), ...(homVc.length > toi ? [lk([homVc.length - toi, x => `và ${x} việc nữa`, '#viec'])] : []), ...(dong.length ? dong.map(lk) : homVc.length || cam.length ? [] : [Object.assign(document.createElement('p'), { textContent: sotXong ? 'Hôm nay không còn gì sót.' : 'Đang kiểm tra các công trình...' })]));
   const mai = nhom.sapDen.filter(t => t.n === 1), tt = tqDs[1], cb = cbTT().filter(t => t.startsWith('Ngày mai')); // ngày mai cần chuẩn bị: việc đến hạn, thời tiết
-  $('sotn').replaceChildren(...(mai.length || tt ? [Object.assign(document.createElement('h3'), { textContent: 'Ngày mai cần chuẩn bị' }), ...mai.map(t => dongViec(t, 'Ngày mai')), ...(tt ? [`Thời tiết: ${tomTat(tt)}`] : []).concat(cb.map(t => 'Cảnh báo: ' + t)).map((t, i) => Object.assign(document.createElement('p'), { textContent: t, className: t.startsWith('Cảnh báo') ? 'cb' : '' }))] : []));
+  $('sotn').replaceChildren(...(mai.length || tt ? [Object.assign(document.createElement('h3'), { textContent: 'Ngày mai cần chuẩn bị' }), ...mai.map(t => dongViec(t, 'Ngày mai')), ...(tt ? [`Thời tiết ${maCT({ name: $('ct').selectedOptions[0].text })} ngày mai: ${tomTat(tt)}`] : []).concat(cb.map(t => 'Cảnh báo: ' + t)).map((t, i) => Object.assign(document.createElement('p'), { textContent: t, className: t.startsWith('Cảnh báo') ? 'cb' : '' }))] : []));
 }
 const sotCap = kq => { const c = sotCt.find(x => x.id === $('ct').value); if (c) { Object.assign(c, kq); veSot(); } };
 const BAN_TIN = 'Sổ tay kỹ sư: hôm nay còn sót gì';
@@ -609,7 +635,8 @@ async function vao(resp) {
 function doiCT() {
   try { localStorage.setItem('ct', $('ct').value); } catch {}
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
-  chonCT(); moNhatKy().then(taiAnh); taiTT(); taiTQ();
+  const ct = $('ct').value;
+  chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, sot: sotCap, id: nkId }); }); taiTT(); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
 const khoa = (id, fn, sau) => async () => {
@@ -640,6 +667,8 @@ $('anc').onclick = () => { const tat = anhDs.every(f => f.chon); anhDs.forEach(f
 $('and').onclick = () => { anhDs.forEach(f => { if (f.chon && f.nguon === 'doan' && !f.ngaySua) f.ngaySua = f.ngay; }); veAnh(); };
 $('nkl').onclick = khoa('nkl', luuNhatKy);
 $('nkf').oninput = nkNhap;
+$('vtluu').onclick = khoa('vtluu', luuVe);
+$('vtthem').onclick = khoa('vtthem', themVatTu);
 $('q').oninput = hien;
 $('vthem').onclick = khoa('vthem', themViec);
 docNhan();
