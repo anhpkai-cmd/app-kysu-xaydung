@@ -140,18 +140,19 @@ async function soViec(goc) {
   return t.spreadsheetId;
 }
 
+const dongViec = (t, han) => { // một dòng việc có nút Xong (dùng ở mục Việc và ở khung còn sót)
+  const el = document.createElement('div'); el.className = 'doc';
+  const th = document.createElement('div');
+  const a = document.createElement('div'); a.textContent = t.ten;
+  const b = document.createElement('small'); b.textContent = [t.ct, han ?? t.han].filter(Boolean).join(' · ');
+  th.append(a, b);
+  const x = document.createElement('button'); x.className = 'phu'; x.textContent = 'Xong'; x.setAttribute('aria-label', 'Xong việc: ' + t.ten);
+  x.onclick = () => xong(t);
+  el.append(th, x); return el;
+};
 async function taiViec() {
   viec = parseViec((await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC`)).values);
-  const nhom = chia(viec, homNay()), dong = (t, han) => {
-    const el = document.createElement('div'); el.className = 'doc';
-    const th = document.createElement('div');
-    const a = document.createElement('div'); a.textContent = t.ten;
-    const b = document.createElement('small'); b.textContent = [t.ct, han ?? t.han].filter(Boolean).join(' · ');
-    th.append(a, b);
-    const x = document.createElement('button'); x.className = 'phu'; x.textContent = 'Xong'; x.setAttribute('aria-label', 'Xong việc: ' + t.ten);
-    x.onclick = () => xong(t);
-    el.append(th, x); return el;
-  };
+  const nhom = chia(viec, homNay()), dong = dongViec;
   const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dong(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
   $('dsv').replaceChildren(...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen), ...muc('Sau đó', nhom.sau), ...muc('Chưa có hạn', nhom.khongHan));
   if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên bên dưới.';
@@ -510,7 +511,6 @@ async function sotQuet(cts) { // quét mọi công trình, chỉ đọc (không 
 function veSot() {
   const hom = homNay(), nhom = chia(viec, hom), han = hanDs.filter(d => isNaN(d.n) || d.n <= 7);
   const dong = [ // việc quá hạn trước, ảnh sau cùng
-    [nhom.quaHan.length + nhom.sapDen.filter(t => t.n === 0).length, (x => `${x} việc quá hạn hoặc đến hạn hôm nay`), '#viec'],
     [han.length, (x => `${x} giấy tờ sắp hết hạn (trong 7 ngày) hoặc đã quá hạn`), '#han'],
     [hanLoi.length, () => 'Chưa kiểm tra được hạn giấy tờ của: ' + hanLoi.join(', '), '#han'],
     ...sotCt.filter(c => c.nk === false).map(c => [1, () => c.ma + ' chưa ghi nhật ký hôm nay', '#nk', c.id]),
@@ -518,11 +518,14 @@ function veSot() {
     ...sotCt.filter(c => c.anh === null).map(c => [1, () => 'Chưa kiểm tra được ảnh chờ của ' + c.ma, '#anh', c.id]),
     ...sotCt.filter(c => c.anh > 0).map(c => [c.anh, x => `${c.ma}: ${x} ảnh chờ xếp`, '#anh', c.id]),
   ].filter(([n]) => n);
-  $('sotds').replaceChildren(...(dong.length ? dong.map(([n, chu, href, id]) => {
+  const homVc = [...nhom.quaHan, ...nhom.sapDen.filter(t => t.n === 0)]; // việc quá hạn hoặc đến hạn hôm nay, tick Xong ngay tại đây
+  $('sotds').replaceChildren(...homVc.map(t => dongViec(t, nhanHan(t.n))), ...(dong.length ? dong.map(([n, chu, href, id]) => {
     const l = document.createElement('a'); l.className = 'nutlk'; l.href = href; l.textContent = chu(n);
     if (id) l.onclick = () => { if ($('ct').value !== id) { $('ct').value = id; doiCT(); } }; // nhảy tới đúng công trình
     return l;
-  }) : [Object.assign(document.createElement('p'), { textContent: sotXong ? 'Hôm nay không còn gì sót.' : 'Đang kiểm tra các công trình...' })]));
+  }) : homVc.length ? [] : [Object.assign(document.createElement('p'), { textContent: sotXong ? 'Hôm nay không còn gì sót.' : 'Đang kiểm tra các công trình...' })]));
+  const mai = nhom.sapDen.filter(t => t.n === 1), tt = tqDs[1], cb = cbTT().filter(t => t.startsWith('Ngày mai')); // ngày mai cần chuẩn bị: việc đến hạn, thời tiết
+  $('sotn').replaceChildren(...(mai.length || tt ? [Object.assign(document.createElement('h3'), { textContent: 'Ngày mai cần chuẩn bị' }), ...mai.map(t => dongViec(t, 'Ngày mai')), ...(tt ? [`Thời tiết: ${tomTat(tt)}`] : []).concat(cb.map(t => 'Cảnh báo: ' + t)).map((t, i) => Object.assign(document.createElement('p'), { textContent: t, className: t.startsWith('Cảnh báo') ? 'cb' : '' }))] : []));
 }
 const sotCap = kq => { const c = sotCt.find(x => x.id === $('ct').value); if (c) { Object.assign(c, kq); veSot(); } };
 const BAN_TIN = 'Sổ tay kỹ sư: hôm nay còn sót gì';
@@ -542,11 +545,12 @@ async function banTin() { // bật hoặc tắt nhắc 17h thứ 2 đến thứ 
 // ---- Thời tiết công trình: vị trí lưu trên máy theo từng công trình (ponytail: chưa đồng bộ giữa máy; muốn dùng chung thì ghi vào THONGTIN) ----
 let tqDs = [];
 const tqKey = () => 'vt:' + $('ct').value, tqMs = t => $('tqms').textContent = t || '';
+const cbTT = () => { const ten = $('ct').selectedOptions[0]?.text, hom = homNay(); return canhBao(tqDs, viec.filter(t => !t.ct || t.ct === 'Chung' || t.ct === ten).map(t => ({ ...t, n: conLai(t.han, hom) }))); };
 function veTT() {
-  const ten = $('ct').selectedOptions[0]?.text, hom = homNay();
-  const cb = canhBao(tqDs, viec.filter(t => !t.ct || t.ct === 'Chung' || t.ct === ten).map(t => ({ ...t, n: conLai(t.han, hom) })));
+  const cb = cbTT();
   const p = t => Object.assign(document.createElement('p'), { textContent: t });
   $('tqd').replaceChildren(...tqDs.map((d, i) => p(`${NGAY[i]}: ${tomTat(d)}`)), ...cb.map(t => Object.assign(p('Cảnh báo: ' + t), { className: 'cb' })));
+  veSot();
 }
 async function taiTQ() {
   const ct = $('ct').value; tqDs = []; tqMs(); veTT();
