@@ -32,9 +32,13 @@ header small{display:block;color:var(--mute);font-size:13px}
 .scene{display:none;position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
 :root[data-skin="ocean"] .scene{display:block}
 :root[data-skin="ocean"] body{background:transparent}
-:root[data-skin="ocean"] header,:root[data-skin="ocean"] main{background:var(--wash)}
+:root[data-skin="ocean"] header{background:var(--wash)}
+:root[data-skin="ocean"] body::after{content:"";position:fixed;inset:0;background:var(--wash);z-index:0;pointer-events:none}
 main{position:relative;z-index:1}
 :root[data-skin="ocean"] main h2,:root[data-skin="ocean"] main .hint,:root[data-skin="ocean"] header h1,:root[data-skin="ocean"] header small{color:var(--ink);text-shadow:0 0 2px var(--paper),0 0 6px var(--paper),0 0 10px var(--paper)}
 .ic svg{width:24px;height:24px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.luoi .ic{display:flex;margin-bottom:4px}
 header>div{flex:1;min-width:0}
+:root[data-skin="ocean"]{--mute:oklch(32% .03 250)}
+.luoi a:has(.ic){display:grid;grid-template-columns:36px minmax(0,1fr);column-gap:10px;align-items:center;align-content:center}
+.luoi .ic{grid-row:span 2;width:36px;height:36px;border-radius:10px;background:var(--soft);display:grid;place-items:center;margin:0}
+.luoi .ic svg{width:20px;height:20px}
