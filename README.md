@@ -31,3 +31,7 @@ Bản đầu: đăng nhập Google → chọn công trình → xem/tìm tài li�
 ## Nhớ đăng nhập
 
 App giữ phiên đăng nhập trên máy (khoảng 1 giờ). Hết hạn, app thử xin lại âm thầm; nếu Google không cho thì hiện nút Đăng nhập. Không có máy chủ nên không thể kéo dài quá 1 giờ mỗi lần.
+
+## Nhật ký ngày
+
+Mục "Nhật ký ngày" ghi vào Google Sheet `CTxx-NK-NHATKY_2026` (trang NGAY và KHOILUONG), tìm theo mã công trình đang chọn. File Excel trên Drive phải được Lưu thành Google Trang tính trước. App chỉ thêm dòng mới; ngày đã có thì không ghi đè. Chạy `node nhatky.js` để tự kiểm tra đổi ngày.

@@ -62,6 +62,20 @@
     <label for="q">Tìm tài liệu</label><input id="q" type="search" placeholder="ví dụ: móng, cọc, KC-005">
   </div>
   <div id="ds"></div>
+  <section id="nk" hidden>
+    <h2>Nhật ký ngày</h2>
+    <p id="nkmsg" role="status"></p>
+    <div id="nkf" hidden>
+      <label for="nkd">Ngày</label><input id="nkd" type="date">
+      <div id="nkc"></div>
+      <h3>Việc làm trong ngày</h3>
+      <div id="nkds"></div>
+      <label for="nkv">Công việc</label><select id="nkv"></select>
+      <label for="nkk">Khối lượng</label><input id="nkk" type="number" min="0" step="any" inputmode="decimal">
+      <p><button id="nkt" class="phu">Thêm việc vào ngày</button></p>
+      <p><button id="nkl">Lưu nhật ký</button></p>
+    </div>
+  </section>
 </main>
 <input id="chon" type="file" hidden>
 <script type="module" src="app.js"></script>
