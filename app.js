@@ -118,8 +118,9 @@ async function docInbox() {
 function hienNhan() {
   const n = $('nhan'); n.hidden = !nhan.length;
   const dong = Object.assign(document.createElement('div'), { textContent: `Có ${nhan.length} file chờ lưu. Chọn file, rồi bấm “Bản mới” ở đúng tài liệu:` });
-  n.replaceChildren(...(nhan.length ? [dong, ...nhan.map((f, i) => Object.assign(document.createElement('button'), {
-    className: 'phu', textContent: (i ? '' : '✓ ') + f.name, onclick: () => { nhan.unshift(...nhan.splice(i, 1)); hienNhan(); } }))] : []));
+  n.replaceChildren(...(nhan.length ? [dong, ...nhan.flatMap((f, i) => [Object.assign(document.createElement('button'), {
+    className: 'phu', textContent: (i ? '' : '✓ ') + f.name, onclick: () => { nhan.unshift(...nhan.splice(i, 1)); hienNhan(); } }),
+    ...(f.name.startsWith(TL) && f.mimeType?.startsWith('image/') ? [Object.assign(document.createElement('button'), { className: 'phu', textContent: 'Là ảnh hiện trường', onclick: () => doiTen(f, f.name.slice(TL.length)).then(() => { nhan = nhan.filter(x => x !== f); hienNhan(); taiAnh(); }).catch(e => say(e.message)) })] : [])])] : []));
 }
 
 // ---- Việc cần làm: Trang tính _CONGVIEC (trong thư mục CONGTRINH) + sự kiện Google Lịch để điện thoại tự nhắc hạn ----
@@ -355,7 +356,8 @@ async function themTT() {
 }
 
 // Ảnh hiện trường: ảnh trong 00_INBOX (tải bằng app Google Drive) xếp vào 09_HINHANH/yyyy-mm/yyyy-mm-dd và đổi tên chuẩn. Chỉ di chuyển và đổi tên, không xóa, không nén.
-// Ảnh nào chỉ đoán được ngày thì phải được xác nhận ngày; không xác nhận thì vào 09_HINHANH/_CHUAXEP, giữ nguyên tên.
+// Ảnh nào chỉ đoán được ngày thì phải được xác nhận ngày; chưa có ngày thì ảnh ở lại INBOX, không xếp.
+const doiTen = (f, ten) => api(`https://www.googleapis.com/drive/v3/files/${f.id}?fields=id`, { ...json({ name: ten }), method: 'PATCH' });
 const TL = 'TAILIEU_'; // tiền tố đánh dấu ảnh chụp tài liệu (bản vẽ, biên bản), ghi nhớ ngay trên Drive
 let anhDs = [];
 const ddmm = d => d.split('-').reverse().slice(0, 2).join('/'), ngayAnh = f => f.nguon === 'doan' ? f.ngaySua || '' : f.ngay;
@@ -389,7 +391,14 @@ function veAnh() {
       th.append(d, dung);
     }
     const tl = Object.assign(document.createElement('button'), { className: 'phu', textContent: 'Đây là tài liệu' }); tl.setAttribute('aria-label', 'Chuyển ' + f.name + ' sang file chờ lưu của tài liệu');
-    tl.onclick = async () => { try { await api(`https://www.googleapis.com/drive/v3/files/${f.id}?fields=id`, { ...json({ name: TL + f.name }), method: 'PATCH' }); nhan.push({ ...f, name: TL + f.name }); anhDs = anhDs.filter(x => x !== f); hienNhan(); veAnh(); } catch (e) { $('anms').textContent = e.message; } };
+    tl.onclick = async () => {
+      try {
+        await doiTen(f, TL + f.name); const moi = { ...f, name: TL + f.name }; nhan.push(moi); anhDs = anhDs.filter(x => x !== f); hienNhan(); veAnh();
+        const hoan = Object.assign(document.createElement('button'), { className: 'phu', textContent: 'Hoàn tác' }); // bấm nhầm thì gỡ được
+        hoan.onclick = async () => { try { await doiTen(moi, f.name); nhan = nhan.filter(x => x !== moi); anhDs.push(f); hienNhan(); veAnh(); $('anms').textContent = 'Đã hoàn tác.'; } catch (e) { $('anms').textContent = e.message; } };
+        $('anms').replaceChildren(`Đã chuyển ${f.name} sang file chờ lưu của tài liệu. `, hoan);
+      } catch (e) { $('anms').textContent = e.message; }
+    };
     th.append(tl); el.append(lb, th); return el;
   }));
   tomTatAnh();
