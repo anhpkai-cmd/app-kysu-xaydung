@@ -24,10 +24,12 @@ function hien() {
     const s = document.createElement('small'); s.textContent = [d.tt, d.ngay].filter(Boolean).join(' · ');
     const g = document.createElement('button'); g.textContent = 'Gửi'; g.setAttribute('aria-label', 'Gửi ' + d.ma);
     g.onclick = () => gui(d);
+    const x = document.createElement('button'); x.className = 'phu'; x.textContent = 'Xem'; x.setAttribute('aria-label', 'Xem ' + d.ma);
+    x.onclick = () => xem(d);
     const m = document.createElement('button'); m.className = 'phu'; m.textContent = 'Bản mới'; m.setAttribute('aria-label', 'Tải bản mới của ' + d.ma);
     m.onclick = () => chonFile(d);
     const th = document.createElement('div'); th.append(b, t, s);
-    const nut = document.createElement('div'); nut.className = 'nut'; nut.append(g, m);
+    const nut = document.createElement('div'); nut.className = 'nut'; nut.append(x, g, m);
     el.append(th, nut);
     return el;
   }));
@@ -97,11 +99,28 @@ function hienNhan() {
 }
 
 // Gửi link bản hiện hành: tìm file Drive có tên bắt đầu bằng "<mã>-<rev>", mở quyền "ai có link đều xem được" (sau khi hỏi), rồi mở bảng chia sẻ của máy.
+// File hiện hành của tài liệu (cùng mã, đúng Rev trong sổ). Cùng mã cùng rev có thể có .xlsx và .pdf: ưu tiên PDF.
+async function tim(d) {
+  const found = (await ls(`name contains '${q(d.ma + '-' + d.rev)}'`)).filter(f => f.name.startsWith(`${d.ma}-${d.rev}`));
+  if (!found.length) say(`Chưa thấy file ${d.ma}-${d.rev} trên Drive (sổ ghi ${d.rev} nhưng file chưa được đổi tên chuẩn?).`);
+  return found.find(x => x.name.toLowerCase().endsWith('.pdf')) || found[0];
+}
+
+// Xem trực tiếp: mở bản xem của Drive. Mở tab trước (trình duyệt chỉ cho khi vừa bấm), tìm file xong mới chuyển tab tới link.
+async function xem(d) {
+  const w = window.open('about:blank', '_blank');
+  try {
+    const f = await tim(d);
+    if (!f) return w?.close();
+    say();
+    w ? w.location.href = f.webViewLink : location.href = f.webViewLink;
+  } catch (e) { w?.close(); say(e.message); }
+}
+
 async function gui(d) {
   try {
-    const found = (await ls(`name contains '${d.ma}-${d.rev}'`)).filter(f => f.name.startsWith(`${d.ma}-${d.rev}`));
-    if (!found.length) return say(`Chưa thấy file ${d.ma}-${d.rev} trên Drive (sổ ghi ${d.rev} nhưng file chưa được đổi tên chuẩn?).`);
-    const f = found.find(x => x.name.toLowerCase().endsWith('.pdf')) || found[0]; // cùng mã cùng rev có thể có .xlsx và .pdf: gửi đi thì ưu tiên PDF
+    const f = await tim(d);
+    if (!f) return;
     if (!confirm(`Gửi "${f.name}"?\nBất kỳ ai có link đều xem được file này.`)) return;
     await api(`https://www.googleapis.com/drive/v3/files/${f.id}/permissions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' }) });
     say();
