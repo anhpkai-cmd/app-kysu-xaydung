@@ -1,7 +1,10 @@
 import { CLIENT_ID, ROOT_NAME } from './config.js';
 import { NK, serial } from './nhatky.js';
+import { soat, docChu, lap, dsMau } from './vanban.js';
 import { ngayChup, tenAnh, sttTiep } from './anh.js';
+import { url as urlTT, parse as parseTT, viTri, nhatKy, tomTat, canhBao, NGAY } from './thoitiet.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
+import { moVatTu, luuVe, themVatTu, demVatTu } from './vattu.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
 const $ = id => document.getElementById(id);
@@ -11,7 +14,7 @@ let token, docs = [], head = [], soId, nhan = [], viec = [], viecId; // nhan: fi
 const api = async (url, opt = {}) => {
   const r = await fetch(url, { ...opt, headers: { Authorization: 'Bearer ' + token, ...opt.headers } });
   if (!r.ok) throw new Error(r.status === 401 ? 'Phiên đăng nhập hết hạn, bấm Đăng nhập lại.' : r.status === 403 ? 'Google không cho phép (không đủ quyền với file này).' : 'Lỗi Google ' + r.status);
-  return r.status === 204 ? null : r.json();
+  return r.status === 204 ? null : opt.raw ? r.text() : r.json();
 };
 const ls = async (q, cot = 'id,name,mimeType,webViewLink') => (await api(`https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=files(${cot})&q=` + encodeURIComponent(q + ' and trashed=false'))).files;
 const say = t => $('msg').textContent = t || '';
@@ -31,8 +34,10 @@ function hien() {
     x.onclick = () => xem(d);
     const m = document.createElement('button'); m.className = 'phu'; m.textContent = 'Bản mới'; m.setAttribute('aria-label', 'Tải bản mới của ' + d.ma);
     m.onclick = () => chonFile(d);
+    const tr = document.createElement('button'); tr.className = 'phu'; tr.textContent = 'Bị trả'; tr.setAttribute('aria-label', 'Ghi lý do bị trả ' + d.ma);
+    tr.onclick = () => biTra(d);
     const th = document.createElement('div'); th.append(b, t, s);
-    const nut = document.createElement('div'); nut.className = 'nut'; nut.append(x, g, m);
+    const nut = document.createElement('div'); nut.className = 'nut'; nut.append(x, g, m, tr);
     el.append(th, nut);
     return el;
   }));
@@ -51,6 +56,7 @@ async function sheetCo(dk) {
 }
 const q = s => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'"); // thoát ký tự trong truy vấn Drive
 const json = o => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(o) });
+const g = { api, ls, json, tam: () => thuMuc(gocId, '_TAM') }; // cho vanban.js; _TAM: chỗ để bản tạm khi soát
 
 // Đi theo đường dẫn "02_BANVE/KC_KETCAU/HIENHANH" từ thư mục công trình, thiếu thư mục nào thì tạo.
 async function thuMuc(id, duong) {
@@ -66,6 +72,11 @@ function chonFile(d) {
   const o = $('chon'); o.onchange = () => { const f = o.files[0]; o.value = ''; if (f) tai(d, f); }; o.click();
 }
 
+// Tải một file lên thư mục Drive (dùng cho Bản mới và ảnh phiếu giao nhận vật tư).
+const taiLen = (ten, dir, file, b = 'ranh' + Date.now()) => api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+  method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b },
+  body: new Blob([`--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({ name: ten, parents: [dir] })}\r\n--${b}\r\nContent-Type: ${file.type || 'application/octet-stream'}\r\n\r\n`, file, `\r\n--${b}--`]),
+});
 // Bản mới của một tài liệu: tải lên thư mục HIENHANH với tên chuẩn, chuyển bản cũ sang LUUTRU (không xóa gì), ghi Rev vào sổ.
 async function tai(d, file) {
   let buoc = 'chuẩn bị';
@@ -80,12 +91,8 @@ async function tai(d, file) {
     if (!confirm(`Lưu "${file.name}" thành:\n${ten}\nvào ${d.dir}.` + (cu.length ? `\n\nChuyển sang LUUTRU (không xóa): ${cu.map(f => f.name).join(', ')}` : ''))) return;
     say('Đang tải lên...'); buoc = 'lưu file';
     // ponytail: tải một lần (multipart), ổn đến vài chục MB; file lớn hơn cần tải theo đợt (resumable).
-    const b = 'ranh' + Date.now();
     // file đã nằm trên Drive (hộp 00_INBOX): chỉ đổi tên và chuyển thư mục, không tải lại. File từ máy/Zalo: tải lên.
-    const moi = file.cha ? await api(`https://www.googleapis.com/drive/v3/files/${file.id}?addParents=${dir}&removeParents=${file.cha}&fields=id`, { ...json({ name: ten }), method: 'PATCH' }) : await api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-      method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b },
-      body: new Blob([`--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({ name: ten, parents: [dir] })}\r\n--${b}\r\nContent-Type: ${file.type || 'application/octet-stream'}\r\n\r\n`, file, `\r\n--${b}--`]),
-    });
+    const moi = file.cha ? await api(`https://www.googleapis.com/drive/v3/files/${file.id}?addParents=${dir}&removeParents=${file.cha}&fields=id`, { ...json({ name: ten }), method: 'PATCH' }) : await taiLen(ten, dir, file);
     buoc = 'chuyển bản cũ sang LUUTRU (file mới đã nằm trong HIENHANH)';
     for (const f of cu) if (f.id !== moi.id) await api(`https://www.googleapis.com/drive/v3/files/${f.id}?addParents=${luu}&removeParents=${dir}&fields=id`, { method: 'PATCH' });
     buoc = 'ghi Rev vào sổ (file đã lưu xong)';
@@ -152,7 +159,7 @@ async function taiViec() {
   const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dong(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
   $('dsv').replaceChildren(...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen), ...muc('Sau đó', nhom.sau), ...muc('Chưa có hạn', nhom.khongHan));
   if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên bên dưới.';
-  veHan();
+  veHan(); veTT();
 }
 
 // Giấy tờ có ngày hết hiệu lực (cột "Hạn hiệu lực" trong sổ đăng ký) còn ≤ 30 ngày, đã quá hạn, hoặc ngày không đọc được; gom từ mọi công trình.
@@ -186,10 +193,8 @@ function veHan() {
   veSot();
 }
 
-async function themViec() {
-  const ten = $('vten').value.trim(), ct = $('vct').value, han = $('vhan').value;
-  if (!ten) return say('Gõ tên việc trước.');
-  try {
+// Thêm một việc (kèm nhắc Lịch nếu có hạn) rồi tải lại danh sách; trả về lời báo khi chưa tạo được nhắc Lịch. Mục Vật tư cũng gọi hàm này.
+async function taoViec(ten, ct, han) {
     let lich = '', ghi = '';
     if (han) try { // ponytail: múi giờ cố định Việt Nam; sửa hạn tay trong Trang tính không tự cập nhật Lịch
       const tz = 'Asia/Ho_Chi_Minh';
@@ -197,8 +202,15 @@ async function themViec() {
         reminders: { useDefault: false, overrides: [0, 1440, 4320].map(minutes => ({ method: 'popup', minutes })) } }))).id; // nhắc lúc 8h sáng ngày hạn, 1 ngày và 3 ngày trước
     } catch (e) { ghi = 'Chưa tạo được nhắc trên Google Lịch: ' + e.message; }
     await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [[ten, ct, han, 'Mở', ghi, lich]] }));
+    await taiViec(); return ghi;
+}
+async function themViec() {
+  const ten = $('vten').value.trim(), ct = $('vct').value, han = $('vhan').value;
+  if (!ten) return say('Gõ tên việc trước.');
+  try {
+    const ghi = await taoViec(ten, ct, han);
     $('vten').value = ''; $('vhan').value = '';
-    await taiViec(); say(ghi || 'Đã thêm việc.');
+    say(ghi || 'Đã thêm việc.');
   } catch (e) { say(e.message); }
 }
 
@@ -217,29 +229,63 @@ async function xong(t) {
 async function tim(d) {
   const found = (await ls(`name contains '${q(d.ma + '-' + d.rev)}'`)).filter(f => f.name.startsWith(`${d.ma}-${d.rev}`));
   if (!found.length) say(`Chưa thấy file ${d.ma}-${d.rev} trên Drive (sổ ghi ${d.rev} nhưng file chưa được đổi tên chuẩn?).`);
-  return found.find(x => x.name.toLowerCase().endsWith('.pdf')) || found[0];
+  return found.sort((x, y) => y.name.toLowerCase().endsWith('.pdf') - x.name.toLowerCase().endsWith('.pdf')); // PDF lên đầu
 }
 
 // Xem trực tiếp: mở bản xem của Drive. Mở tab trước (trình duyệt chỉ cho khi vừa bấm), tìm file xong mới chuyển tab tới link.
-async function xem(d) {
+// Mở link cần chờ Drive trả về (xem file, mở thư mục, văn bản vừa lập): mở tab ngay lúc bấm, có link thì chuyển tab tới.
+async function moTab(lay, bao = say) {
   const w = window.open('about:blank', '_blank');
   try {
-    const f = await tim(d);
-    if (!f) return w?.close();
-    say();
-    w ? w.location.href = f.webViewLink : location.href = f.webViewLink;
-  } catch (e) { w?.close(); say(e.message); }
+    const u = await lay();
+    if (!u) return w?.close();
+    w ? w.location.href = u : location.href = u;
+  } catch (e) { w?.close(); bao(e.message); }
 }
+const xem = d => moTab(async () => { const [f] = await tim(d); if (f) say(); return f?.webViewLink; });
+
+// Lý do chủ đầu tư trả hồ sơ: ghi vào NHATKY_GUINHAN (Nhận, "Bị trả: ..."); lần Gửi sau app nhắc lại các lý do đã gặp của công trình.
+const TRA = 'Bị trả: ';
+const guiNhan = (so, dong) => api(`https://sheets.googleapis.com/v4/spreadsheets/${so}/values/NHATKY_GUINHAN:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [dong] }));
+async function biTra(d) {
+  const ly = (prompt(`Chủ đầu tư/TVGS trả ${d.ma} (${d.rev}) vì lý do gì?\nVí dụ: Giá trị hợp đồng không khớp QĐ, thiếu chữ ký TVGS`) || '').trim();
+  if (!ly) return;
+  try { await guiNhan(soId, [new Date().toLocaleDateString('en-GB'), d.ma, d.rev, 'Nhận', 'Chủ đầu tư', '', TRA + ly, '']); say(`Đã ghi. Lần gửi sau app sẽ nhắc: ${ly}`); }
+  catch (e) { say('Chưa ghi được vào NHATKY_GUINHAN: ' + e.message); }
+}
+// ponytail: đọc cả trang mỗi lần Gửi; sổ vài nghìn dòng vẫn nhanh
+const lyDoTra = async so => [...new Set(((await api(`https://sheets.googleapis.com/v4/spreadsheets/${so}/values/NHATKY_GUINHAN!G:G`)).values || []).map(r => r[0] || '').filter(x => x.startsWith(TRA)).map(x => x.slice(TRA.length)))].slice(-5);
 
 async function gui(d) {
   try {
-    const f = await tim(d);
+    const ds = await tim(d), [f] = ds, so = soId;
     if (!f) return;
-    if (!confirm(`Gửi "${f.name}"?\nBất kỳ ai có link đều xem được file này.`)) return;
+    let soatXong = '\n\nChưa soát: file không phải văn bản (Word, Excel, PDF, Google Docs).', canh = []; // soát trước khi gửi: lỗi soát không chặn việc gửi, nhưng phải báo
+    const bqKhoa = 'bq:' + d.ma, bq = (() => { try { return JSON.parse(localStorage.getItem(bqKhoa)) || []; } catch { return []; } })(); // cảnh báo anh đã xác nhận "đúng rồi" cho tài liệu này
+    try {
+      say('Đang soát văn bản với thông tin công trình...');
+      const van = await docChu(g, ds), tt = ttTin();
+      if (van != null) {
+        const kq = soat(van, tt), lech = kq.lech.filter(x => !bq.includes(x)), thieu = kq.thieu.filter(x => !bq.includes(x)); canh = [...lech, ...thieu];
+        const chuaTT = tt.length ? '' : '\n\nChưa so được với thông tin công trình: trang Thông tin chưa có mục nào.';
+        soatXong = !/\p{L}{3}/u.test(van) ? '\n\nKhông đọc được chữ trong file (bản scan mờ?), chưa soát được.' : !lech.length && !thieu.length ? chuaTT || '\n\nĐã soát: khớp thông tin công trình.'
+          : chuaTT + (lech.length ? '\n\n⚠ CÓ THỂ SAI:\n' + lech.join('\n') : '') + (thieu.length ? '\n\nKhông thấy trong văn bản (bỏ qua nếu văn bản không cần):\n' + thieu.join('\n') : '')
+            + '\n\nBấm OK nghĩa là các dòng trên đúng rồi, lần sau tài liệu này không nhắc lại.';
+      }
+    } catch (e) { soatXong = `\n\nChưa soát được: ${e.message}`; }
+    const tra = await lyDoTra(so).catch(() => []);
+    say();
+    if (!confirm(`Gửi "${f.name}"?\nBất kỳ ai có link đều xem được file này.${soatXong}${tra.length ? '\n\nNhớ kiểm lại, hồ sơ công trình này từng bị trả vì:\n' + tra.map(x => '• ' + x).join('\n') : ''}`)) return;
+    if (canh.length) try { localStorage.setItem(bqKhoa, JSON.stringify([...bq, ...canh])); } catch {}
     await api(`https://www.googleapis.com/drive/v3/files/${f.id}/permissions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' }) });
     say();
-    if (navigator.share) await navigator.share({ title: f.name, url: f.webViewLink });
-    else { await navigator.clipboard.writeText(f.webViewLink); say('Đã chép link ' + f.name); }
+    const ten = f.name.replace(/_NHAP(?=\.\w+$|$)/, ''); // gửi đi thì không còn là bản nháp (luồng 1: bỏ _NHAP khi gửi)
+    if (ten !== f.name) await api(`https://www.googleapis.com/drive/v3/files/${f.id}?fields=id`, { ...json({ name: ten }), method: 'PATCH' });
+    if (navigator.share) await navigator.share({ title: ten, url: f.webViewLink });
+    else { await navigator.clipboard.writeText(f.webViewLink); say('Đã chép link ' + ten); }
+    try { // sổ gửi nhận: trả lời "đã gửi bản nào chưa"; người nhận chọn trong bảng chia sẻ nên app không biết, để trống
+      await guiNhan(so, [new Date().toLocaleDateString('en-GB'), d.ma, d.rev, 'Gửi', '', navigator.share ? 'Chia sẻ link' : 'Chép link', ten, '']);
+    } catch (e) { say(`Đã gửi, nhưng chưa ghi được vào sổ NHATKY_GUINHAN: ${e.message}`); }
   } catch (e) { if (e.name !== 'AbortError') say(e.message); }
 }
 
@@ -277,8 +323,8 @@ async function moNhatKy() {
       return [l, o];
     }));
     $('nkd').value = homNay(); $('nkmsg').textContent = ''; $('nkl').textContent = 'Lưu nhật ký vào ' + $('ct').selectedOptions[0].text;
-    try { const n = JSON.parse(localStorage.getItem(nkKey())); if (n) { $('nkd').value = n.d; n.f.forEach((v, i) => $('nk' + i).value = v); nkVc = n.vc; $('nkmsg').textContent = 'Đã khôi phục phần nhật ký đang nhập dở.'; } } catch {}
-    $('nkf').hidden = false; hienVc();
+    try { const n = JSON.parse(localStorage.getItem(nkKey())); if (n) { $('nkd').value = n.d; n.f.forEach((v, i) => $('nk' + i).value = v); $('nk0').dataset.sua = 1; nkVc = n.vc; $('nkmsg').textContent = 'Đã khôi phục phần nhật ký đang nhập dở.'; } } catch {}
+    $('nkf').hidden = false; hienVc(); dienNk();
   } catch (e) { $('nkmsg').textContent = e.message; }
 }
 function hienVc() {
@@ -310,22 +356,23 @@ async function luuNhatKy() {
 
 // Thông tin công trình: trang THONGTIN trong _SODANGKY của công trình (Nhóm = Liên hệ hoặc Thông tin). Sửa, xóa dòng thì làm trực tiếp trong Trang tính.
 const TT = ['Nhóm', 'Tên', 'Chi tiết', 'Điện thoại'], ttMs = t => $('ttms').textContent = t || '';
-let ttSo, ttCo;
+let ttSo, ttCo, ttDong = [], gocId; // ttDong: các dòng THONGTIN của công trình đang chọn (dùng để soát văn bản)
 async function taiTT() {
-  ttMs(); ttSo = null; $('ttds').replaceChildren();
+  ttMs(); ttSo = null; ttDong = []; $('ttds').replaceChildren();
   try {
     const so = await sheetCo(`'${$('ct').value}' in parents and name contains '_SODANGKY'`);
     if (!so) return ttMs('Công trình này chưa có _SODANGKY.');
     ttCo = (await api(`https://sheets.googleapis.com/v4/spreadsheets/${so.id}?fields=sheets.properties.title`)).sheets.some(s => s.properties.title === 'THONGTIN');
     const v = ttCo ? (await api(`https://sheets.googleapis.com/v4/spreadsheets/${so.id}/values/THONGTIN`)).values : []; // đọc thì không ghi: trang chỉ được tạo khi bấm Thêm lần đầu
     ttSo = so.id;
-    const dong = (v || []).slice(1).filter(r => r[1]);
+    const dong = ttDong = (v || []).slice(1).filter(r => r[1]);
     $('ttds').replaceChildren(...['Liên hệ', 'Thông tin'].flatMap(nhom => {
       const ds = dong.filter(r => (r[0] || 'Thông tin') === nhom);
       return ds.length ? [Object.assign(document.createElement('h3'), { textContent: nhom }), ...ds.map(([, ten, ct = '', dt = '']) => {
         const el = document.createElement('div'); el.className = 'doc';
         const th = document.createElement('div'), t = document.createElement('div'), s = document.createElement('small');
         t.textContent = ten; s.textContent = [ct, dt].filter(Boolean).join(' · '); th.append(t, s); el.append(th);
+        if (/^https:\/\//.test(ct)) el.append(Object.assign(document.createElement('a'), { className: 'nutlk', textContent: 'Mở', href: ct, target: '_blank', rel: 'noopener', ariaLabel: 'Mở ' + ten })); // ví dụ sổ NotebookLM của công trình
         const sdt = (dt.match(/\+?\d[\d .\-]{7,}\d/)?.[0] ?? '').replace(/[^\d+]/g, ''); // lấy số đầu tiên nếu ô ghi nhiều số
         if (sdt.length >= 6) { // chỉ giữ số và dấu +, nên đưa vào địa chỉ gọi/Zalo được
           const nut = document.createElement('div'); nut.className = 'nut';
@@ -356,6 +403,34 @@ async function themTT() {
     await taiTT(); ttMs('Đã thêm.');
   } catch (e) { ttMs(e.message); }
 }
+
+// Văn bản gửi đi (hợp đồng, báo giá, biên bản): mẫu chung trong CONGTRINH/_CHUNG/MAUBIEU_CONGTY, chỗ cần điền ghi {{Tên mục}} như cột Tên của mục Thông tin.
+// Văn bản lập ra nằm ở 07_VANBAN/DI của công trình và được ghi vào sổ đăng ký (Nháp, R00), nên Xem, Gửi (có soát), Bản mới dùng như mọi tài liệu khác.
+const ttTin = () => ttDong.filter(r => (r[0] || 'Thông tin') === 'Thông tin').map(r => [r[1], r[2] ?? '']);
+const MAU = '_CHUNG/MAUBIEU_CONGTY', VB = '07_VANBAN/DI';
+let mau = [];
+async function taiMau() {
+  if (!$('vb').open) return;
+  try {
+    mau = await dsMau(g, await thuMuc(gocId, MAU));
+    $('vbm').replaceChildren(...mau.map((m, i) => new Option(m.name, i)));
+    say(mau.length ? '' : `Chưa có mẫu nào. Bỏ mẫu (Word, Excel hoặc Google Docs) vào ${ROOT_NAME}/${MAU} trên Drive; chỗ cần điền ghi {{Tên mục}}, ví dụ {{Giá trị hợp đồng}}, {{Ngày}}.`);
+  } catch (e) { say(e.message); }
+}
+const lapVb = () => moTab(async () => {
+  const m = mau[$('vbm').value], ten = $('vbt').value.trim() || m?.name.replace(/\.\w+$/, '');
+  if (!m || !soId) return void say(!m ? 'Chưa có mẫu để chọn.' : 'Công trình này chưa có sổ đăng ký _SODANGKY.');
+  const dau = `${$('ct').selectedOptions[0].text.split('_')[0]}-${$('vbloai').value}-DI-${homNay().replaceAll('-', '')}-`; // luồng 1: văn bản đi dùng ngày thay số hiệu
+  // ponytail: số NN đếm theo sổ, hai máy lập cùng lúc có thể trùng số (hiện chỉ một người dùng)
+  const ma = dau + String(docs.filter(d => d.ma.startsWith(dau)).length + 1).padStart(2, '0'), so = soId, ngay = new Date().toLocaleDateString('en-GB');
+  say('Đang lập văn bản...');
+  const f = await lap(g, m, tenChuan(ma, 'R00', ten, '') + '_NHAP', await thuMuc($('ct').value, VB), ttTin()); // R00 = lần phát hành đầu, _NHAP bỏ khi Gửi
+  const o = { 'Mã tài liệu': ma, 'Tên': ten, 'Rev hiện hành': 'R00', 'Ngày rev': ngay, 'Trạng thái': 'Nháp', 'Thư mục chuẩn': VB };
+  await api(`https://sheets.googleapis.com/v4/spreadsheets/${so}/values/DANHMUC:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [head.map(h => o[h] ?? '')] }));
+  $('vbt').value = ''; await chonCT();
+  say(f.thieu.length ? `Đã lập ${ma}. Còn chỗ chưa điền vì mục Thông tin chưa có: ${f.thieu.join(', ')}.` : `Đã lập ${ma}. Sửa xong thì bấm Gửi, app sẽ soát lại trước khi gửi.`);
+  return f.webViewLink;
+});
 
 // Ảnh hiện trường: ảnh trong 00_INBOX (tải bằng app Google Drive) xếp vào 09_HINHANH/yyyy-mm/yyyy-mm-dd và đổi tên chuẩn. Chỉ di chuyển và đổi tên, không xóa, không nén.
 // Ảnh nào chỉ đoán được ngày thì phải được xác nhận ngày; chưa có ngày thì ảnh ở lại INBOX, không xếp.
@@ -445,6 +520,7 @@ async function sotQuet(cts) { // quét mọi công trình, chỉ đọc (không 
     try { // chưa có Google Sheet nhật ký thì để null: không biết thì không báo ổn
       const [f] = await ls(`name contains '${q(r.ma)}-NK-NHATKY' and mimeType='${SHEET}'`, 'id'); // file nằm sâu (03_CHATLUONG/NK_NHATKY_TC), tìm theo tên như moNhatKy
       if (f) r.nk = ((await nkApi(f.id, 'values/NGAY!A:A?valueRenderOption=UNFORMATTED_VALUE')).values || []).some(v => v[0] === ngay);
+      if (f) r.vt = await demVatTu(api, f.id).catch(() => null); // null: chưa kiểm tra được vật tư
     } catch {}
     try {
       const [h] = await ls(`'${c.id}' in parents and mimeType='${FOLDER}' and name='00_INBOX'`, 'id');
@@ -457,11 +533,14 @@ async function sotQuet(cts) { // quét mọi công trình, chỉ đọc (không 
 function veSot() {
   const hom = homNay(), nhom = chia(viec, hom), han = hanDs.filter(d => isNaN(d.n) || d.n <= 7);
   const dong = [ // việc quá hạn trước, ảnh sau cùng
+    ...sotCt.filter(c => c.vt?.cam).map(c => [c.vt.cam, x => `${c.ma}: ${x} lô vật tư KHÔNG ĐẠT, cấm dùng`, '#vt', c.id]),
     [nhom.quaHan.length + nhom.sapDen.filter(t => t.n === 0).length, (x => `${x} việc quá hạn hoặc đến hạn hôm nay`), '#viec'],
     [han.length, (x => `${x} giấy tờ sắp hết hạn (trong 7 ngày) hoặc đã quá hạn`), '#han'],
     [hanLoi.length, () => 'Chưa kiểm tra được hạn giấy tờ của: ' + hanLoi.join(', '), '#han'],
     ...sotCt.filter(c => c.nk === false).map(c => [1, () => c.ma + ' chưa ghi nhật ký hôm nay', '#nk', c.id]),
     ...sotCt.filter(c => c.nk === null).map(c => [1, () => 'Chưa kiểm tra được nhật ký ' + c.ma + ' (chưa có Google Sheet nhật ký hoặc mất sóng)', '#nk', c.id]),
+    ...sotCt.filter(c => c.vt?.can).map(c => [c.vt.can, x => `${c.ma}: ${x} lô vật tư chưa xong (CO/CQ, lấy mẫu, nghiệm thu)`, '#vt', c.id]),
+    ...sotCt.filter(c => c.vt === null).map(c => [1, () => 'Chưa kiểm tra được vật tư của ' + c.ma, '#vt', c.id]),
     ...sotCt.filter(c => c.anh === null).map(c => [1, () => 'Chưa kiểm tra được ảnh chờ của ' + c.ma, '#anh', c.id]),
     ...sotCt.filter(c => c.anh > 0).map(c => [c.anh, x => `${c.ma}: ${x} ảnh chờ xếp`, '#anh', c.id]),
   ].filter(([n]) => n);
@@ -486,6 +565,42 @@ async function banTin() { // bật hoặc tắt nhắc 17h thứ 2 đến thứ 
   } catch (e) { $('sotms').textContent = e.message; }
 }
 
+// ---- Thời tiết công trình: vị trí lưu trên máy theo từng công trình (ponytail: chưa đồng bộ giữa máy; muốn dùng chung thì ghi vào THONGTIN) ----
+let tqDs = [];
+const tqKey = () => 'vt:' + $('ct').value, tqMs = t => $('tqms').textContent = t || '';
+function veTT() {
+  const ten = $('ct').selectedOptions[0]?.text, hom = homNay();
+  const cb = canhBao(tqDs, viec.filter(t => !t.ct || t.ct === 'Chung' || t.ct === ten).map(t => ({ ...t, n: conLai(t.han, hom) })));
+  const p = t => Object.assign(document.createElement('p'), { textContent: t });
+  $('tqd').replaceChildren(...tqDs.map((d, i) => p(`${NGAY[i]}: ${tomTat(d)}`)), ...cb.map(t => Object.assign(p('Cảnh báo: ' + t), { className: 'cb' })));
+}
+async function taiTQ() {
+  const ct = $('ct').value; tqDs = []; tqMs(); veTT();
+  let vt; try { vt = localStorage.getItem(tqKey()); } catch {}
+  $('tqv').value = vt || ''; const vi = viTri(vt);
+  if (!vi) return tqMs('Chưa có vị trí công trình. Bấm "Lấy vị trí máy" khi đang ở công trường, hoặc gõ tọa độ.');
+  try {
+    const r = await fetch(urlTT(...vi)), j = await r.json();
+    if (!r.ok) throw new Error(j.reason || r.status);
+    if ($('ct').value !== ct) return;
+    tqDs = parseTT(j);
+  } catch (e) { tqMs('Không lấy được thời tiết: ' + e.message); }
+  veTT(); dienNk();
+}
+function dienNk() { // nhật ký hôm nay: điền sẵn thời tiết theo dự báo, một lần, không đè lên chữ người dùng đã nhập hoặc nháp đã khôi phục
+  const o = $('nk0'), v = tqDs[0] && nhatKy(tqDs[0]);
+  if (!v || !o || $('nkf').hidden || $('nkd').value !== homNay() || o.dataset.sua || o.dataset.tt) return;
+  $('nk0').value = $('nk1').value = v; o.dataset.tt = 1;
+  if (!$('nkmsg').textContent) $('nkmsg').textContent = 'Thời tiết đã điền theo dự báo hôm nay, sửa nếu khác.';
+}
+$('nkc').onchange = e => e.target.dataset.sua = 1;
+$('tql').onclick = () => {
+  const vi = viTri($('tqv').value); if (!vi) return tqMs('Gõ vĩ độ rồi kinh độ, ví dụ 10.77, 106.70.');
+  try { localStorage.setItem(tqKey(), vi.join(', ')); } catch { return tqMs('Máy không cho lưu vị trí.'); }
+  taiTQ();
+};
+$('tqg').onclick = () => navigator.geolocation ? navigator.geolocation.getCurrentPosition(p => { $('tqv').value = `${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`; $('tql').click(); }, () => tqMs('Không lấy được vị trí máy. Hãy cho phép vị trí hoặc gõ tọa độ.')) : tqMs('Máy không hỗ trợ lấy vị trí.');
+
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
 // ponytail: không có máy chủ nên không có refresh token, mỗi giờ phải xin lại một lần.
 const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth2.initTokenClient({
@@ -500,8 +615,9 @@ async function vao(resp) {
   try {
     const [goc] = await ls(`name='${ROOT_NAME}' and mimeType='${FOLDER}'`);
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
+    gocId = goc.id;
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
-    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false;
+    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('tq').hidden = false;
     try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec(); taiHan(cts); sotQuet(cts);
@@ -515,7 +631,8 @@ async function vao(resp) {
 function doiCT() {
   try { localStorage.setItem('ct', $('ct').value); } catch {}
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
-  chonCT(); moNhatKy().then(taiAnh); taiTT();
+  const ct = $('ct').value;
+  chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, sot: sotCap, id: nkId }); }); taiTT(); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
 const khoa = (id, fn, sau) => async () => {
@@ -535,6 +652,9 @@ try { // mở lại app: còn token thì dùng luôn, hết hạn thì thử xin
 } catch {}
 $('ct').onchange = doiCT;
 $('ttt').onclick = khoa('ttt', themTT);
+$('vb').ontoggle = taiMau;
+$('vbl').onclick = khoa('vbl', lapVb);
+$('ttnd').onclick = () => moTab(async () => 'https://drive.google.com/drive/folders/' + await thuMuc(gocId, '_CHUNG/THONGTU_NGHIDINH'), ttMs); // anh tự bỏ thông tư, nghị định vào; dùng chung mọi công trình
 $('nkt').onclick = themVc;
 $('anb').onclick = khoa('anb', xepAnh, tomTatAnh);
 document.onvisibilitychange = () => { if (!document.hidden && sotNgay && sotNgay !== homNay()) location.reload(); }; // mở lại app sang ngày mới thì tải lại
@@ -543,6 +663,8 @@ $('anc').onclick = () => { const tat = anhDs.every(f => f.chon); anhDs.forEach(f
 $('and').onclick = () => { anhDs.forEach(f => { if (f.chon && f.nguon === 'doan' && !f.ngaySua) f.ngaySua = f.ngay; }); veAnh(); };
 $('nkl').onclick = khoa('nkl', luuNhatKy);
 $('nkf').oninput = nkNhap;
+$('vtluu').onclick = khoa('vtluu', luuVe);
+$('vtthem').onclick = khoa('vtthem', themVatTu);
 $('q').oninput = hien;
 $('vthem').onclick = khoa('vthem', themViec);
 docNhan();

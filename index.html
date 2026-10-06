@@ -45,8 +45,11 @@
   .anh input[type=checkbox]{width:28px;min-height:28px;margin:0}
   .anh img{width:88px;height:88px;object-fit:cover;border-radius:6px;background:var(--rule)}
   .anh th,.anh>div{min-width:0}
-  #ttms:empty,#nkmsg:empty,#anms:empty,#sotms:empty{display:none}
+  #ttms:empty,#nkmsg:empty,#anms:empty,#sotms:empty,#tqms:empty,#vtms:empty{display:none}
+  #tqd .cb{font-weight:600;color:var(--accent)}
   #sotds{display:grid;gap:8px}
+  .cot{flex-direction:column;align-items:stretch}
+  .cot .nut{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
   summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
   #msg:empty,#nhan:empty{display:none}
   @media (prefers-reduced-motion:no-preference){button{transition:filter .15s}}
@@ -64,6 +67,15 @@
     <p id="sotms" role="status"></p>
     <p><button id="sotb" class="phu">Nhắc tôi lúc 17h mỗi ngày</button></p>
   </section>
+  <section id="tq" hidden>
+    <h2>Thời tiết công trình</h2>
+    <div id="tqd"></div>
+    <p id="tqms" role="status"></p>
+    <details><summary>Vị trí công trình</summary>
+    <label for="tqv">Tọa độ (vĩ độ, kinh độ)</label><input id="tqv" inputmode="decimal" placeholder="10.77, 106.70">
+    <p><button id="tql" class="phu">Lưu vị trí</button> <button id="tqg" class="phu">Lấy vị trí máy</button></p>
+    </details>
+  </section>
   <section id="viec" hidden>
     <h2>Việc cần làm</h2>
     <div id="dsv"></div>
@@ -76,12 +88,19 @@
   <div id="loc" hidden>
     <h2>Tài liệu</h2>
     <label for="q">Tìm tài liệu</label><input id="q" type="search" placeholder="ví dụ: móng, cọc, KC-005">
+    <details id="vb"><summary>+ Lập văn bản từ mẫu (hợp đồng, báo giá, biên bản)</summary>
+    <label for="vbm">Mẫu</label><select id="vbm"></select>
+    <label for="vbloai">Loại</label><select id="vbloai"><option value="CV">Công văn, báo giá, đề nghị</option><option value="HD">Hợp đồng, phụ lục</option><option value="BB">Biên bản</option><option value="KL">Khối lượng</option><option value="TT">Thanh toán</option><option value="PS">Phát sinh</option><option value="RFI">Yêu cầu làm rõ</option></select>
+    <label for="vbt">Tên văn bản (để trống thì lấy tên mẫu)</label><input id="vbt" placeholder="ví dụ: Báo giá vật tư điện">
+    <p><button id="vbl">Lập văn bản</button></p>
+    </details>
   </div>
   <div id="ds"></div>
   <section id="tt" hidden>
     <h2>Thông tin công trình</h2>
     <p id="ttms" role="status"></p>
     <div id="ttds"></div>
+    <p><button id="ttnd" class="phu">Thông tư, nghị định</button></p>
     <details><summary>+ Thêm liên hệ hoặc thông tin</summary>
     <label for="ttnh">Loại</label><select id="ttnh"><option>Liên hệ</option><option>Thông tin</option></select>
     <label for="ttten">Tên (người liên hệ, hoặc tên mục như Địa chỉ)</label><input id="ttten">
@@ -116,6 +135,30 @@
       <p><button id="nkt" class="phu">Thêm việc vào ngày</button></p>
       <p><button id="nkl">Lưu nhật ký</button></p>
     </div>
+  </section>
+  <section id="vt" hidden>
+    <h2>Vật tư</h2>
+    <p id="vtms" role="status"></p>
+    <div id="vtcan"></div>
+    <details><summary>+ Vật tư về (chụp phiếu giao nhận)</summary>
+    <label for="vtl">Vật tư</label><select id="vtl"></select>
+    <label for="vtk">Khối lượng</label><input id="vtk" type="number" min="0" step="any" inputmode="decimal">
+    <label for="vtn">Nhà cung cấp</label><input id="vtn">
+    <label for="vtc">CO/CQ đi kèm</label><select id="vtc"><option>Chưa</option><option>Có</option><option>Không cần</option></select>
+    <label for="vtlo">Mã lô (để trống nếu là lô mới; về thêm cho lô cũ thì chọn mã lô đó)</label><input id="vtlo" list="vtlos" autocomplete="off"><datalist id="vtlos"></datalist>
+    <label for="vtd">Ngày về</label><input id="vtd" type="date">
+    <label for="vtp">Ảnh phiếu giao nhận (chụp hoặc chọn ảnh, chọn được nhiều ảnh)</label><input id="vtp" type="file" accept="image/*,application/pdf" multiple>
+    <p><button id="vtluu">Lưu lần về</button></p>
+    </details>
+    <h3>Danh mục vật tư</h3>
+    <div id="vtdm"></div>
+    <details><summary>+ Thêm vật tư vào danh mục</summary>
+    <label for="vtten">Tên vật tư</label><input id="vtten" placeholder="ví dụ: Xi măng PCB40">
+    <label for="vtqc">Quy cách, nhãn hiệu</label><input id="vtqc">
+    <label for="vtdv">Đơn vị</label><input id="vtdv" placeholder="ví dụ: tấn, m3, kg">
+    <label for="vtts">Tần suất lấy mẫu (tự ghi theo tiêu chuẩn, ví dụ 50 tấn/1 tổ mẫu)</label><input id="vtts">
+    <p><button id="vtthem">Thêm vật tư</button></p>
+    </details>
   </section>
 </main>
 <input id="chon" type="file" hidden>
