@@ -71,3 +71,14 @@ Nút **Nhắc tôi lúc 17h mỗi ngày** tạo một sự kiện lặp trên Go
 ## Thời tiết công trình
 
 Khung "Thời tiết công trình" lấy dự báo 3 ngày từ Open-Meteo (miễn phí, không cần khóa) theo vị trí của công trình đang chọn. Vị trí: bấm **Lấy vị trí máy** khi đang ở công trường, hoặc gõ tọa độ "vĩ độ, kinh độ"; vị trí lưu trên máy này theo từng công trình. App đọc tên các việc chưa xong có hạn trong 3 ngày tới (của công trình đó hoặc Chung) và cảnh báo: đổ bê tông gặp mưa hoặc từ 35°C; mái, tôn, cẩu, giàn giáo gặp gió giật từ 36 km/h hoặc mưa; sơn, bả gặp độ ẩm từ 85% (cao nhất 7h đến 17h) hoặc mưa; sơn chỉ khớp tên như "Sơn tường ngoài", "Bả matit". Mở Nhật ký ngày của hôm nay thì ô Thời tiết sáng và chiều được điền sẵn theo dự báo (sáng và chiều giống nhau, sửa tay được; không đè lên nháp). `node thoitiet.js` tự kiểm tra.
+
+## Vật tư
+
+Mục "Vật tư" ghi vào file nhật ký `CTxx-NK-NHATKY` của công trình (cùng file với Nhật ký ngày). Cột A..H của trang VATTU giữ nguyên như file gốc; app chỉ thêm cột từ I trở đi.
+- Trang `DMVATTU` (app tự tạo lần đầu bấm Thêm): Vật tư, Quy cách, ĐV, Ngày đệ trình, Ngày duyệt, Tần suất lấy mẫu (tự ghi), Ghi chú.
+- Trang `VATTU`: mỗi lần vật tư về một dòng; thêm cột Phiếu giao nhận, Mã lô, Kết quả TN (bê tông: R7), Kết quả R28, Xử lý. Thí nghiệm và nghiệm thu tính theo **lô**: về thêm cho lô cũ thì chọn lại Mã lô, kết quả ghi lên mọi dòng của lô.
+- **Vật tư về:** vật tư chưa được TVGS duyệt thì app hỏi lại trước khi ghi. CO/CQ chọn Chưa, Có hoặc Không cần (cát, đá mua ngoài bãi). Ảnh phiếu giao nhận lưu vào `05_VATTU_DOITHICONG/PHIEU_GIAONHAN/` tên `CT01-GN-20261006-01_XiMangPcb40.jpg`, tải ảnh trước rồi mới ghi dòng; mất sóng giữa chừng thì bấm lại, ảnh đã tải không tải lại.
+- **Cần xử lý:** mỗi lô chưa xong kèm nút bước tiếp theo. Bê tông: bấm Đã đúc mẫu là thêm việc "Nén mẫu R7", "R28" (theo ngày đổ) vào Việc cần làm. Không đạt: lô ghi "Cấm dùng", thêm việc "Xử lý lô không đạt" hạn hôm nay, đứng đầu khung Còn sót tới khi bấm Đã xử lý xong.
+- **Nghiệm thu** (chỉ mở khi đã duyệt, đủ CO/CQ, mẫu đạt): thêm một dòng mã VATLIEU vào trang `NGHIEMTHU`.
+- Khung **Còn sót** đếm lô cấm dùng và lô chưa xong của mọi công trình.
+- Trước khi ghi, app đọc lại các dòng đó; sheet vừa bị sửa ở nơi khác thì không ghi mà tải lại. Chạy `node vattu.js` để tự kiểm tra.
