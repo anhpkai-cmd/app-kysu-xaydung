@@ -14,14 +14,18 @@ const ls = async q => (await api('https://www.googleapis.com/drive/v3/files?page
 const say = t => $('msg').textContent = t || '';
 
 function hien() {
-  $('ds').replaceChildren(...loc(docs, $('q').value).map(d => {
+  const kq = loc(docs, $('q').value);
+  if (!kq.length && docs.length) return say(`Không có tài liệu nào khớp “${$('q').value}”. Thử từ khác, ví dụ tên bộ môn (KC, DN).`), $('ds').replaceChildren();
+  say();
+  $('ds').replaceChildren(...kq.map(d => {
     const el = document.createElement('div'); el.className = 'doc';
     const b = document.createElement('b'); b.textContent = `${d.ma} · ${d.rev}`;
     const t = document.createElement('div'); t.textContent = d.ten;
     const s = document.createElement('small'); s.textContent = [d.tt, d.ngay].filter(Boolean).join(' · ');
-    const g = document.createElement('button'); g.textContent = 'Gửi';
+    const g = document.createElement('button'); g.textContent = 'Gửi'; g.setAttribute('aria-label', 'Gửi ' + d.ma);
     g.onclick = () => gui(d);
-    el.append(b, t, s, document.createElement('br'), g);
+    const th = document.createElement('div'); th.append(b, t, s);
+    el.append(th, g);
     return el;
   }));
 }
@@ -44,7 +48,7 @@ async function chonCT() {
     const [so] = await ls(`'${$('ct').value}' in parents and mimeType='${SHEET}' and name contains '_SODANGKY'`);
     if (!so) { docs = []; hien(); return say('Công trình này chưa có Google Sheet _SODANGKY (mở file Excel trên Drive → Lưu thành Google Trang tính).'); }
     const v = await api(`https://sheets.googleapis.com/v4/spreadsheets/${so.id}/values/DANHMUC`);
-    docs = parse(v.values); hien(); say();
+    docs = parse(v.values); hien(); if (!docs.length) say('Sổ đăng ký đang trống, chưa có tài liệu nào.');
   } catch (e) { say(e.message); }
 }
 
@@ -55,7 +59,7 @@ async function vao(resp) {
     const [goc] = await ls(`name='${ROOT_NAME}' and mimeType='${FOLDER}'`);
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
-    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('ct').hidden = $('q').hidden = false;
+    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false;
     chonCT();
   } catch (e) { say(e.message); }
 }
