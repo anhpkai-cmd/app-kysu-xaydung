@@ -50,6 +50,7 @@
   #sotds{display:grid;gap:8px}
   .cot{flex-direction:column;align-items:stretch}
   .cot .nut{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+  #hopt{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:12px var(--gap);margin:8px 0}
   summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
   #msg:empty,#nhan:empty{display:none}
   @media (prefers-reduced-motion:no-preference){button{transition:filter .15s}}
@@ -102,6 +103,8 @@
     <p id="ttms" role="status"></p>
     <div id="ttds"></div>
     <p><button id="ttnd" class="phu">Thông tư, nghị định</button></p>
+    <p><button id="hop" class="phu">Chuẩn bị họp chủ đầu tư</button></p>
+    <div id="hopkq" hidden><pre id="hopt"></pre><p><button id="hopg">Gửi bản tin họp (Zalo...)</button></p></div>
     <details><summary>+ Thêm liên hệ hoặc thông tin</summary>
     <label for="ttnh">Loại</label><select id="ttnh"><option>Liên hệ</option><option>Thông tin</option></select>
     <label for="ttten">Tên (người liên hệ, hoặc tên mục như Địa chỉ)</label><input id="ttten">

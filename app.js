@@ -1,6 +1,7 @@
 import { CLIENT_ID, ROOT_NAME } from './config.js';
 import { NK, serial } from './nhatky.js';
 import { soat, docChu, lap, dsMau } from './vanban.js';
+import { banHop } from './hop.js';
 import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { url as urlTT, parse as parseTT, viTri, nhatKy, tomTat, canhBao, NGAY } from './thoitiet.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
@@ -614,6 +615,21 @@ $('tql').onclick = () => {
 };
 $('tqg').onclick = () => navigator.geolocation ? navigator.geolocation.getCurrentPosition(p => { $('tqv').value = `${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`; $('tql').click(); }, () => tqMs('Không lấy được vị trí máy. Hãy cho phép vị trí hoặc gõ tọa độ.')) : tqMs('Máy không hỗ trợ lấy vị trí.');
 
+// Họp chủ đầu tư: đọc nhật ký, việc, sổ đăng ký, sổ gửi nhận, 6 ảnh mới nhất của công trình đang chọn, gom bằng hop.js. Chỉ đọc, không ghi gì.
+async function hop() {
+  const ten = $('ct').selectedOptions[0].text, ma = ten.split('_')[0], doc = (id, p) => id ? api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${p}`).then(v => v.values || []).catch(() => null) : null;
+  const [ngay, kl, gui, anh] = await Promise.all([doc(nkId, 'NGAY!A:L?valueRenderOption=UNFORMATTED_VALUE'), doc(nkId, 'KHOILUONG!A:E?valueRenderOption=UNFORMATTED_VALUE'), doc(soId, 'NHATKY_GUINHAN!A:H'),
+    api('https://www.googleapis.com/drive/v3/files?pageSize=6&orderBy=createdTime desc&fields=files(name,webViewLink)&q=' + encodeURIComponent(`name contains '${q(ma)}-HA-' and mimeType contains 'image/' and trashed=false`)).then(r => r.files).catch(() => [])]);
+  if ($('ct').selectedOptions[0].text !== ten) return; // đổi công trình giữa chừng
+  $('hopt').textContent = banHop({ ten, hom: homNay(), ngay, kl, dm: ngay && kl ? nkDm : null, viec: viec.filter(v => v.ct === ten), docs, gui, anh });
+  $('hopkq').hidden = false;
+}
+async function guiHop() {
+  const t = $('hopt').textContent;
+  try { if (navigator.share) await navigator.share({ text: t }); else { await navigator.clipboard.writeText(t); ttMs('Đã chép bản tin họp, dán vào Zalo.'); } }
+  catch (e) { if (e.name !== 'AbortError') ttMs(e.message); }
+}
+
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
 // ponytail: không có máy chủ nên không có refresh token, mỗi giờ phải xin lại một lần.
 const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth2.initTokenClient({
@@ -643,6 +659,7 @@ async function vao(resp) {
 // Một ô chọn công trình chung cho cả trang: tài liệu, thông tin, nhật ký cùng theo, nhớ lần chọn cuối.
 function doiCT() {
   try { localStorage.setItem('ct', $('ct').value); } catch {}
+  $('hopkq').hidden = true; // bản tin họp của công trình cũ
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
   const ct = $('ct').value;
   chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), sot: sotCap, id: nkId }); }); taiTT(); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
@@ -666,6 +683,8 @@ try { // mở lại app: còn token thì dùng luôn, hết hạn thì thử xin
 $('ct').onchange = doiCT;
 $('ttt').onclick = khoa('ttt', themTT);
 $('vb').ontoggle = taiMau;
+$('hop').onclick = async () => { const b = $('hop'); if (b.disabled) return; b.disabled = true; ttMs('Đang gom số liệu...'); try { await hop(); ttMs(); } catch (e) { ttMs(e.message); } finally { b.disabled = false; } };
+$('hopg').onclick = guiHop;
 $('vbl').onclick = khoa('vbl', lapVb);
 $('ttnd').onclick = () => moTab(async () => 'https://drive.google.com/drive/folders/' + await thuMuc(gocId, '_CHUNG/THONGTU_NGHIDINH'), ttMs); // anh tự bỏ thông tư, nghị định vào; dùng chung mọi công trình
 $('nkt').onclick = themVc;
