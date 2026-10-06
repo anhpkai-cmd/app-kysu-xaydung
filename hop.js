@@ -7,7 +7,8 @@ const ddmm = n => new Date(Date.UTC(1899, 11, 30) + n * 864e5).toISOString().sli
 const muc = (tieu, ds) => `${tieu}\n` + (ds.length ? ds.map(x => '- ' + x).join('\n') : '- Không có');
 
 // d: { ten, hom (yyyy-mm-dd), ngay, kl, dm (null = chưa đọc được nhật ký), viec, docs, gui }. Ảnh không vào bản tin: CĐT không mở được link.
-export function banHop(d) {
+// tiến độ 7 ngày qua (dùng cả cho bản tin họp và báo cáo giám đốc): các dòng chữ + khoảng ngày
+export function tienDoTuan(d) {
   const den = serial(d.hom), tu = den - 6, trong = r => typeof r[0] === 'number' && r[0] >= tu && r[0] <= den;
   let tienDo = ['Chưa đọc được nhật ký công trình, kiểm tra trực tiếp.'];
   if (d.dm) {
@@ -19,6 +20,11 @@ export function banHop(d) {
       ...Object.entries(tong).filter(([, v]) => v).map(([ma, v]) => `${ma} ${ten[ma]?.[0] ?? ''}: ${+v.toFixed(2)} ${ten[ma]?.[1] ?? ''}`.replace(/\s+/g, ' ').trim()),
       ...ngay.filter(r => r[10]).map(r => `Sự cố ${ddmm(r[0])}: ${r[10]}`)]; // cột K: Sự cố, ATLĐ
   }
+  return { tienDo, tu, den };
+}
+
+export function banHop(d) {
+  const { tienDo, tu, den } = tienDoTuan(d);
   const nhom = chia(d.viec, d.hom), vuong = [...nhom.quaHan, ...nhom.sapDen, ...nhom.sau, ...nhom.khongHan].map(t => isNaN(t.n) ? t.ten : `${t.ten} (${nhan(t.n)})`);
   const cho = d.docs.filter(x => /chờ|trình|đã gửi/i.test(x.tt)).map(x => `${x.ma} ${x.ten} (${x.tt})`);
   const gui = (d.gui || []).filter(r => r[3] === 'Gửi' && serial(String(r[0]).split('/').reverse().join('-')) > den - 30).slice(-5).map(r => `${r[0]} đã gửi ${r[1]} ${r[2]}`); // 5 lần gửi cuối trong 30 ngày
