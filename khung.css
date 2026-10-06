@@ -24,3 +24,16 @@ nav .dot:empty{display:none}
 .luoi small{font-weight:400;color:var(--mute);font-size:13px}
 .luoi [aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 header small{display:block;color:var(--mute);font-size:13px}
+/* Biển xanh: nền cảnh bãi biển nằm sau nội dung, lớp phủ --wash giữ chữ dễ đọc ngoài nắng */
+:root[data-skin="ocean"]{ color-scheme:light; --paper:oklch(97.5% .006 245); --card:oklch(99.5% .003 245); --ink:oklch(21% .03 255);
+  --mute:oklch(42% .03 250); --rule:oklch(89% .012 245); --accent:oklch(42% .09 245); --on-accent:oklch(98% .005 245);
+  --soft:oklch(94% .02 240); --late:oklch(50% .17 22); --late-bg:oklch(96% .025 22); --ok:oklch(50% .09 170); --warn:oklch(68% .17 55);
+  --sky1:oklch(86% .06 225); --sky2:oklch(95% .03 210); --sun:oklch(93% .11 90); --sea1:oklch(70% .1 215); --sea2:oklch(78% .09 195); --foam:oklch(97% .01 210); --sand:oklch(90% .05 80); --palm:oklch(52% .1 150); --trunk:oklch(56% .05 65); --trunk2:oklch(45% .07 120); --ring:oklch(46% .05 60); --wash:oklch(97.5% .006 245 / .62); --paper:oklch(96.5% .02 220); --accent:oklch(45% .11 225); --soft:oklch(92% .04 215); --rule:oklch(86% .03 220); }
+.scene{display:none;position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+:root[data-skin="ocean"] .scene{display:block}
+:root[data-skin="ocean"] body{background:transparent}
+:root[data-skin="ocean"] header,:root[data-skin="ocean"] main{background:var(--wash)}
+main{position:relative;z-index:1}
+:root[data-skin="ocean"] main h2,:root[data-skin="ocean"] main .hint,:root[data-skin="ocean"] header h1,:root[data-skin="ocean"] header small{color:var(--ink);text-shadow:0 0 2px var(--paper),0 0 6px var(--paper),0 0 10px var(--paper)}
+.ic svg{width:24px;height:24px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.luoi .ic{display:flex;margin-bottom:4px}
