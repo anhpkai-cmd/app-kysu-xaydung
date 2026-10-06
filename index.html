@@ -40,7 +40,7 @@
   .phu{background:transparent;color:var(--ink);border:1px solid var(--rule)}
   #nhan,#msg{color:var(--ink);background:var(--card);border-left:3px solid var(--accent);padding:8px 12px;margin:0 0 var(--gap)}
   .nutlk{display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 12px;border-radius:8px;border:1px solid var(--rule);background:var(--card);color:var(--ink);text-decoration:none;font-weight:600}
-  #ttms:empty,#nkmsg:empty{display:none}
+  #ttms:empty,#nkmsg:empty,#vtms:empty{display:none}
   summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
   #msg:empty,#nhan:empty{display:none}
   @media (prefers-reduced-motion:no-preference){button{transition:filter .15s}}
@@ -91,6 +91,28 @@
       <p><button id="nkt" class="phu">Thêm việc vào ngày</button></p>
       <p><button id="nkl">Lưu nhật ký</button></p>
     </div>
+  </section>
+  <section id="vt" hidden>
+    <h2>Vật tư</h2>
+    <p id="vtms" role="status"></p>
+    <div id="vtcan"></div>
+    <details><summary>+ Vật tư về (chụp phiếu giao nhận)</summary>
+    <label for="vtl">Vật tư</label><select id="vtl"></select>
+    <label for="vtk">Khối lượng</label><input id="vtk" type="number" min="0" step="any" inputmode="decimal">
+    <label for="vtn">Nhà cung cấp</label><input id="vtn">
+    <label for="vtc">CO/CQ đi kèm</label><select id="vtc"><option>Chưa</option><option>Có</option></select>
+    <label for="vtd">Ngày về</label><input id="vtd" type="date">
+    <label for="vtp">Ảnh phiếu giao nhận (chụp hoặc chọn ảnh, chọn được nhiều ảnh)</label><input id="vtp" type="file" accept="image/*,application/pdf" multiple>
+    <p><button id="vtluu">Lưu lần về</button></p>
+    </details>
+    <h3>Danh mục vật tư</h3>
+    <div id="vtdm"></div>
+    <details><summary>+ Thêm vật tư vào danh mục</summary>
+    <label for="vtten">Tên vật tư</label><input id="vtten" placeholder="ví dụ: Xi măng PCB40">
+    <label for="vtqc">Quy cách, nhãn hiệu</label><input id="vtqc">
+    <label for="vtdv">Đơn vị</label><input id="vtdv" placeholder="ví dụ: tấn, m3, kg">
+    <p><button id="vtthem">Thêm vật tư</button></p>
+    </details>
   </section>
 </main>
 <input id="chon" type="file" hidden>

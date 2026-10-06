@@ -43,3 +43,12 @@ Thêm cột **Hạn hiệu lực** vào trang DANHMUC của `_SODANGKY` (cột k
 ## Thông tin công trình
 
 Mục "Thông tin công trình" đọc trang `THONGTIN` trong `_SODANGKY` (app tự tạo trang này lần đầu). Mỗi dòng: Nhóm (Liên hệ hoặc Thông tin), Tên, Chi tiết, Điện thoại. Liên hệ có số điện thoại thì có nút Gọi và Zalo. Thêm dòng ngay trong app; sửa hoặc xóa thì làm trực tiếp trong Trang tính. Trang chỉ có một ô "Công trình đang làm" ở đầu, app nhớ lần chọn cuối; tài liệu, thông tin, nhật ký đều theo ô đó. Trang THONGTIN chỉ được tạo khi bấm Thêm lần đầu. Nhật ký đang nhập dở được lưu nháp trên máy theo từng công trình, lưu thành công thì xóa nháp.
+
+## Vật tư
+
+Mục "Vật tư" ghi vào file nhật ký `CTxx-NK-NHATKY` của công trình (cùng file với Nhật ký ngày):
+- Trang `DMVATTU` (app tự tạo lần đầu bấm Thêm vật tư): mỗi vật tư một dòng: Vật tư, Quy cách, ĐV, Ngày đệ trình, Ngày duyệt, Ghi chú. Nút **Đã đệ trình**, **Đã duyệt** hỏi ngày (mặc định hôm nay).
+- Trang `VATTU` (đã có sẵn trong file nhật ký): mỗi lần vật tư về một dòng. App thêm 3 cột cuối: Phiếu giao nhận (link ảnh), Kết quả TN, Ngày nghiệm thu.
+- **Vật tư về:** chọn vật tư, khối lượng, nhà cung cấp, chụp hoặc chọn ảnh phiếu giao nhận. Ảnh lưu vào `05_VATTU_DOITHICONG/PHIEU_GIAONHAN/` tên `CT01-GN-20261006-01_XiMangPcb40.jpg`.
+- **Cần xử lý:** lần về nào chưa xong hiện ở đây kèm nút bước tiếp theo: chưa duyệt, chưa có CO/CQ, chưa lấy mẫu, chờ kết quả, mẫu không đạt (bấm Đã trả lô), chưa nghiệm thu. Nút Đã nghiệm thu chỉ hiện khi các bước trước đã xong.
+- Trước khi ghi, app đọc lại dòng đó; sheet vừa bị sửa ở nơi khác thì không ghi mà tải lại. Chạy `node vattu.js` để tự kiểm tra.

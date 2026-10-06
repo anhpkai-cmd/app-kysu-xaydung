@@ -1,6 +1,7 @@
 import { CLIENT_ID, ROOT_NAME } from './config.js';
 import { NK, serial } from './nhatky.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
+import { moVatTu, luuVe, themVatTu } from './vattu.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
 const $ = id => document.getElementById(id);
@@ -65,6 +66,11 @@ function chonFile(d) {
   const o = $('chon'); o.onchange = () => { const f = o.files[0]; o.value = ''; if (f) tai(d, f); }; o.click();
 }
 
+// Tải một file lên thư mục Drive (dùng cho Bản mới và ảnh phiếu giao nhận vật tư).
+const taiLen = (ten, dir, file, b = 'ranh' + Date.now()) => api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+  method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b },
+  body: new Blob([`--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({ name: ten, parents: [dir] })}\r\n--${b}\r\nContent-Type: ${file.type || 'application/octet-stream'}\r\n\r\n`, file, `\r\n--${b}--`]),
+});
 // Bản mới của một tài liệu: tải lên thư mục HIENHANH với tên chuẩn, chuyển bản cũ sang LUUTRU (không xóa gì), ghi Rev vào sổ.
 async function tai(d, file) {
   let buoc = 'chuẩn bị';
@@ -79,12 +85,8 @@ async function tai(d, file) {
     if (!confirm(`Lưu "${file.name}" thành:\n${ten}\nvào ${d.dir}.` + (cu.length ? `\n\nChuyển sang LUUTRU (không xóa): ${cu.map(f => f.name).join(', ')}` : ''))) return;
     say('Đang tải lên...'); buoc = 'lưu file';
     // ponytail: tải một lần (multipart), ổn đến vài chục MB; file lớn hơn cần tải theo đợt (resumable).
-    const b = 'ranh' + Date.now();
     // file đã nằm trên Drive (hộp 00_INBOX): chỉ đổi tên và chuyển thư mục, không tải lại. File từ máy/Zalo: tải lên.
-    const moi = file.cha ? await api(`https://www.googleapis.com/drive/v3/files/${file.id}?addParents=${dir}&removeParents=${file.cha}&fields=id`, { ...json({ name: ten }), method: 'PATCH' }) : await api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-      method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b },
-      body: new Blob([`--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({ name: ten, parents: [dir] })}\r\n--${b}\r\nContent-Type: ${file.type || 'application/octet-stream'}\r\n\r\n`, file, `\r\n--${b}--`]),
-    });
+    const moi = file.cha ? await api(`https://www.googleapis.com/drive/v3/files/${file.id}?addParents=${dir}&removeParents=${file.cha}&fields=id`, { ...json({ name: ten }), method: 'PATCH' }) : await taiLen(ten, dir, file);
     buoc = 'chuyển bản cũ sang LUUTRU (file mới đã nằm trong HIENHANH)';
     for (const f of cu) if (f.id !== moi.id) await api(`https://www.googleapis.com/drive/v3/files/${f.id}?addParents=${luu}&removeParents=${dir}&fields=id`, { method: 'PATCH' });
     buoc = 'ghi Rev vào sổ (file đã lưu xong)';
@@ -381,7 +383,8 @@ async function vao(resp) {
 function doiCT() {
   try { localStorage.setItem('ct', $('ct').value); } catch {}
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
-  chonCT(); moNhatKy(); taiTT();
+  const ct = $('ct').value;
+  chonCT(); moNhatKy().then(() => $('ct').value === ct && moVatTu({ api, ls, thuMuc, json, taiLen, id: nkId })); taiTT(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
 const khoa = (id, fn) => async () => {
@@ -404,6 +407,8 @@ $('ttt').onclick = khoa('ttt', themTT);
 $('nkt').onclick = themVc;
 $('nkl').onclick = khoa('nkl', luuNhatKy);
 $('nkf').oninput = nkNhap;
+$('vtluu').onclick = khoa('vtluu', luuVe);
+$('vtthem').onclick = khoa('vtthem', themVatTu);
 $('q').oninput = hien;
 $('vthem').onclick = khoa('vthem', themViec);
 docNhan();
