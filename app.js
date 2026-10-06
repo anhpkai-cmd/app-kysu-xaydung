@@ -279,7 +279,8 @@ async function gui(d) {
       await guiNhan(so, [new Date().toLocaleDateString('en-GB'), d.ma, d.rev, 'Gửi', '', navigator.share ? 'Chia sẻ link' : 'Chép link', ten, '']);
     } catch (e) { say(`Đã gửi, nhưng chưa ghi được vào sổ NHATKY_GUINHAN: ${e.message}`); }
     // gửi vội vẫn được, nhưng cảnh báo chỉ thôi nhắc khi anh xác nhận riêng là nó sai (không gộp vào nút Gửi)
-    if (canh.length && confirm(`Các cảnh báo khi soát ${d.ma} có phải báo nhầm không?\n${canh.join('\n')}\n\nOK: báo nhầm, lần sau không nhắc nữa.\nHủy: vẫn nhắc lần sau.`))
+    // câu hỏi đặt sao cho bấm OK theo thói quen là vẫn nhắc; muốn thôi nhắc phải chủ động bấm Hủy
+    if (canh.length && !confirm(`Lần gửi sau ${d.ma} vẫn nhắc các cảnh báo này chứ?\n${canh.join('\n')}\n\nOK: vẫn nhắc (nên chọn nếu chưa sửa).\nHủy: các dòng trên là báo nhầm, khỏi nhắc nữa.`))
       try { localStorage.setItem(bqKhoa, JSON.stringify([...bq, ...canh])); } catch {}
   } catch (e) { if (e.name !== 'AbortError') say(e.message); }
 }
