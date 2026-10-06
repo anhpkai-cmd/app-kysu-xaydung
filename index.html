@@ -33,14 +33,17 @@
   .doc>div{min-width:0;overflow-wrap:anywhere}
   .doc b{display:block;font-size:14px;color:var(--mute);font-weight:600}
   .doc small{color:var(--mute)}
-  #msg{color:var(--ink);background:var(--card);border-left:3px solid var(--accent);padding:8px 12px;margin:0 0 var(--gap)}
-  #msg:empty{display:none}
+  .nut{display:grid;gap:8px}
+  .phu{background:transparent;color:var(--ink);border:1px solid var(--rule)}
+  #nhan,#msg{color:var(--ink);background:var(--card);border-left:3px solid var(--accent);padding:8px 12px;margin:0 0 var(--gap)}
+  #msg:empty,#nhan:empty{display:none}
   @media (prefers-reduced-motion:no-preference){button{transition:filter .15s}}
 </style>
 </head>
 <body>
 <header><h1>Sổ tay kỹ sư</h1><button id="vao">Đăng nhập Google</button></header>
 <main>
+  <p id="nhan" role="status" hidden></p>
   <p id="msg" role="status">Bấm “Đăng nhập Google” để xem sổ đăng ký công trình.</p>
   <div id="loc" hidden>
     <label for="ct">Công trình</label><select id="ct"></select>
@@ -48,6 +51,7 @@
   </div>
   <div id="ds"></div>
 </main>
+<input id="chon" type="file" hidden>
 <script type="module" src="app.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 </body>
