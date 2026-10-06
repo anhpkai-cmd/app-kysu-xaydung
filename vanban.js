@@ -35,8 +35,8 @@ export function soat(van, tt) {
   const thieu = tt.filter(([ten, gt]) => { const s = tien(gt); return !sai.some(b => b.ten === ten) && (s.length ? !s.every(n => co.has(n)) : !v.includes(chu(gt))); }).map(([ten, gt]) => `${ten}: ${gt}`);
   // số bằng số và bằng chữ trong cùng văn bản phải khớp nhau: "423.301.185 đồng (Bằng chữ: Bốn trăm ... đồng)"
   const chuLech = [...String(van).normalize('NFC').toLowerCase().replace(/\s+/g, ' ').matchAll(new RegExp(`(${TIEN.source})[^\\d]{0,60}?bằng chữ\\s*:?\\s*([^\\d()]+?)\\s*đồng`, 'giu'))]
-    .map(([, n, c]) => [+n.replace(/\D/g, ''), c, bangChu(c)]).filter(([n, , m]) => !isNaN(m) && m !== n)
-    .map(([n, c, m]) => `Số ${so(n)} đ nhưng bằng chữ ghi "${c}" (${so(m)} đ)`);
+    .map(([, n, c]) => [+n.replace(/\D/g, ''), c, bangChu(c)]).filter(([n, c, m]) => !/\p{L}/u.test(c) || (!isNaN(m) && m !== n)) // chưa ghi chữ (còn ……) cũng báo
+    .map(([n, c, m]) => `${/\p{L}/u.test(c) ? `Số ${so(n)} đ nhưng bằng chữ ghi "${c}" (${so(m)} đ)` : `Số ${so(n)} đ chưa ghi bằng chữ`}. Đúng là: ${soChu(n)} đồng`);
   return { lech: [...chuLech, ...sai.map(b => `Văn bản ghi ${so(b.sai)} đ, thông tin công trình ghi ${b.ten} là ${so(b.n)} đ`)], thieu };
 }
 // Số thành chữ cho dòng "Bằng chữ: ...". ponytail: đến hàng trăm tỷ (dưới 10^12), đủ cho công trình thường.
@@ -105,14 +105,15 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vanban.js')) { 
   a.equal(bangChu('một tỷ không trăm linh năm triệu chẵn'), 1005000000); a.equal(bangChu('hai mươi mốt nghìn'), 21000); a.ok(isNaN(bangChu('khoảng bốn trăm')));
   a.deepEqual(soat('Giá trị: 423.301.185 đồng (Bằng chữ: Bốn trăm hai mươi ba triệu ba trăm lẻ một nghìn một trăm tám mươi lăm đồng)', tt.slice(0, 1)), { lech: [], thieu: [] });
   a.deepEqual(soat('Giá trị: 423301185 đồng (Bằng chữ: Bốn trăm hai mươi bốn triệu ba trăm lẻ một nghìn một trăm tám mươi lăm đồng)', tt.slice(0, 1)).lech,
-    ['Số 423.301.185 đ nhưng bằng chữ ghi "bốn trăm hai mươi bốn triệu ba trăm lẻ một nghìn một trăm tám mươi lăm" (424.301.185 đ)']);
+    ['Số 423.301.185 đ nhưng bằng chữ ghi "bốn trăm hai mươi bốn triệu ba trăm lẻ một nghìn một trăm tám mươi lăm" (424.301.185 đ). Đúng là: Bốn trăm hai mươi ba triệu ba trăm lẻ một nghìn một trăm tám mươi lăm đồng']);
   a.deepEqual(soat('Ký ngày 24 tháng 9 năm 2026', [['Ngày ký HĐ', '24/09/2026']]).thieu, []); a.deepEqual(soat('Ký 24-9-2026', [['Ngày ký HĐ', '24/09/2026']]).thieu, []);
   a.deepEqual(soat('Ký 25/9/2026', [['Ngày ký HĐ', '24/09/2026']]).thieu, ['Ngày ký HĐ: 24/09/2026']);
   a.equal(soChu(423301185), 'Bốn trăm hai mươi ba triệu ba trăm lẻ một nghìn một trăm tám mươi lăm');
   a.equal(soChu(1005000000), 'Một tỷ không trăm lẻ năm triệu'); a.equal(soChu(21), 'Hai mươi mốt'); a.equal(soChu(15), 'Mười lăm'); a.equal(soChu(0), 'Không');
   for (const n of [1, 10, 101, 110, 1001, 20500, 613406400, 999999999999, 100000000000]) a.equal(bangChu(soChu(n).toLowerCase()), n); // đọc ngược phải ra đúng số
   // báo giá mẫu thật của anh: tổng 613.406.400 nhưng dòng bằng chữ ghi 613.430.400
-  a.equal(soat('TỔNG CỘNG,,,"613,406,400"\n"Bằng chữ: Sáu trăm mười ba triệu, bốn trăm ba mươi nghìn, bốn trăm đồng."', []).lech.length, 1);
+  a.equal(soat('TỔNG CỘNG,,,"613,406,400"\n"Bằng chữ: Sáu trăm mười ba triệu, bốn trăm ba mươi nghìn, bốn trăm đồng."', []).lech[0].split('Đúng là: ')[1], 'Sáu trăm mười ba triệu bốn trăm lẻ sáu nghìn bốn trăm đồng');
+  a.deepEqual(soat('TỔNG,"613,406,400"\n"Bằng chữ: ……… đồng."', []).lech, ['Số 613.406.400 đ chưa ghi bằng chữ. Đúng là: Sáu trăm mười ba triệu bốn trăm lẻ sáu nghìn bốn trăm đồng']); // mẫu báo giá chưa điền
   a.deepEqual(conSot('Kính gửi {{Chủ đầu tư}}, ngày {{Ngày}} {{Chủ đầu tư}} {x}'), ['{{Chủ đầu tư}}', '{{Ngày}}']);
   console.log('ok');
 }
