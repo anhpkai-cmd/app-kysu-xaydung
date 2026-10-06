@@ -1,0 +1,25 @@
+/* Khung giao diện: màu theo bản mẫu đã duyệt (xanh than, lạnh), thanh tab dưới, màn con. Sáng là mặc định; Tối chọn trong Thêm → Cài đặt. */
+:root,:root[data-skin="light"]{ color-scheme:light; --paper:oklch(97.5% .006 245); --card:oklch(99.5% .003 245); --ink:oklch(21% .03 255);
+  --mute:oklch(42% .03 250); --rule:oklch(89% .012 245); --accent:oklch(42% .09 245); --on-accent:oklch(98% .005 245);
+  --soft:oklch(94% .02 240); --late:oklch(50% .17 22); --late-bg:oklch(96% .025 22); --ok:oklch(50% .09 170); --warn:oklch(68% .17 55); --wash:oklch(97.5% .006 245 / .62); --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --gap:18px; }
+:root[data-skin="dark"]{ color-scheme:dark; --paper:oklch(17% .025 255); --card:oklch(21.5% .028 255); --ink:oklch(94% .01 240);
+  --mute:oklch(70% .025 245); --rule:oklch(30% .03 255); --accent:oklch(80% .07 225); --on-accent:oklch(18% .03 255);
+  --soft:oklch(28% .04 245); --late:oklch(74% .13 22); --late-bg:oklch(25% .045 20); --ok:oklch(76% .09 170); --warn:oklch(76% .15 60); --wash:oklch(17% .025 255 / .68); color-scheme:dark }
+body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+header{flex-wrap:wrap;position:sticky;top:0;z-index:3;background:var(--paper)}
+header h1{font-size:22px;letter-spacing:-.01em}
+#cts{flex:1 0 100%} #cts label{margin:0 0 4px;font-size:13px} #cts select{font-size:16px;font-weight:600}
+h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:600;margin:24px 0 8px}
+.an{display:none!important}
+.hint,.nutlk{font-size:14px}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:4;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--rule);background:var(--paper);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav a{min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;color:var(--mute);text-decoration:none;position:relative}
+nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav [aria-current="page"]{color:var(--accent);font-weight:600}
+nav [aria-current="page"]::after{content:"";position:absolute;top:0;left:30%;right:30%;height:2px;background:var(--accent)}
+nav .dot{position:absolute;top:6px;left:calc(50% + 6px);min-width:16px;height:16px;padding:0 3px;box-sizing:border-box;border-radius:8px;background:var(--late);color:var(--card);font-size:10px;line-height:16px;font-weight:700;text-align:center}
+nav .dot:empty{display:none}
+.luoi{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.luoi a,.luoi button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-height:64px;padding:10px 12px;border:1px solid var(--rule);border-radius:10px;background:var(--card);color:var(--ink);text-decoration:none;font-weight:600;text-align:left;box-shadow:0 1px 2px oklch(30% .04 255 / .06)}
+.luoi small{font-weight:400;color:var(--mute);font-size:13px}
+.luoi [aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
