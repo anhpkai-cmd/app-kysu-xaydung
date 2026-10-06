@@ -5,6 +5,7 @@ import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { url as urlTT, parse as parseTT, viTri, nhatKy, tomTat, canhBao, NGAY } from './thoitiet.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
 import { khoiQR, lamQR, moQR, inQR, sauBanMoi as qrSauBanMoi, laBanVe } from './qr.js';
+import { LOAI as LOAI_HAN, dong as dongHan, COT_HAN } from './han.js';
 import { moVatTu, luuVe, themVatTu, demVatTu, soVn } from './vattu.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
@@ -618,6 +619,24 @@ $('tql').onclick = () => {
 };
 $('tqg').onclick = () => navigator.geolocation ? navigator.geolocation.getCurrentPosition(p => { $('tqv').value = `${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`; $('tql').click(); }, () => tqMs('Không lấy được vị trí máy. Hãy cho phép vị trí hoặc gõ tọa độ.')) : tqMs('Máy không hỗ trợ lấy vị trí.');
 
+// Thêm thiết bị, thẻ an toàn, giấy tờ có hạn: một dòng DANHMUC của công trình đang chọn (thêm cột "Hạn hiệu lực" nếu sổ chưa có), rồi dùng chung danh sách hạn ở trên.
+async function themHan() {
+  const ten = $('hanten').value.trim(), han = $('hanngay').value, ms = t => $('hanms').textContent = t;
+  if (!ten || !han) return ms('Nhập tên và chọn ngày hết hạn.');
+  try {
+    if (!soId) return ms('Công trình này chưa có _SODANGKY.');
+    const sh = `https://sheets.googleapis.com/v4/spreadsheets/${soId}`, ctMa = maCT({ name: $('ct').selectedOptions[0].text });
+    const o = dongHan(ctMa, $('hanloai').value, ten, han, docs.map(d => d.ma), new Date().toLocaleDateString('en-GB'));
+    if (docs.some(d => d.ten === o['Tên'] && d.han === o[COT_HAN])) return ms('Đã có dòng này trong sổ.');
+    if (!head.includes(COT_HAN)) { // sổ chưa có cột hạn: thêm vào cuối hàng tiêu đề (ponytail: sổ tối đa 26 cột A-Z)
+      await api(`${sh}/values/DANHMUC!${String.fromCharCode(65 + head.length)}1?valueInputOption=RAW`, { ...json({ values: [[COT_HAN]] }), method: 'PUT' }); head = [...head, COT_HAN];
+    }
+    await api(`${sh}/values/DANHMUC:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [head.map(h => o[h] ?? '')] }));
+    $('hanten').value = ''; ms(`Đã thêm ${o['Mã tài liệu']}. Sắp đến hạn sẽ hiện trong "Giấy tờ sắp hết hạn" và khung Còn sót.`);
+    await chonCT(); taiHan([...$('ct').options].map(x => ({ id: x.value, name: x.text })));
+  } catch (e) { ms(e.message); }
+}
+
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
 // ponytail: không có máy chủ nên không có refresh token, mỗi giờ phải xin lại một lần.
 const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth2.initTokenClient({
@@ -681,6 +700,8 @@ $('sotb').onclick = khoa('sotb', banTin, banTinNut);
 $('anc').onclick = () => { const tat = anhDs.every(f => f.chon); anhDs.forEach(f => f.chon = !tat); veAnh(); };
 $('and').onclick = () => { anhDs.forEach(f => { if (f.chon && f.nguon === 'doan' && !f.ngaySua) f.ngaySua = f.ngay; }); veAnh(); };
 $('nkl').onclick = khoa('nkl', luuNhatKy);
+$('hanloai').replaceChildren(...Object.entries(LOAI_HAN).map(([k, l]) => new Option(l.ten, k)));
+$('hanb').onclick = khoa('hanb', themHan);
 $('nkf').oninput = nkNhap;
 $('vtluu').onclick = khoa('vtluu', luuVe);
 $('vtthem').onclick = khoa('vtthem', themVatTu);
