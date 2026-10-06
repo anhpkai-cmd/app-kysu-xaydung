@@ -76,12 +76,19 @@
   <div id="loc" hidden>
     <h2>Tài liệu</h2>
     <label for="q">Tìm tài liệu</label><input id="q" type="search" placeholder="ví dụ: móng, cọc, KC-005">
+    <details id="vb"><summary>+ Lập văn bản từ mẫu (hợp đồng, báo giá, biên bản)</summary>
+    <label for="vbm">Mẫu</label><select id="vbm"></select>
+    <label for="vbloai">Loại</label><select id="vbloai"><option value="CV">Công văn, báo giá, đề nghị</option><option value="HD">Hợp đồng, phụ lục</option><option value="BB">Biên bản</option><option value="KL">Khối lượng</option><option value="TT">Thanh toán</option><option value="PS">Phát sinh</option><option value="RFI">Yêu cầu làm rõ</option></select>
+    <label for="vbt">Tên văn bản (để trống thì lấy tên mẫu)</label><input id="vbt" placeholder="ví dụ: Báo giá vật tư điện">
+    <p><button id="vbl">Lập văn bản</button></p>
+    </details>
   </div>
   <div id="ds"></div>
   <section id="tt" hidden>
     <h2>Thông tin công trình</h2>
     <p id="ttms" role="status"></p>
     <div id="ttds"></div>
+    <p><button id="ttnd" class="phu">Thông tư, nghị định</button></p>
     <details><summary>+ Thêm liên hệ hoặc thông tin</summary>
     <label for="ttnh">Loại</label><select id="ttnh"><option>Liên hệ</option><option>Thông tin</option></select>
     <label for="ttten">Tên (người liên hệ, hoặc tên mục như Địa chỉ)</label><input id="ttten">
