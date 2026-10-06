@@ -443,7 +443,7 @@ async function sotQuet(cts) { // quét mọi công trình, chỉ đọc (không 
   sotCt = await Promise.all(cts.map(async c => {
     const r = { id: c.id, ma: maCT(c), nk: null, anh: null };
     try { // chưa có Google Sheet nhật ký thì để null: không biết thì không báo ổn
-      const [f] = await ls(`'${c.id}' in parents and name contains '${q(r.ma)}-NK-NHATKY' and mimeType='application/vnd.google-apps.spreadsheet'`, 'id');
+      const [f] = await ls(`name contains '${q(r.ma)}-NK-NHATKY' and mimeType='${SHEET}'`, 'id'); // file nằm sâu (03_CHATLUONG/NK_NHATKY_TC), tìm theo tên như moNhatKy
       if (f) r.nk = ((await nkApi(f.id, 'values/NGAY!A:A?valueRenderOption=UNFORMATTED_VALUE')).values || []).some(v => v[0] === ngay);
     } catch {}
     try {
