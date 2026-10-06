@@ -533,7 +533,7 @@ async function sotQuet(cts) { // quét mọi công trình, chỉ đọc (không 
 function veSot() {
   const hom = homNay(), nhom = chia(viec, hom), han = hanDs.filter(d => isNaN(d.n) || d.n <= 7);
   const dong = [ // việc quá hạn trước, ảnh sau cùng
-    ...sotCt.filter(c => c.vt?.cam).map(c => [c.vt.cam, x => `${c.ma}: ${x} lô vật tư KHÔNG ĐẠT, cấm dùng`, '#vt', c.id]),
+    ...sotCt.filter(c => c.vt?.cam).map(c => [c.vt.cam, x => `${c.ma}: ${x} lô vật tư KHÔNG ĐẠT chưa xử lý`, '#vt', c.id]),
     [nhom.quaHan.length + nhom.sapDen.filter(t => t.n === 0).length, (x => `${x} việc quá hạn hoặc đến hạn hôm nay`), '#viec'],
     [han.length, (x => `${x} giấy tờ sắp hết hạn (trong 7 ngày) hoặc đã quá hạn`), '#han'],
     [hanLoi.length, () => 'Chưa kiểm tra được hạn giấy tờ của: ' + hanLoi.join(', '), '#han'],
