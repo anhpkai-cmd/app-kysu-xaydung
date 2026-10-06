@@ -10,13 +10,10 @@ const LINK = /^https?:\/\//;
 export function soat(van, tt) {
   tt = tt.filter(([ten, gt]) => ten && gt && !LINK.test(gt));
   const v = chu(van), co = new Set(tien(van)), biet = tt.flatMap(([ten, gt]) => tien(gt).map(n => ({ ten, n })));
-  const thieu = tt.filter(([, gt]) => { const s = tien(gt); return s.length ? !s.every(n => co.has(n)) : !v.includes(chu(gt)); }).map(([ten, gt]) => `${ten}: ${gt}`);
   // ponytail: lệch trong khoảng 5% coi là gõ nhầm; khác xa hơn coi là số khác (tạm ứng, thuế...), không báo
-  const lech = [...co].filter(n => !biet.some(b => b.n === n)).flatMap(n => {
-    const b = biet.find(b => Math.abs(n - b.n) <= b.n * 0.05);
-    return b ? [`Văn bản ghi ${so(n)} đ, thông tin công trình ghi ${b.ten} là ${so(b.n)} đ`] : [];
-  });
-  return { lech, thieu };
+  const sai = [...co].filter(n => !biet.some(b => b.n === n)).flatMap(n => biet.filter(b => Math.abs(n - b.n) <= b.n * 0.05).slice(0, 1).map(b => ({ ...b, sai: n })));
+  const thieu = tt.filter(([ten, gt]) => { const s = tien(gt); return !sai.some(b => b.ten === ten) && (s.length ? !s.every(n => co.has(n)) : !v.includes(chu(gt))); }).map(([ten, gt]) => `${ten}: ${gt}`);
+  return { lech: sai.map(b => `Văn bản ghi ${so(b.sai)} đ, thông tin công trình ghi ${b.ten} là ${so(b.n)} đ`), thieu };
 }
 export const conSot = van => [...new Set(String(van).match(/\{\{[^{}]+\}\}/g) || [])]; // chỗ điền chưa có thông tin
 
@@ -55,7 +52,8 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vanban.js')) { 
   const hd = 'HỢP ĐỒNG số 02/2026/HĐXD-HT889\nBên A: BAN QUẢN LÝ DỰ ÁN  XÃ PHƯỚC HẬU\nGiá trị: 424.575.008 đồng. Tạm ứng 126,990,555 đồng.';
   const r = soat(hd, tt);
   a.deepEqual(r.lech, ['Văn bản ghi 424.575.008 đ, thông tin công trình ghi Giá trị hợp đồng là 423.301.185 đ']); // nhầm số QĐ 427 vs dự thảo HĐ
-  a.deepEqual(r.thieu, ['Giá trị hợp đồng: 423.301.185 đ']); // tạm ứng khác xa: không báo; link NotebookLM, mục trống: bỏ qua
+  a.deepEqual(r.thieu, []); // đã báo sai thì không báo thiếu nữa; tạm ứng khác xa: không báo; link NotebookLM, mục trống: bỏ qua
+  a.deepEqual(soat(hd, [...tt, ['Đại diện', 'Bạch Tường Lam']]).thieu, ['Đại diện: Bạch Tường Lam']);
   a.deepEqual(soat(hd.replace('424.575.008', '423,301,185'), tt), { lech: [], thieu: [] }); // dấu phẩy hay chấm đều được
   a.deepEqual(soat('', tt).thieu.length, 3);
   a.deepEqual(conSot('Kính gửi {{Chủ đầu tư}}, ngày {{Ngày}} {{Chủ đầu tư}} {x}'), ['{{Chủ đầu tư}}', '{{Ngày}}']);
