@@ -238,18 +238,21 @@ async function gui(d) {
   try {
     const ds = await tim(d), [f] = ds, so = soId;
     if (!f) return;
-    let soatXong = '\n\nChưa soát: file không phải văn bản (Word, PDF, Google Docs).'; // soát trước khi gửi: lỗi soát không chặn việc gửi, nhưng phải báo
+    let soatXong = '\n\nChưa soát: file không phải văn bản (Word, PDF, Google Docs).', canh = []; // soát trước khi gửi: lỗi soát không chặn việc gửi, nhưng phải báo
+    const bqKhoa = 'bq:' + d.ma, bq = (() => { try { return JSON.parse(localStorage.getItem(bqKhoa)) || []; } catch { return []; } })(); // cảnh báo anh đã xác nhận "đúng rồi" cho tài liệu này
     try {
       say('Đang soát văn bản với thông tin công trình...');
       const van = await docChu(g, ds), tt = ttTin();
       if (van != null) {
-        const { lech, thieu } = soat(van, tt);
+        const kq = soat(van, tt), lech = kq.lech.filter(x => !bq.includes(x)), thieu = kq.thieu.filter(x => !bq.includes(x)); canh = [...lech, ...thieu];
         soatXong = !/\p{L}{3}/u.test(van) ? '\n\nKhông đọc được chữ trong file (bản scan mờ?), chưa soát được.' : !tt.length ? '\n\nChưa soát: trang Thông tin công trình chưa có mục nào.' : !lech.length && !thieu.length ? '\n\nĐã soát: khớp thông tin công trình.'
-          : (lech.length ? '\n\n⚠ CÓ THỂ SAI:\n' + lech.join('\n') : '') + (thieu.length ? '\n\nKhông thấy trong văn bản (bỏ qua nếu văn bản không cần):\n' + thieu.join('\n') : '');
+          : (lech.length ? '\n\n⚠ CÓ THỂ SAI:\n' + lech.join('\n') : '') + (thieu.length ? '\n\nKhông thấy trong văn bản (bỏ qua nếu văn bản không cần):\n' + thieu.join('\n') : '')
+            + '\n\nBấm OK nghĩa là các dòng trên đúng rồi, lần sau tài liệu này không nhắc lại.';
       }
     } catch (e) { soatXong = `\n\nChưa soát được: ${e.message}`; }
     say();
     if (!confirm(`Gửi "${f.name}"?\nBất kỳ ai có link đều xem được file này.${soatXong}`)) return;
+    if (canh.length) try { localStorage.setItem(bqKhoa, JSON.stringify([...bq, ...canh])); } catch {}
     await api(`https://www.googleapis.com/drive/v3/files/${f.id}/permissions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' }) });
     say();
     const ten = f.name.replace(/_NHAP(?=\.\w+$|$)/, ''); // gửi đi thì không còn là bản nháp (luồng 1: bỏ _NHAP khi gửi)
@@ -395,6 +398,7 @@ const lapVb = () => moTab(async () => {
   const m = mau[$('vbm').value], ten = $('vbt').value.trim() || m?.name.replace(/\.\w+$/, '');
   if (!m || !soId) return void say(!m ? 'Chưa có mẫu để chọn.' : 'Công trình này chưa có sổ đăng ký _SODANGKY.');
   const dau = `${$('ct').selectedOptions[0].text.split('_')[0]}-${$('vbloai').value}-DI-${homNay().replaceAll('-', '')}-`; // luồng 1: văn bản đi dùng ngày thay số hiệu
+  // ponytail: số NN đếm theo sổ, hai máy lập cùng lúc có thể trùng số (hiện chỉ một người dùng)
   const ma = dau + String(docs.filter(d => d.ma.startsWith(dau)).length + 1).padStart(2, '0'), so = soId, ngay = new Date().toLocaleDateString('en-GB');
   say('Đang lập văn bản...');
   const f = await lap(g, m, tenChuan(ma, 'R00', ten, '') + '_NHAP', await thuMuc($('ct').value, VB), ttTin()); // R00 = lần phát hành đầu, _NHAP bỏ khi Gửi
