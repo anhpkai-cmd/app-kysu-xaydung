@@ -1,7 +1,7 @@
 import { CLIENT_ID, ROOT_NAME } from './config.js';
 import { NK, serial } from './nhatky.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
-import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso } from './viec.js';
+import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
 const $ = id => document.getElementById(id);
 const FOLDER = 'application/vnd.google-apps.folder', SHEET = 'application/vnd.google-apps.spreadsheet';
@@ -150,25 +150,37 @@ async function taiViec() {
   const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dong(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
   $('dsv').replaceChildren(...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen), ...muc('Sau đó', nhom.sau), ...muc('Chưa có hạn', nhom.khongHan));
   if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên bên dưới.';
+  veHan();
 }
 
-// Giấy tờ có ngày hết hiệu lực (cột "Hạn hiệu lực" trong sổ đăng ký) còn ≤ 30 ngày hoặc đã quá hạn, gom từ mọi công trình.
+// Giấy tờ có ngày hết hiệu lực (cột "Hạn hiệu lực" trong sổ đăng ký) còn ≤ 30 ngày, đã quá hạn, hoặc ngày không đọc được; gom từ mọi công trình.
+let hanDs = [], hanLoi = [];
 async function taiHan(cts) {
-  const hom = homNay();
-  const ds = (await Promise.all(cts.map(async c => {
+  const hom = homNay(); hanLoi = [];
+  hanDs = (await Promise.all(cts.map(async c => {
     try {
-      const [s] = await ls(`'${c.id}' in parents and mimeType='${SHEET}' and name contains '_SODANGKY'`);
-      return s ? parse((await api(`https://sheets.googleapis.com/v4/spreadsheets/${s.id}/values/DANHMUC`)).values).map(d => ({ ...d, ct: c.name, n: conLai(d.han, hom) })) : [];
-    } catch { return []; } // một công trình lỗi thì bỏ qua, không chặn các công trình khác
-  }))).flat().filter(d => d.n <= 30).sort((x, y) => x.n - y.n);
-  $('han').replaceChildren(...(ds.length ? [Object.assign(document.createElement('h3'), { textContent: `Giấy tờ sắp hết hạn (${ds.length})` })] : []), ...ds.map(d => {
+      const s = await sheetCo(`'${c.id}' in parents and name contains '_SODANGKY'`);
+      return s ? parse((await api(`https://sheets.googleapis.com/v4/spreadsheets/${s.id}/values/DANHMUC?valueRenderOption=UNFORMATTED_VALUE`)).values).map(d => ({ ...d, ct: c.name, n: conLai(d.han, hom) })) : [];
+    } catch { hanLoi.push(c.name); return []; } // một công trình lỗi không chặn các công trình khác, nhưng phải báo
+  }))).flat().filter(d => d.han !== '' && (isNaN(d.n) || d.n <= 30)).sort((x, y) => (isNaN(x.n) ? -Infinity : x.n) - (isNaN(y.n) ? -Infinity : y.n));
+  veHan();
+}
+const ngayVn = han => iso(han).split('-').reverse().join('/');
+function veHan() {
+  const tieu = t => Object.assign(document.createElement('h3'), { textContent: t });
+  $('han').replaceChildren(...(hanDs.length ? [tieu(`Giấy tờ sắp hết hạn (${hanDs.length})`)] : []), ...hanDs.map(d => {
     const el = document.createElement('div'); el.className = 'doc';
     const th = document.createElement('div'), t = document.createElement('div'), s = document.createElement('small');
-    t.textContent = d.ten; s.textContent = `${d.ct} · ${d.ma} · ${nhanHan(d.n)} (${d.han})`; th.append(t, s);
-    const b = document.createElement('button'); b.className = 'phu'; b.textContent = 'Nhắc tôi'; b.setAttribute('aria-label', 'Tạo việc nhắc gia hạn ' + d.ten);
-    b.onclick = () => { $('vten').value = 'Gia hạn: ' + d.ten; $('vct').value = d.ct; $('vhan').value = iso(d.han); $('vten').focus(); say('Kiểm tra rồi bấm Thêm việc để tạo nhắc trên Google Lịch.'); };
-    el.append(th, b); return el;
-  }));
+    const ten = `Gia hạn: ${d.ten}`, dat = viec.some(v => v.ten.startsWith(ten)); // đã có việc nhắc đang mở thì không nhắc lại
+    t.textContent = d.ten; s.textContent = isNaN(d.n) ? `${d.ct} · ${d.ma} · Ngày hạn không đọc được (“${d.han}”), sửa trong sổ` : `${d.ct} · ${d.ma} · ${nhanHan(d.n)} (${ngayVn(d.han)})${dat ? ' · Đã đặt nhắc' : ''}`; th.append(t, s); el.append(th);
+    if (!isNaN(d.n) && !dat) {
+      const b = document.createElement('button'); b.className = 'phu'; b.textContent = 'Nhắc tôi'; b.setAttribute('aria-label', 'Tạo việc nhắc gia hạn ' + d.ten);
+      // gia hạn cần làm hồ sơ vài tuần: nhắc trước 14 ngày so với ngày hết hiệu lực (không lùi về quá khứ)
+      b.onclick = () => { $('vten').value = `${ten} (hết ${ngayVn(d.han)})`; $('vct').value = d.ct; $('vhan').value = d.n > 14 ? cong(d.han, -14) : homNay(); $('vten').focus(); say('Kiểm tra rồi bấm Thêm việc để tạo nhắc trên Google Lịch.'); };
+      el.append(b);
+    }
+    return el;
+  }), ...(hanLoi.length ? [Object.assign(document.createElement('p'), { textContent: 'Không đọc được hạn giấy tờ của: ' + hanLoi.join(', ') })] : []));
 }
 
 async function themViec() {
