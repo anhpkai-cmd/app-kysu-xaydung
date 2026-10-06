@@ -34,7 +34,7 @@ export function soat(van, tt) {
   const sai = [...co].filter(n => !biet.some(b => b.n === n)).flatMap(n => biet.filter(b => Math.abs(n - b.n) <= b.n * 0.05).slice(0, 1).map(b => ({ ...b, sai: n })));
   const thieu = tt.filter(([ten, gt]) => { const s = tien(gt); return !sai.some(b => b.ten === ten) && (s.length ? !s.every(n => co.has(n)) : !v.includes(chu(gt))); }).map(([ten, gt]) => `${ten}: ${gt}`);
   // số bằng số và bằng chữ trong cùng văn bản phải khớp nhau: "423.301.185 đồng (Bằng chữ: Bốn trăm ... đồng)"
-  const chuLech = [...String(van).normalize('NFC').toLowerCase().replace(/\s+/g, ' ').matchAll(new RegExp(`(${TIEN.source})[^\\d]{0,60}?bằng chữ\\s*:?\\s*([^\\d()]+?)\\s*đồng`, 'giu'))]
+  const chuLech = [...String(van).normalize('NFC').toLowerCase().replace(/\s+/g, ' ').matchAll(new RegExp(`(${TIEN.source}|\\d{7,})[^\\d]{0,60}?bằng chữ\\s*:?\\s*([^\\d()]+?)\\s*đồng`, 'giu'))]
     .map(([, n, c]) => [+n.replace(/\D/g, ''), c, bangChu(c)]).filter(([n, c, m]) => !/\p{L}/u.test(c) || (!isNaN(m) && m !== n)) // chưa ghi chữ (còn ……) cũng báo
     .map(([n, c, m]) => `${/\p{L}/u.test(c) ? `Số ${so(n)} đ nhưng bằng chữ ghi "${c}" (${so(m)} đ)` : `Số ${so(n)} đ chưa ghi bằng chữ`}. Đúng là: ${soChu(n)} đồng`);
   return { lech: [...chuLech, ...sai.map(b => `Văn bản ghi ${so(b.sai)} đ, thông tin công trình ghi ${b.ten} là ${so(b.n)} đ`)], thieu };
@@ -111,9 +111,11 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vanban.js')) { 
   a.equal(soChu(423301185), 'Bốn trăm hai mươi ba triệu ba trăm lẻ một nghìn một trăm tám mươi lăm');
   a.equal(soChu(1005000000), 'Một tỷ không trăm lẻ năm triệu'); a.equal(soChu(21), 'Hai mươi mốt'); a.equal(soChu(15), 'Mười lăm'); a.equal(soChu(0), 'Không');
   for (const n of [1, 10, 101, 110, 1001, 20500, 613406400, 999999999999, 100000000000]) a.equal(bangChu(soChu(n).toLowerCase()), n); // đọc ngược phải ra đúng số
-  // báo giá mẫu thật của anh: tổng 613.406.400 nhưng dòng bằng chữ ghi 613.430.400
+  // tổng bằng số khác dòng bằng chữ (gõ sai một chữ)
   a.equal(soat('TỔNG CỘNG,,,"613,406,400"\n"Bằng chữ: Sáu trăm mười ba triệu, bốn trăm ba mươi nghìn, bốn trăm đồng."', []).lech[0].split('Đúng là: ')[1], 'Sáu trăm mười ba triệu bốn trăm lẻ sáu nghìn bốn trăm đồng');
   a.deepEqual(soat('TỔNG,"613,406,400"\n"Bằng chữ: ……… đồng."', []).lech, ['Số 613.406.400 đ chưa ghi bằng chữ. Đúng là: Sáu trăm mười ba triệu bốn trăm lẻ sáu nghìn bốn trăm đồng']); // mẫu báo giá chưa điền
+  a.equal(soat('TỔNG CỘNG THANH TOÁN,,,613430400,\n"Bằng chữ: Sáu trăm mười ba triệu, bốn trăm lẻ sáu nghìn, bốn trăm đồng.",,', []).lech.length, 1); // ô tổng không định dạng nghìn
+  a.equal(soat('TỔNG CỘNG THANH TOÁN,,,613430400,\nBằng chữ: Sáu trăm mười ba triệu bốn trăm ba mươi nghìn bốn trăm đồng.,,', []).lech.length, 0);
   a.deepEqual(conSot('Kính gửi {{Chủ đầu tư}}, ngày {{Ngày}} {{Chủ đầu tư}} {x}'), ['{{Chủ đầu tư}}', '{{Ngày}}']);
   console.log('ok');
 }
