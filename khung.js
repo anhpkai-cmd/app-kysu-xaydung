@@ -5,7 +5,8 @@ function di() {
   let s = location.hash.slice(1); s = DOI[s] || s;
   if (!document.querySelector(`[data-s~="${s}"]`)) s = 'home';
   document.querySelectorAll('[data-s]').forEach(e => e.classList.toggle('an', !e.dataset.s.split(' ').includes(s)));
-  document.getElementById('tit').textContent = TEN[s][0]; document.getElementById('sub').textContent = TEN[s][1];
+  const [ten, phu] = TEN[s] || ['Sổ tay kỹ sư', '']; // màn chưa ghi tên thì dùng tên chung, không làm hỏng các tab
+  document.getElementById('tit').textContent = ten; document.getElementById('sub').textContent = s === 'home' ? new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' }) : phu;
   const tab = TAB[s] || 'more';
   document.querySelectorAll('nav a').forEach(a => a.hash === '#' + tab ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
   scrollTo(0, 0);
