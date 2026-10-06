@@ -35,7 +35,7 @@ async function gui(d) {
   try {
     const found = (await ls(`name contains '${d.ma}-${d.rev}'`)).filter(f => f.name.startsWith(`${d.ma}-${d.rev}`));
     if (!found.length) return say(`Chưa thấy file ${d.ma}-${d.rev} trên Drive (sổ ghi ${d.rev} nhưng file chưa được đổi tên chuẩn?).`);
-    const f = found[0];
+    const f = found.find(x => x.name.toLowerCase().endsWith('.pdf')) || found[0]; // cùng mã cùng rev có thể có .xlsx và .pdf: gửi đi thì ưu tiên PDF
     say();
     if (navigator.share) await navigator.share({ title: f.name, url: f.webViewLink });
     else { await navigator.clipboard.writeText(f.webViewLink); say('Đã chép link ' + f.name); }
