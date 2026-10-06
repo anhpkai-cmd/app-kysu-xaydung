@@ -47,6 +47,8 @@
   .anh th,.anh>div{min-width:0}
   #ttms:empty,#nkmsg:empty,#anms:empty,#sotms:empty,#vtms:empty{display:none}
   #sotds{display:grid;gap:8px}
+  .cot{flex-direction:column;align-items:stretch}
+  .cot .nut{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
   summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
   #msg:empty,#nhan:empty{display:none}
   @media (prefers-reduced-motion:no-preference){button{transition:filter .15s}}
@@ -126,6 +128,7 @@
     <label for="vtk">Khối lượng</label><input id="vtk" type="number" min="0" step="any" inputmode="decimal">
     <label for="vtn">Nhà cung cấp</label><input id="vtn">
     <label for="vtc">CO/CQ đi kèm</label><select id="vtc"><option>Chưa</option><option>Có</option></select>
+    <label for="vtlo">Mã lô (để trống nếu là lô mới; về thêm cho lô cũ thì chọn mã lô đó)</label><input id="vtlo" list="vtlos" autocomplete="off"><datalist id="vtlos"></datalist>
     <label for="vtd">Ngày về</label><input id="vtd" type="date">
     <label for="vtp">Ảnh phiếu giao nhận (chụp hoặc chọn ảnh, chọn được nhiều ảnh)</label><input id="vtp" type="file" accept="image/*,application/pdf" multiple>
     <p><button id="vtluu">Lưu lần về</button></p>
@@ -136,6 +139,7 @@
     <label for="vtten">Tên vật tư</label><input id="vtten" placeholder="ví dụ: Xi măng PCB40">
     <label for="vtqc">Quy cách, nhãn hiệu</label><input id="vtqc">
     <label for="vtdv">Đơn vị</label><input id="vtdv" placeholder="ví dụ: tấn, m3, kg">
+    <label for="vtts">Tần suất lấy mẫu (tự ghi theo tiêu chuẩn, ví dụ 50 tấn/1 tổ mẫu)</label><input id="vtts">
     <p><button id="vtthem">Thêm vật tư</button></p>
     </details>
   </section>

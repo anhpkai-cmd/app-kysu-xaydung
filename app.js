@@ -2,7 +2,7 @@ import { CLIENT_ID, ROOT_NAME } from './config.js';
 import { NK, serial } from './nhatky.js';
 import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
-import { moVatTu, luuVe, themVatTu } from './vattu.js';
+import { moVatTu, luuVe, themVatTu, demVatTu } from './vattu.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
 const $ = id => document.getElementById(id);
@@ -188,10 +188,8 @@ function veHan() {
   veSot();
 }
 
-async function themViec() {
-  const ten = $('vten').value.trim(), ct = $('vct').value, han = $('vhan').value;
-  if (!ten) return say('Gõ tên việc trước.');
-  try {
+// Thêm một việc (kèm nhắc Lịch nếu có hạn) rồi tải lại danh sách; trả về lời báo khi chưa tạo được nhắc Lịch. Mục Vật tư cũng gọi hàm này.
+async function taoViec(ten, ct, han) {
     let lich = '', ghi = '';
     if (han) try { // ponytail: múi giờ cố định Việt Nam; sửa hạn tay trong Trang tính không tự cập nhật Lịch
       const tz = 'Asia/Ho_Chi_Minh';
@@ -199,8 +197,15 @@ async function themViec() {
         reminders: { useDefault: false, overrides: [0, 1440, 4320].map(minutes => ({ method: 'popup', minutes })) } }))).id; // nhắc lúc 8h sáng ngày hạn, 1 ngày và 3 ngày trước
     } catch (e) { ghi = 'Chưa tạo được nhắc trên Google Lịch: ' + e.message; }
     await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [[ten, ct, han, 'Mở', ghi, lich]] }));
+    await taiViec(); return ghi;
+}
+async function themViec() {
+  const ten = $('vten').value.trim(), ct = $('vct').value, han = $('vhan').value;
+  if (!ten) return say('Gõ tên việc trước.');
+  try {
+    const ghi = await taoViec(ten, ct, han);
     $('vten').value = ''; $('vhan').value = '';
-    await taiViec(); say(ghi || 'Đã thêm việc.');
+    say(ghi || 'Đã thêm việc.');
   } catch (e) { say(e.message); }
 }
 
@@ -447,6 +452,7 @@ async function sotQuet(cts) { // quét mọi công trình, chỉ đọc (không 
     try { // chưa có Google Sheet nhật ký thì để null: không biết thì không báo ổn
       const [f] = await ls(`name contains '${q(r.ma)}-NK-NHATKY' and mimeType='${SHEET}'`, 'id'); // file nằm sâu (03_CHATLUONG/NK_NHATKY_TC), tìm theo tên như moNhatKy
       if (f) r.nk = ((await nkApi(f.id, 'values/NGAY!A:A?valueRenderOption=UNFORMATTED_VALUE')).values || []).some(v => v[0] === ngay);
+      if (f) r.vt = await demVatTu(api, f.id).catch(() => null); // null: chưa kiểm tra được vật tư
     } catch {}
     try {
       const [h] = await ls(`'${c.id}' in parents and mimeType='${FOLDER}' and name='00_INBOX'`, 'id');
@@ -459,11 +465,14 @@ async function sotQuet(cts) { // quét mọi công trình, chỉ đọc (không 
 function veSot() {
   const hom = homNay(), nhom = chia(viec, hom), han = hanDs.filter(d => isNaN(d.n) || d.n <= 7);
   const dong = [ // việc quá hạn trước, ảnh sau cùng
+    ...sotCt.filter(c => c.vt?.cam).map(c => [c.vt.cam, x => `${c.ma}: ${x} lô vật tư KHÔNG ĐẠT, cấm dùng`, '#vt', c.id]),
     [nhom.quaHan.length + nhom.sapDen.filter(t => t.n === 0).length, (x => `${x} việc quá hạn hoặc đến hạn hôm nay`), '#viec'],
     [han.length, (x => `${x} giấy tờ sắp hết hạn (trong 7 ngày) hoặc đã quá hạn`), '#han'],
     [hanLoi.length, () => 'Chưa kiểm tra được hạn giấy tờ của: ' + hanLoi.join(', '), '#han'],
     ...sotCt.filter(c => c.nk === false).map(c => [1, () => c.ma + ' chưa ghi nhật ký hôm nay', '#nk', c.id]),
     ...sotCt.filter(c => c.nk === null).map(c => [1, () => 'Chưa kiểm tra được nhật ký ' + c.ma + ' (chưa có Google Sheet nhật ký hoặc mất sóng)', '#nk', c.id]),
+    ...sotCt.filter(c => c.vt?.can).map(c => [c.vt.can, x => `${c.ma}: ${x} lô vật tư chưa xong (CO/CQ, lấy mẫu, nghiệm thu)`, '#vt', c.id]),
+    ...sotCt.filter(c => c.vt === null).map(c => [1, () => 'Chưa kiểm tra được vật tư của ' + c.ma, '#vt', c.id]),
     ...sotCt.filter(c => c.anh === null).map(c => [1, () => 'Chưa kiểm tra được ảnh chờ của ' + c.ma, '#anh', c.id]),
     ...sotCt.filter(c => c.anh > 0).map(c => [c.anh, x => `${c.ma}: ${x} ảnh chờ xếp`, '#anh', c.id]),
   ].filter(([n]) => n);
@@ -518,7 +527,7 @@ function doiCT() {
   try { localStorage.setItem('ct', $('ct').value); } catch {}
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
   const ct = $('ct').value;
-  chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, id: nkId }); }); taiTT(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
+  chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, sot: sotCap, id: nkId }); }); taiTT(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
 const khoa = (id, fn, sau) => async () => {

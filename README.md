@@ -60,9 +60,11 @@ Nút **Nhắc tôi lúc 17h mỗi ngày** tạo một sự kiện lặp trên Go
 
 ## Vật tư
 
-Mục "Vật tư" ghi vào file nhật ký `CTxx-NK-NHATKY` của công trình (cùng file với Nhật ký ngày):
-- Trang `DMVATTU` (app tự tạo lần đầu bấm Thêm vật tư): mỗi vật tư một dòng: Vật tư, Quy cách, ĐV, Ngày đệ trình, Ngày duyệt, Ghi chú. Nút **Đã đệ trình**, **Đã duyệt** hỏi ngày (mặc định hôm nay).
-- Trang `VATTU` (đã có sẵn trong file nhật ký): mỗi lần vật tư về một dòng. App thêm 3 cột cuối: Phiếu giao nhận (link ảnh), Kết quả TN, Ngày nghiệm thu.
-- **Vật tư về:** chọn vật tư, khối lượng, nhà cung cấp, chụp hoặc chọn ảnh phiếu giao nhận. Ảnh lưu vào `05_VATTU_DOITHICONG/PHIEU_GIAONHAN/` tên `CT01-GN-20261006-01_XiMangPcb40.jpg`.
-- **Cần xử lý:** lần về nào chưa xong hiện ở đây kèm nút bước tiếp theo: chưa duyệt, chưa có CO/CQ, chưa lấy mẫu, chờ kết quả, mẫu không đạt (bấm Đã trả lô), chưa nghiệm thu. Nút Đã nghiệm thu chỉ hiện khi các bước trước đã xong.
-- Trước khi ghi, app đọc lại dòng đó; sheet vừa bị sửa ở nơi khác thì không ghi mà tải lại. Chạy `node vattu.js` để tự kiểm tra.
+Mục "Vật tư" ghi vào file nhật ký `CTxx-NK-NHATKY` của công trình (cùng file với Nhật ký ngày). Cột A..H của trang VATTU giữ nguyên như file gốc; app chỉ thêm cột từ I trở đi.
+- Trang `DMVATTU` (app tự tạo lần đầu bấm Thêm): Vật tư, Quy cách, ĐV, Ngày đệ trình, Ngày duyệt, Tần suất lấy mẫu (tự ghi), Ghi chú.
+- Trang `VATTU`: mỗi lần vật tư về một dòng; thêm cột Phiếu giao nhận, Mã lô, Kết quả TN (bê tông: R7), Kết quả R28, Xử lý. Thí nghiệm và nghiệm thu tính theo **lô**: về thêm cho lô cũ thì chọn lại Mã lô, kết quả ghi lên mọi dòng của lô.
+- **Vật tư về:** vật tư chưa được TVGS duyệt thì app hỏi lại trước khi ghi. Ảnh phiếu giao nhận lưu vào `05_VATTU_DOITHICONG/PHIEU_GIAONHAN/` tên `CT01-GN-20261006-01_XiMangPcb40.jpg`, tải ảnh trước rồi mới ghi dòng; mất sóng giữa chừng thì bấm lại, ảnh đã tải không tải lại.
+- **Cần xử lý:** mỗi lô chưa xong kèm nút bước tiếp theo. Bê tông: bấm Đã đúc mẫu là thêm việc "Nén mẫu R7", "R28" (theo ngày đổ) vào Việc cần làm. Không đạt: lô ghi "Cấm dùng", thêm việc "Xử lý lô không đạt" hạn hôm nay, đứng đầu khung Còn sót tới khi bấm Đã xử lý xong.
+- **Nghiệm thu** (chỉ mở khi đã duyệt, đủ CO/CQ, mẫu đạt): thêm một dòng mã VATLIEU vào trang `NGHIEMTHU`.
+- Khung **Còn sót** đếm lô cấm dùng và lô chưa xong của mọi công trình.
+- Trước khi ghi, app đọc lại các dòng đó; sheet vừa bị sửa ở nơi khác thì không ghi mà tải lại. Chạy `node vattu.js` để tự kiểm tra.
