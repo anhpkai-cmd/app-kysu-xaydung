@@ -1,5 +1,5 @@
 // Cài app ra màn hình + nhận file từ nút Chia sẻ của điện thoại (Zalo, Zalo → Chia sẻ → Sổ tay KS). Dữ liệu Drive luôn lấy mới.
-const V = 'v5', F = ['./', 'index.html', 'app.js', 'register.js', 'viec.js', 'nhatky.js', 'anh.js', 'vattu.js', 'vanban.js', 'hop.js', 'qr.js', 'tin.js', 'thoitiet.js', 'config.js', 'manifest.json', 'icon.svg']; // lần cài đầu; sau đó file nào tải được khi có sóng cũng tự được cất (dưới cùng)
+const V = 'v5', F = ['./', 'index.html', 'app.js', 'register.js', 'viec.js', 'nhatky.js', 'anh.js', 'vattu.js', 'vanban.js', 'hop.js', 'han.js', 'qr.js', 'tin.js', 'thoitiet.js', 'config.js', 'manifest.json', 'icon.svg']; // lần cài đầu; sau đó file nào tải được khi có sóng cũng tự được cất (dưới cùng)
 addEventListener('install', e => e.waitUntil(caches.open(V).then(c => c.addAll(F)).then(() => skipWaiting())));
 addEventListener('activate', e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V && k !== 'chia-se').map(k => caches.delete(k)))).then(() => clients.claim()))); // xóa bộ nhớ bản cũ, giữ file Zalo đang chờ lưu
 addEventListener('fetch', e => {
