@@ -9,7 +9,7 @@ import { khoiQR, lamQR, moQR, inQR, sauBanMoi as qrSauBanMoi, laBanVe } from './
 import { LOAI as LOAI_HAN, dong as dongHan, COT_HAN } from './han.js';
 import { MAU as MAU_TIN, dmy, macDinh, soan, zalo } from './tin.js';
 import { moPS, ghiPS } from './phatsinh.js';
-import { moVatTu, luuVe, themVatTu, demVatTu, soVn } from './vattu.js';
+import { moVatTu, luuVe, themVatTu, demVatTu, soVn, themYc, lapYc, veYc } from './vattu.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
 const $ = id => document.getElementById(id);
@@ -678,11 +678,11 @@ const tnCtx = () => {
   return { tenCT, hom: dmy(hom), mai: dmy(cong(hom, 1)), tt: ttDong, thoiTiet: { hom: tqDs[0] && tomTat(tqDs[0]), mai: tqDs[1] && tomTat(tqDs[1]) },
     viecMai: viec.filter(t => (!t.ct || t.ct === 'Chung' || t.ct === ten) && conLai(t.han, hom) === 1).map(t => t.ten) };
 };
-let tnV = {};
+let tnV = {}, tnSan = null; // tnSan: ô điền sẵn khi mở từ chỗ khác (Mời TVGS ở Lịch nghiệm thu)
 function tnVe(moi) {
   const m = MAU_TIN.find(x => x.id === $('tnm').value), c = tnCtx();
   if (moi) {
-    tnV = macDinh(m, c); $('tnms').textContent = '';
+    tnV = { ...macDinh(m, c), ...tnSan }; tnSan = null; $('tnms').textContent = '';
     $('tnf').replaceChildren(...m.truong.flatMap(([k, nhan, d]) => {
       const l = document.createElement('label'), o = document.createElement(Array.isArray(d) ? 'select' : 'input'); l.textContent = nhan; l.htmlFor = o.id = 'tn_' + k;
       if (Array.isArray(d)) o.append(...d.map(x => new Option(x)));
@@ -694,6 +694,7 @@ function tnVe(moi) {
   $('tnt').value = soan(m, tnV, c);
   const z = zalo(m, c); $('tnz').hidden = !z; if (z) { $('tnz').href = z.href; $('tnz').textContent = 'Mở Zalo của ' + z.ten; }
 }
+const moiNt = (nd, ngay) => { tnSan = { nd, ngay }; $('tnm').value = 'nt'; if ($('tnd').open) tnVe(true); else $('tnd').open = true; $('tn').scrollIntoView({ behavior: 'smooth' }); };
 $('tnm').replaceChildren(...MAU_TIN.map(m => new Option(m.ten, m.id)));
 $('tnm').onchange = () => tnVe(true);
 $('tnd').ontoggle = () => { if ($('tnd').open) tnVe(true); };
@@ -736,7 +737,7 @@ function doiCT() {
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
   const ct = $('ct').value;
   Promise.all([chonCT(), taiTT()]).then(() => $('ct').value === ct && moPS({ api, json, taiLen, thuMuc, ctx: () => ({ so: soId, ct: $('ct').value, ma: maCT({ name: $('ct').selectedOptions[0].text }), tenCT: tnCtx().tenCT, tt: ttDong }) })); // sổ phát sinh cần sổ đăng ký và danh bạ
-  moQR(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), sot: sotCap, id: nkId }); }); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
+  moQR(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), thuMucMau: () => thuMuc(gocId, MAU), dsMau: d => dsMau(g, d), lapMau: (m, ten, dir) => lap(g, m, ten, dir, ttTin()), tenCt: () => tnCtx().tenCT, moiNt, sot: sotCap, id: nkId }); }); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
 khoiQR({ api, ls, thuMuc, json, tim, blob, ct: () => $('ct').value, say, hoi: t => confirm(t), q, FOLDER });
@@ -777,6 +778,8 @@ $('hanb').onclick = khoa('hanb', themHan);
 $('nkf').oninput = nkNhap;
 $('vtluu').onclick = khoa('vtluu', luuVe);
 $('vtthem').onclick = khoa('vtthem', themVatTu);
+$('ycthem').onclick = themYc;
+$('ycgui').onclick = khoa('ycgui', () => lapYc().catch(e => $('vtms').textContent = e.message), veYc); // sau khi khóa trả lại chữ nút thì vẽ lại số vật tư trên nút
 $('q').oninput = hien;
 $('vthem').onclick = khoa('vthem', themViec);
 docNhan();
