@@ -106,6 +106,10 @@ Trong mục Vật tư, **+ Phiếu yêu cầu vật tư** gợi ý các công vi
 - Phiếu lưu ở `05_VATTU_DOITHICONG/PHIEU_YEUCAU`, tên `CTxx-YC-VT-yyyymmdd-01_PhieuYeuCauVatTu`. Mỗi vật tư thêm một việc "<vật tư> về (phiếu ...)" vào ngày cần.
 - Gửi: app hỏi trước khi mở link cho người có link xem, rồi mở Chia sẻ (Zalo) với nội dung phiếu và link.
 
+## Chấm công tổ đội
+
+Mục "Chấm công tổ đội" cộng số người từng nhóm đã ghi trong Nhật ký ngày (trang `NGAY`) theo tháng: công = số người, nghỉ nửa buổi tính nửa công, nghỉ cả ngày không tính. App báo các ngày trong tháng chưa ghi nhật ký. **Lập bảng công gửi tổ trưởng ký** tạo Trang tính `CTxx-CC-yyyymm-01_BangCong` trong `05_VATTU_DOITHICONG/CHAMCONG` (từng ngày, tổng công, chỗ ký), hỏi trước khi mở link cho người có link xem, rồi mở Chia sẻ (Zalo). App không ghi gì vào nhật ký. `node chamcong.js` tự kiểm tra.
+
 ## Thiết bị, thẻ an toàn, giấy tờ có hạn
 
 Dưới danh sách giấy tờ sắp hết hạn có ô "+ Thêm thiết bị cần kiểm định, thẻ an toàn, giấy tờ có hạn": chọn loại (kiểm định cẩu, giàn giáo, máy hàn; thẻ an toàn lao động; giấy tờ khác như bảo lãnh, bảo hiểm), gõ tên và ngày hết hạn. App thêm một dòng vào trang DANHMUC của `_SODANGKY` công trình đang chọn (mã dạng CT01-TB-001, CT01-AT-001, CT01-GT-001; tự thêm cột "Hạn hiệu lực" nếu sổ chưa có), nên dùng luôn danh sách "Giấy tờ sắp hết hạn" (còn dưới 30 ngày), nút **Nhắc tôi** và khung Còn sót (dưới 7 ngày). Muốn sửa ngày hay xóa dòng thì sửa trực tiếp trong Trang tính. `node han.js` tự kiểm tra.
