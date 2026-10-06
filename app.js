@@ -2,6 +2,7 @@ import { CLIENT_ID, ROOT_NAME } from './config.js';
 import { NK, serial } from './nhatky.js';
 import { soat, docChu, lap, dsMau } from './vanban.js';
 import { ngayChup, tenAnh, sttTiep } from './anh.js';
+import { url as urlTT, parse as parseTT, viTri, nhatKy, tomTat, canhBao, NGAY } from './thoitiet.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
@@ -154,7 +155,7 @@ async function taiViec() {
   const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dong(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
   $('dsv').replaceChildren(...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen), ...muc('Sau đó', nhom.sau), ...muc('Chưa có hạn', nhom.khongHan));
   if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên bên dưới.';
-  veHan();
+  veHan(); veTT();
 }
 
 // Giấy tờ có ngày hết hiệu lực (cột "Hạn hiệu lực" trong sổ đăng ký) còn ≤ 30 ngày, đã quá hạn, hoặc ngày không đọc được; gom từ mọi công trình.
@@ -300,8 +301,8 @@ async function moNhatKy() {
       return [l, o];
     }));
     $('nkd').value = homNay(); $('nkmsg').textContent = ''; $('nkl').textContent = 'Lưu nhật ký vào ' + $('ct').selectedOptions[0].text;
-    try { const n = JSON.parse(localStorage.getItem(nkKey())); if (n) { $('nkd').value = n.d; n.f.forEach((v, i) => $('nk' + i).value = v); nkVc = n.vc; $('nkmsg').textContent = 'Đã khôi phục phần nhật ký đang nhập dở.'; } } catch {}
-    $('nkf').hidden = false; hienVc();
+    try { const n = JSON.parse(localStorage.getItem(nkKey())); if (n) { $('nkd').value = n.d; n.f.forEach((v, i) => $('nk' + i).value = v); $('nk0').dataset.sua = 1; nkVc = n.vc; $('nkmsg').textContent = 'Đã khôi phục phần nhật ký đang nhập dở.'; } } catch {}
+    $('nkf').hidden = false; hienVc(); dienNk();
   } catch (e) { $('nkmsg').textContent = e.message; }
 }
 function hienVc() {
@@ -538,6 +539,42 @@ async function banTin() { // bật hoặc tắt nhắc 17h thứ 2 đến thứ 
   } catch (e) { $('sotms').textContent = e.message; }
 }
 
+// ---- Thời tiết công trình: vị trí lưu trên máy theo từng công trình (ponytail: chưa đồng bộ giữa máy; muốn dùng chung thì ghi vào THONGTIN) ----
+let tqDs = [];
+const tqKey = () => 'vt:' + $('ct').value, tqMs = t => $('tqms').textContent = t || '';
+function veTT() {
+  const ten = $('ct').selectedOptions[0]?.text, hom = homNay();
+  const cb = canhBao(tqDs, viec.filter(t => !t.ct || t.ct === 'Chung' || t.ct === ten).map(t => ({ ...t, n: conLai(t.han, hom) })));
+  const p = t => Object.assign(document.createElement('p'), { textContent: t });
+  $('tqd').replaceChildren(...tqDs.map((d, i) => p(`${NGAY[i]}: ${tomTat(d)}`)), ...cb.map(t => Object.assign(p('Cảnh báo: ' + t), { className: 'cb' })));
+}
+async function taiTQ() {
+  const ct = $('ct').value; tqDs = []; tqMs(); veTT();
+  let vt; try { vt = localStorage.getItem(tqKey()); } catch {}
+  $('tqv').value = vt || ''; const vi = viTri(vt);
+  if (!vi) return tqMs('Chưa có vị trí công trình. Bấm "Lấy vị trí máy" khi đang ở công trường, hoặc gõ tọa độ.');
+  try {
+    const r = await fetch(urlTT(...vi)), j = await r.json();
+    if (!r.ok) throw new Error(j.reason || r.status);
+    if ($('ct').value !== ct) return;
+    tqDs = parseTT(j);
+  } catch (e) { tqMs('Không lấy được thời tiết: ' + e.message); }
+  veTT(); dienNk();
+}
+function dienNk() { // nhật ký hôm nay: điền sẵn thời tiết theo dự báo, một lần, không đè lên chữ người dùng đã nhập hoặc nháp đã khôi phục
+  const o = $('nk0'), v = tqDs[0] && nhatKy(tqDs[0]);
+  if (!v || !o || $('nkf').hidden || $('nkd').value !== homNay() || o.dataset.sua || o.dataset.tt) return;
+  $('nk0').value = $('nk1').value = v; o.dataset.tt = 1;
+  if (!$('nkmsg').textContent) $('nkmsg').textContent = 'Thời tiết đã điền theo dự báo hôm nay, sửa nếu khác.';
+}
+$('nkc').onchange = e => e.target.dataset.sua = 1;
+$('tql').onclick = () => {
+  const vi = viTri($('tqv').value); if (!vi) return tqMs('Gõ vĩ độ rồi kinh độ, ví dụ 10.77, 106.70.');
+  try { localStorage.setItem(tqKey(), vi.join(', ')); } catch { return tqMs('Máy không cho lưu vị trí.'); }
+  taiTQ();
+};
+$('tqg').onclick = () => navigator.geolocation ? navigator.geolocation.getCurrentPosition(p => { $('tqv').value = `${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`; $('tql').click(); }, () => tqMs('Không lấy được vị trí máy. Hãy cho phép vị trí hoặc gõ tọa độ.')) : tqMs('Máy không hỗ trợ lấy vị trí.');
+
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
 // ponytail: không có máy chủ nên không có refresh token, mỗi giờ phải xin lại một lần.
 const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth2.initTokenClient({
@@ -554,7 +591,7 @@ async function vao(resp) {
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
     gocId = goc.id;
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
-    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false;
+    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('tq').hidden = false;
     try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec(); taiHan(cts); sotQuet(cts);
@@ -568,7 +605,7 @@ async function vao(resp) {
 function doiCT() {
   try { localStorage.setItem('ct', $('ct').value); } catch {}
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
-  chonCT(); moNhatKy().then(taiAnh); taiTT();
+  chonCT(); moNhatKy().then(taiAnh); taiTT(); taiTQ();
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
 const khoa = (id, fn, sau) => async () => {
