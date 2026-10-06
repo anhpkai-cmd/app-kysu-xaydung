@@ -171,7 +171,7 @@ function veHan() {
   $('han').replaceChildren(...(hanDs.length ? [tieu(`Giấy tờ sắp hết hạn (${hanDs.length})`)] : []), ...hanDs.map(d => {
     const el = document.createElement('div'); el.className = 'doc';
     const th = document.createElement('div'), t = document.createElement('div'), s = document.createElement('small');
-    const ten = `Gia hạn: ${d.ten}`, dat = viec.some(v => v.ten.startsWith(ten)); // đã có việc nhắc đang mở thì không nhắc lại
+    const ten = `Gia hạn: ${d.ten}`, dat = viec.some(v => v.ten.startsWith(ten) && v.ct === d.ct); // đã có việc nhắc đang mở thì không nhắc lại
     t.textContent = d.ten; s.textContent = isNaN(d.n) ? `${d.ct} · ${d.ma} · Ngày hạn không đọc được (“${d.han}”), sửa trong sổ` : `${d.ct} · ${d.ma} · ${nhanHan(d.n)} (${ngayVn(d.han)})${dat ? ' · Đã đặt nhắc' : ''}`; th.append(t, s); el.append(th);
     if (!isNaN(d.n) && !dat) {
       const b = document.createElement('button'); b.className = 'phu'; b.textContent = 'Nhắc tôi'; b.setAttribute('aria-label', 'Tạo việc nhắc gia hạn ' + d.ten);
