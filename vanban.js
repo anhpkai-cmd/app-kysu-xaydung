@@ -1,0 +1,63 @@
+// Văn bản gửi đi: soát văn bản với trang Thông tin công trình trước khi gửi, và lập văn bản từ mẫu (chỗ điền ghi {{Tên mục}}).
+// Phần so khớp (soat, conSot) không phụ thuộc trình duyệt; phần còn lại nhận g = { api, ls, json } từ app.js.
+const chu = s => String(s).normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
+// Số tiền từ 1 triệu trở lên viết có dấu phân cách (423.301.185 hoặc 423,301,185). ponytail: số viết liền 423301185 không bắt.
+const tien = s => (String(s).match(/\d{1,3}(?:[.,]\d{3}){2,}/g) || []).map(x => +x.replace(/\D/g, ''));
+const so = n => n.toLocaleString('vi-VN');
+const LINK = /^https?:\/\//;
+
+// tt: [[tên mục, giá trị]] từ trang THONGTIN. Trả về { lech: số tiền gần giống mà khác (dễ là gõ nhầm), thieu: mục không thấy trong văn bản }.
+export function soat(van, tt) {
+  tt = tt.filter(([ten, gt]) => ten && gt && !LINK.test(gt));
+  const v = chu(van), co = new Set(tien(van)), biet = tt.flatMap(([ten, gt]) => tien(gt).map(n => ({ ten, n })));
+  const thieu = tt.filter(([, gt]) => { const s = tien(gt); return s.length ? !s.every(n => co.has(n)) : !v.includes(chu(gt)); }).map(([ten, gt]) => `${ten}: ${gt}`);
+  // ponytail: lệch trong khoảng 5% coi là gõ nhầm; khác xa hơn coi là số khác (tạm ứng, thuế...), không báo
+  const lech = [...co].filter(n => !biet.some(b => b.n === n)).flatMap(n => {
+    const b = biet.find(b => Math.abs(n - b.n) <= b.n * 0.05);
+    return b ? [`Văn bản ghi ${so(n)} đ, thông tin công trình ghi ${b.ten} là ${so(b.n)} đ`] : [];
+  });
+  return { lech, thieu };
+}
+export const conSot = van => [...new Set(String(van).match(/\{\{[^{}]+\}\}/g) || [])]; // chỗ điền chưa có thông tin
+
+const DOC = 'application/vnd.google-apps.document', SHEET = 'application/vnd.google-apps.spreadsheet';
+const WORD = /\.(docx?|odt|rtf)$/i, EXCEL = /\.(xlsx?|ods)$/i;
+const chuCua = (g, f) => g.api(`https://www.googleapis.com/drive/v3/files/${f.id}/export?mimeType=${f.mimeType === SHEET ? 'text/csv' : 'text/plain'}`, { raw: true }); // ponytail: Trang tính chỉ đọc trang đầu
+
+// Chữ của văn bản để soát. Google Docs đọc thẳng; Word thì Drive chuyển tạm sang Google Docs, đọc xong xóa bản tạm.
+// ponytail: PDF, bản scan, bản vẽ không soát (phải nhận dạng chữ, chậm và sai nhiều); chỉ soát Word, Google Docs.
+export async function docChu(g, ds) {
+  const f = ds.find(f => f.mimeType === DOC) || ds.find(f => WORD.test(f.name));
+  if (!f) return null;
+  if (f.mimeType === DOC) return chuCua(g, f);
+  const tam = await g.api(`https://www.googleapis.com/drive/v3/files/${f.id}/copy?fields=id,mimeType`, g.json({ mimeType: DOC, name: '_TAM-SOAT_xoa-duoc' }));
+  try { return await chuCua(g, tam); } finally { await g.api(`https://www.googleapis.com/drive/v3/files/${tam.id}`, { method: 'DELETE' }).catch(() => {}); }
+}
+
+// Lập văn bản: chép mẫu (Word/Excel thì chuyển sang Google Docs/Trang tính) vào thư mục đích, điền {{Tên mục}} từ trang Thông tin và {{Ngày}}.
+export async function lap(g, mau, ten, dir, tt) {
+  const sheet = mau.mimeType === SHEET || EXCEL.test(mau.name);
+  const f = await g.api(`https://www.googleapis.com/drive/v3/files/${mau.id}/copy?fields=id,mimeType,webViewLink`, g.json({ mimeType: sheet ? SHEET : DOC, name: ten, parents: [dir] }));
+  const dien = [...tt.filter(([t, gt]) => t && gt), ['Ngày', new Date().toLocaleDateString('en-GB')]];
+  await (sheet
+    ? g.api(`https://sheets.googleapis.com/v4/spreadsheets/${f.id}:batchUpdate`, g.json({ requests: dien.map(([t, gt]) => ({ findReplace: { find: `{{${t}}}`, replacement: gt, allSheets: true } })) }))
+    : g.api(`https://docs.googleapis.com/v1/documents/${f.id}:batchUpdate`, g.json({ requests: dien.map(([t, gt]) => ({ replaceAllText: { containsText: { text: `{{${t}}}`, matchCase: false }, replaceText: gt } })) })));
+  return { ...f, thieu: conSot(await chuCua(g, f)) };
+}
+
+// Thư mục mẫu: các mẫu Google Docs, Trang tính, Word, Excel, xếp theo tên.
+export const dsMau = async (g, dir) => (await g.ls(`'${dir}' in parents`)).filter(f => f.mimeType === DOC || f.mimeType === SHEET || WORD.test(f.name) || EXCEL.test(f.name))
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vanban.js')) { // chạy: node vanban.js
+  const a = await import('node:assert/strict');
+  const tt = [['Giá trị hợp đồng', '423.301.185 đ'], ['Chủ đầu tư', 'Ban Quản lý dự án xã Phước Hậu'], ['Số hợp đồng', '02/2026/HĐXD-HT889'], ['NotebookLM', 'https://notebooklm.google.com/x'], ['Trống', '']];
+  const hd = 'HỢP ĐỒNG số 02/2026/HĐXD-HT889\nBên A: BAN QUẢN LÝ DỰ ÁN  XÃ PHƯỚC HẬU\nGiá trị: 424.575.008 đồng. Tạm ứng 126,990,555 đồng.';
+  const r = soat(hd, tt);
+  a.deepEqual(r.lech, ['Văn bản ghi 424.575.008 đ, thông tin công trình ghi Giá trị hợp đồng là 423.301.185 đ']); // nhầm số QĐ 427 vs dự thảo HĐ
+  a.deepEqual(r.thieu, ['Giá trị hợp đồng: 423.301.185 đ']); // tạm ứng khác xa: không báo; link NotebookLM, mục trống: bỏ qua
+  a.deepEqual(soat(hd.replace('424.575.008', '423,301,185'), tt), { lech: [], thieu: [] }); // dấu phẩy hay chấm đều được
+  a.deepEqual(soat('', tt).thieu.length, 3);
+  a.deepEqual(conSot('Kính gửi {{Chủ đầu tư}}, ngày {{Ngày}} {{Chủ đầu tư}} {x}'), ['{{Chủ đầu tư}}', '{{Ngày}}']);
+  console.log('ok');
+}
