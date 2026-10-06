@@ -5,9 +5,9 @@ const $ = id => document.getElementById(id);
 const FOLDER = 'application/vnd.google-apps.folder', SHEET = 'application/vnd.google-apps.spreadsheet';
 let token, docs = [], files = [];
 
-const api = async url => {
-  const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-  if (!r.ok) throw new Error(r.status === 401 ? 'Phiên đăng nhập hết hạn, bấm Đăng nhập lại.' : 'Lỗi Google ' + r.status);
+const api = async (url, opt = {}) => {
+  const r = await fetch(url, { ...opt, headers: { Authorization: 'Bearer ' + token, ...opt.headers } });
+  if (!r.ok) throw new Error(r.status === 401 ? 'Phiên đăng nhập hết hạn, bấm Đăng nhập lại.' : r.status === 403 ? 'Google không cho phép (không đủ quyền với file này).' : 'Lỗi Google ' + r.status);
   return r.json();
 };
 const ls = async q => (await api('https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=files(id,name,mimeType,webViewLink)&q=' + encodeURIComponent(q + ' and trashed=false'))).files;
@@ -30,12 +30,14 @@ function hien() {
   }));
 }
 
-// Gửi link bản hiện hành: tìm file Drive có tên bắt đầu bằng "<mã>-<rev>" rồi mở bảng chia sẻ của máy.
+// Gửi link bản hiện hành: tìm file Drive có tên bắt đầu bằng "<mã>-<rev>", mở quyền "ai có link đều xem được" (sau khi hỏi), rồi mở bảng chia sẻ của máy.
 async function gui(d) {
   try {
     const found = (await ls(`name contains '${d.ma}-${d.rev}'`)).filter(f => f.name.startsWith(`${d.ma}-${d.rev}`));
     if (!found.length) return say(`Chưa thấy file ${d.ma}-${d.rev} trên Drive (sổ ghi ${d.rev} nhưng file chưa được đổi tên chuẩn?).`);
     const f = found.find(x => x.name.toLowerCase().endsWith('.pdf')) || found[0]; // cùng mã cùng rev có thể có .xlsx và .pdf: gửi đi thì ưu tiên PDF
+    if (!confirm(`Gửi "${f.name}"?\nBất kỳ ai có link đều xem được file này.`)) return;
+    await api(`https://www.googleapis.com/drive/v3/files/${f.id}/permissions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' }) });
     say();
     if (navigator.share) await navigator.share({ title: f.name, url: f.webViewLink });
     else { await navigator.clipboard.writeText(f.webViewLink); say('Đã chép link ' + f.name); }
@@ -68,7 +70,7 @@ $('vao').onclick = () => {
   if (!CLIENT_ID) return say('Chưa điền CLIENT_ID trong config.js (xem README).');
   google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
-    scope: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets.readonly',
+    scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets.readonly', // drive (không chỉ readonly) để đổi quyền chia sẻ khi Gửi
     callback: vao,
   }).requestAccessToken();
 };
