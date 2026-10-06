@@ -541,6 +541,7 @@ function veSot() {
     [hanLoi.length, () => 'Chưa kiểm tra được hạn giấy tờ của: ' + hanLoi.join(', '), '#han'],
     ...sotCt.filter(c => c.nk === false).map(c => [1, () => c.ma + ' chưa ghi nhật ký hôm nay', '#nk', c.id]),
     ...sotCt.filter(c => c.nk === null).map(c => [1, () => 'Chưa kiểm tra được nhật ký ' + c.ma + ' (chưa có Google Sheet nhật ký hoặc mất sóng)', '#nk', c.id]),
+    ...sotCt.filter(c => c.vt?.nt).map(c => [c.vt.nt, x => `${c.ma}: ${x} công việc cần nghiệm thu trong 2 ngày tới hoặc đã quá ngày`, '#ntl', c.id]),
     ...sotCt.filter(c => c.vt?.can).map(c => [c.vt.can, x => `${c.ma}: ${x} lô vật tư chưa xong (CO/CQ, lấy mẫu, nghiệm thu)`, '#vt', c.id]),
     ...sotCt.filter(c => c.vt === null).map(c => [1, () => 'Chưa kiểm tra được vật tư của ' + c.ma, '#vt', c.id]),
     ...sotCt.filter(c => c.anh === null).map(c => [1, () => 'Chưa kiểm tra được ảnh chờ của ' + c.ma, '#anh', c.id]),
@@ -639,7 +640,7 @@ function doiCT() {
   try { localStorage.setItem('ct', $('ct').value); } catch {}
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
   const ct = $('ct').value;
-  chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, sot: sotCap, id: nkId }); }); taiTT(); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
+  chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), sot: sotCap, id: nkId }); }); taiTT(); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
 const khoa = (id, fn, sau) => async () => {

@@ -84,3 +84,10 @@ Mục "Vật tư" ghi vào file nhật ký `CTxx-NK-NHATKY` của công trình (
 - **Nghiệm thu** (chỉ mở khi đã duyệt, đủ CO/CQ, mẫu đạt): thêm một dòng mã VATLIEU vào trang `NGHIEMTHU`.
 - Khung **Còn sót** đếm lô cấm dùng và lô chưa xong của mọi công trình.
 - Trước khi ghi, app đọc lại các dòng đó; sheet vừa bị sửa ở nơi khác thì không ghi mà tải lại. Chạy `node vattu.js` để tự kiểm tra.
+
+## Lịch nghiệm thu
+
+Mục "Lịch nghiệm thu" tự liệt kê các công việc trong trang `DANHMUC` của file nhật ký (lấy từ tiến độ đã trình) có ngày **Kết thúc KH** trong 14 ngày tới hoặc đã qua, mà trang `NGHIEMTHU` chưa có dòng mã đó với Kết quả "Đạt".
+- Mỗi việc ghi những gì còn thiếu mà app tự kiểm được: chưa có khối lượng thực hiện trong nhật ký, còn lô vật tư chưa nghiệm thu đầu vào.
+- **Nhắc tôi** thêm việc "Nghiệm thu: ..." vào Việc cần làm, hạn là ngày kết thúc (Google Lịch nhắc trước 3 ngày, 1 ngày). **Đã nghiệm thu** hỏi ngày và số biên bản rồi thêm một dòng vào `NGHIEMTHU` (không sửa dòng cũ).
+- Khung **Còn sót** đếm việc cần nghiệm thu trong 2 ngày tới hoặc đã quá ngày.
