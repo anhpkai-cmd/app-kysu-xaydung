@@ -9,7 +9,7 @@ import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
 import { khoiQR, lamQR, moQR, inQR, sauBanMoi as qrSauBanMoi, laBanVe } from './qr.js';
 import { LOAI as LOAI_HAN, dong as dongHan, COT_HAN } from './han.js';
 import { MAU as MAU_TIN, dmy, macDinh, soan, zalo } from './tin.js';
-import { moPS, ghiPS } from './phatsinh.js';
+import { moPS, ghiPS, docPS, CHO as PS_CHO } from './phatsinh.js';
 import { moVatTu, luuVe, themVatTu, demVatTu, soVn, themYc, lapYc, veYc } from './vattu.js';
 import { moCC, doiThang, sauLap, lapCC } from './chamcong.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
@@ -652,12 +652,12 @@ $('tqg').onclick = () => navigator.geolocation ? navigator.geolocation.getCurren
 // Họp chủ đầu tư: đọc nhật ký, việc, sổ đăng ký, sổ gửi nhận, 6 ảnh mới nhất của công trình đang chọn, gom bằng hop.js. Chỉ đọc, không ghi gì.
 async function hop(bc) { // bc: báo cáo 1 trang cho giám đốc thay cho bản tin họp CĐT
   const ten = $('ct').selectedOptions[0].text, ma = ten.split('_')[0], doc = (id, p) => id ? api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${p}`).then(v => v.values || []).catch(() => null) : null;
-  const [ngay, kl, gui, anh] = await Promise.all([doc(nkId, 'NGAY!A:L?valueRenderOption=UNFORMATTED_VALUE'), doc(nkId, 'KHOILUONG!A:E?valueRenderOption=UNFORMATTED_VALUE'), doc(soId, 'NHATKY_GUINHAN!A:H'),
+  const [ngay, kl, gui, psv, anh] = await Promise.all([doc(nkId, 'NGAY!A:L?valueRenderOption=UNFORMATTED_VALUE'), doc(nkId, 'KHOILUONG!A:E?valueRenderOption=UNFORMATTED_VALUE'), doc(soId, 'NHATKY_GUINHAN!A:H'), doc(soId, 'PHATSINH!A:I'),
     api('https://www.googleapis.com/drive/v3/files?pageSize=6&orderBy=createdTime desc&fields=files(name,webViewLink)&q=' + encodeURIComponent(`name contains '${q(ma)}-HA-' and mimeType contains 'image/' and trashed=false`)).then(r => r.files).catch(() => [])]);
   if ($('ct').selectedOptions[0].text !== ten) return; // đổi công trình giữa chừng
   const d = { ten, hom: homNay(), ngay, kl, dm: ngay && kl ? nkDm : null, viec: viec.filter(v => v.ct === ten), docs, gui };
   $('hopn').textContent = bc ? 'Báo cáo nội bộ gửi giám đốc. App chưa lưu số tiền nên báo cáo không có phần tiền.' : 'Bản tin để anh chuẩn bị họp. Xóa phần nội bộ trước khi gửi chủ đầu tư.';
-  $('hopt').value = bc ? banBaoCao({ ...d, han: hanDs.filter(x => x.ct === ten), cam: sotCt.find(c => c.id === $('ct').value)?.vt?.cam || 0 }) : banHop(d);
+  $('hopt').value = bc ? banBaoCao({ ...d, han: hanDs.filter(x => x.ct === ten), cam: sotCt.find(c => c.id === $('ct').value)?.vt?.cam || 0, ps: psv && docPS(psv).filter(x => x.tt === PS_CHO).map(x => `${x.ngay} ${x.ai}: ${x.nd}${x.kl ? ', ' + x.kl : ''}`) }) : banHop(d);
   $('hopa').replaceChildren(...anh.map(f => { const li = document.createElement('li'), a = li.appendChild(document.createElement('a')); a.href = f.webViewLink; a.target = '_blank'; a.textContent = f.name; return li; }));
   $('hopkq').hidden = false;
 }
