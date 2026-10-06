@@ -64,10 +64,11 @@ async function tai(d, file) {
     const dir = await thuMuc(ct, d.dir), luu = /HIENHANH$/.test(d.dir) ? await thuMuc(ct, d.dir.replace(/HIENHANH$/, 'LUUTRU')) : null;
     const cu = luu ? (await ls(`'${dir}' in parents and name contains '${q(d.ma)}'`)).filter(f => f.name.startsWith(d.ma + '-')) : [];
     if (!confirm(`Lưu "${file.name}" thành:\n${ten}\nvào ${d.dir}.` + (cu.length ? `\n\nChuyển sang LUUTRU (không xóa): ${cu.map(f => f.name).join(', ')}` : ''))) return;
-    say('Đang tải lên...'); buoc = 'tải file lên';
+    say('Đang tải lên...'); buoc = 'lưu file';
     // ponytail: tải một lần (multipart), ổn đến vài chục MB; file lớn hơn cần tải theo đợt (resumable).
     const b = 'ranh' + Date.now();
-    const moi = await api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    // file đã nằm trên Drive (hộp 00_INBOX): chỉ đổi tên và chuyển thư mục, không tải lại. File từ máy/Zalo: tải lên.
+    const moi = file.cha ? await api(`https://www.googleapis.com/drive/v3/files/${file.id}?addParents=${dir}&removeParents=${file.cha}&fields=id`, { ...json({ name: ten }), method: 'PATCH' }) : await api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
       method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b },
       body: new Blob([`--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify({ name: ten, parents: [dir] })}\r\n--${b}\r\nContent-Type: ${file.type || 'application/octet-stream'}\r\n\r\n`, file, `\r\n--${b}--`]),
     });
@@ -78,7 +79,8 @@ async function tai(d, file) {
     await api(`https://sheets.googleapis.com/v4/spreadsheets/${soId}/values:batchUpdate`, json({ valueInputOption: 'RAW', data: [
       { range: `DANHMUC!${c('Rev hiện hành')}${d.dong}`, values: [[rev]] },
       { range: `DANHMUC!${c('Ngày rev')}${d.dong}`, values: [[new Date().toLocaleDateString('en-GB')]] }] }));
-    if (file.khoa) { await (await caches.open('chia-se')).delete(file.khoa); nhan = nhan.filter(f => f !== file); hienNhan(); }
+    if (file.khoa) await (await caches.open('chia-se')).delete(file.khoa);
+    nhan = nhan.filter(f => f !== file); hienNhan();
     await chonCT(); say(`Đã lưu ${ten}.`);
   } catch (e) { say(`Lỗi khi ${buoc}: ${e.message}`); }
 }
@@ -93,9 +95,17 @@ async function docNhan() {
   }
   hienNhan();
 }
+// File chờ lưu: nhận từ Zalo (Android) hoặc đang nằm trong 00_INBOX của công trình (iPhone: Zalo → Lưu vào Drive → 00_INBOX). File đầu danh sách là file đang chọn.
+async function docInbox() {
+  const cha = await thuMuc($('ct').value, '00_INBOX');
+  nhan = nhan.filter(f => !f.cha).concat((await ls(`'${cha}' in parents and mimeType!='${FOLDER}'`)).map(f => ({ ...f, cha })));
+  hienNhan();
+}
 function hienNhan() {
-  $('nhan').hidden = !nhan.length;
-  $('nhan').textContent = nhan.length ? `Đã nhận ${nhan.length} file: ${nhan.map(f => f.name).join(', ')}. Đăng nhập, rồi bấm “Bản mới” ở đúng tài liệu để lưu.` : '';
+  const n = $('nhan'); n.hidden = !nhan.length;
+  const dong = Object.assign(document.createElement('div'), { textContent: `Có ${nhan.length} file chờ lưu. Chọn file, rồi bấm “Bản mới” ở đúng tài liệu:` });
+  n.replaceChildren(...(nhan.length ? [dong, ...nhan.map((f, i) => Object.assign(document.createElement('button'), {
+    className: 'phu', textContent: (i ? '' : '✓ ') + f.name, onclick: () => { nhan.unshift(...nhan.splice(i, 1)); hienNhan(); } }))] : []));
 }
 
 // Gửi link bản hiện hành: tìm file Drive có tên bắt đầu bằng "<mã>-<rev>", mở quyền "ai có link đều xem được" (sau khi hỏi), rồi mở bảng chia sẻ của máy.
@@ -136,6 +146,7 @@ async function chonCT() {
     if (!so) { docs = []; hien(); return say('Công trình này chưa có Google Sheet _SODANGKY (mở file Excel trên Drive → Lưu thành Google Trang tính).'); }
     const v = await api(`https://sheets.googleapis.com/v4/spreadsheets/${so.id}/values/DANHMUC`);
     head = v.values[0]; soId = so.id; docs = parse(v.values); hien(); if (!docs.length) say('Sổ đăng ký đang trống, chưa có tài liệu nào.');
+    await docInbox();
   } catch (e) { say(e.message); }
 }
 
