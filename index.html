@@ -46,7 +46,7 @@
   .anh img{width:88px;height:88px;object-fit:cover;border-radius:6px;background:var(--rule)}
   .anh th,.anh>div{min-width:0}
   #ttms:empty,#nkmsg:empty,#anms:empty,#sotms:empty,#tqms:empty,#vtms:empty{display:none}
-  #tqd .cb{font-weight:600;color:var(--accent)}
+  #tqd .cb,#sotn .cb{font-weight:600;color:var(--accent)}
   #sotds{display:grid;gap:8px}
   .cot{flex-direction:column;align-items:stretch}
   .cot .nut{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
@@ -64,6 +64,7 @@
   <section id="sot" hidden>
     <h2>Hôm nay còn sót gì</h2>
     <div id="sotds"></div>
+    <div id="sotn"></div>
     <p id="sotms" role="status"></p>
     <p><button id="sotb" class="phu">Nhắc tôi lúc 17h mỗi ngày</button></p>
   </section>
