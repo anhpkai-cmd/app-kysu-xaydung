@@ -518,7 +518,7 @@ const ddmm = d => d.split('-').reverse().slice(0, 2).join('/'), ngayAnh = f => f
 async function taiAnh() {
   const ct = $('ct').value; $('anx').hidden = true; anhDs = [];
   try {
-    const ds = (await Promise.all((await hopInbox()).map(async cha => (await ls(`'${cha}' in parents and mimeType contains 'image/'`, 'id,name,mimeType,createdTime,thumbnailLink,imageMediaMetadata(time)')).map(f => ({ ...f, cha }))))).flat();
+    const hop = await hopInbox(), ds = (await Promise.all(hop.map(async cha => (await ls(`'${cha}' in parents and mimeType contains 'image/'`, 'id,name,mimeType,createdTime,thumbnailLink,imageMediaMetadata(time)')).map(f => ({ ...f, cha, ngoai: cha !== hop[0] }))))).flat();
     if ($('ct').value !== ct) return;
     anhDs = ds.filter(f => !f.name.startsWith(TL)).map(f => ({ ...f, ...ngayChup(f) })); // ảnh đã đánh dấu tài liệu thì không hiện ở đây
     const hm = new Map([...nkDm.map(([ma, ten]) => [ma, `${ma} · ${ten}`]), ['CHUNG', 'CHUNG · Toàn cảnh, việc chung'], ['ATLD', 'ATLD · An toàn lao động'], ['VATLIEU', 'VATLIEU · Vật liệu nhập về']]); // luôn có ba mục chung ở cuối
@@ -536,6 +536,7 @@ function veAnh() {
     im.onerror = async () => { im.onerror = null; try { const r = await fetch(f.thumbnailLink, { headers: { Authorization: 'Bearer ' + token } }); if (r.ok) im.src = URL.createObjectURL(await r.blob()); } catch {} }; // link ảnh nhỏ cần cookie Google; không có thì thử bằng mã đăng nhập của app
     lb.append(cb, im);
     const th = document.createElement('div'), s = document.createElement('small'); s.textContent = f.nguon === 'doan' ? `Chưa rõ ngày chụp (đoán ${ddmm(f.ngay)}). Bấm Dùng ngày này hoặc chọn ngày; chưa có ngày thì chưa xếp, ảnh ở lại INBOX.` : `Ngày chụp ${f.ngay.split('-').reverse().join('/')}`;
+    if (f.ngoai) s.textContent += ' · Từ 00_INBOX ngoài cùng Drive';
     th.append(s);
     if (f.nguon === 'doan') {
       const d = Object.assign(document.createElement('input'), { type: 'date', value: f.ngaySua || '' }); d.setAttribute('aria-label', 'Ngày chụp của ' + f.name);
@@ -568,7 +569,8 @@ async function xepAnh() {
   const ct = $('ct').value, ma = $('ct').selectedOptions[0].text.split('_')[0], hm = $('anhm').value, mota = $('anmt').value, ds = anhDs.filter(f => f.chon), nhom = {};
   for (const f of ds) if (ngayAnh(f)) (nhom[ngayAnh(f)] ||= []).push(f); // ảnh chưa có ngày không động tới: ở lại INBOX
   let xong = 0, loi = '';
-  const dem = Object.values(nhom).flat().length;
+  const dem = Object.values(nhom).flat().length, ng = Object.values(nhom).flat().filter(f => f.ngoai).length;
+  if (ng && !confirm(`${ng} ảnh đến từ 00_INBOX ngoài cùng Drive, không thuộc công trình nào. Xếp vào ${$('ct').selectedOptions[0].text}?`)) return; // tránh ảnh công trình này lọt sang công trình khác
   const dich = f => api(`https://www.googleapis.com/drive/v3/files/${f.id}?addParents=${f.dir}&removeParents=${f.cha}&fields=id`, { ...json({ name: f.moi }), method: 'PATCH' });
   try {
     for (const [ngay, fs] of Object.entries(nhom).sort()) {
