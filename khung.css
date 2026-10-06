@@ -37,3 +37,4 @@ main{position:relative;z-index:1}
 :root[data-skin="ocean"] main h2,:root[data-skin="ocean"] main .hint,:root[data-skin="ocean"] header h1,:root[data-skin="ocean"] header small{color:var(--ink);text-shadow:0 0 2px var(--paper),0 0 6px var(--paper),0 0 10px var(--paper)}
 .ic svg{width:24px;height:24px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .luoi .ic{display:flex;margin-bottom:4px}
+header>div{flex:1;min-width:0}
