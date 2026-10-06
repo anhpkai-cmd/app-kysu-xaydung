@@ -22,6 +22,8 @@
   body{font:16px/1.5 var(--font);margin:0;background:var(--paper);color:var(--ink)}
   header{display:flex;gap:var(--gap);align-items:center;justify-content:space-between;padding:12px var(--gap);border-bottom:1px solid var(--rule)}
   h1{font-size:20px;font-weight:700;margin:0}
+  h2{font-size:18px;margin:24px 0 4px}
+  h3{font-size:14px;color:var(--mute);margin:16px 0 4px}
   main{padding:var(--gap);max-width:720px;margin:auto}
   label{display:block;font-size:14px;color:var(--mute);margin:12px 0 4px}
   button,select,input{font:inherit;color:inherit;min-height:44px;padding:0 12px;border-radius:8px;border:1px solid var(--rule);background:var(--card);box-sizing:border-box}
@@ -46,7 +48,16 @@
 <main>
   <p id="nhan" role="status" hidden></p>
   <p id="msg" role="status">Bấm “Đăng nhập Google” để xem sổ đăng ký công trình.</p>
+  <section id="viec" hidden>
+    <h2>Việc cần làm</h2>
+    <div id="dsv"></div>
+    <label for="vten">Việc mới</label><input id="vten" placeholder="ví dụ: Gia hạn bảo lãnh thực hiện hợp đồng">
+    <label for="vct">Công trình</label><select id="vct"></select>
+    <label for="vhan">Hạn (có hạn thì điện thoại sẽ nhắc qua Google Lịch)</label><input id="vhan" type="date">
+    <p><button id="vthem">Thêm việc</button></p>
+  </section>
   <div id="loc" hidden>
+    <h2>Tài liệu</h2>
     <label for="ct">Công trình</label><select id="ct"></select>
     <label for="q">Tìm tài liệu</label><input id="q" type="search" placeholder="ví dụ: móng, cọc, KC-005">
   </div>
