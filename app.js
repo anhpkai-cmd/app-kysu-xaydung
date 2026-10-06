@@ -1,14 +1,15 @@
 import { CLIENT_ID, ROOT_NAME } from './config.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
+import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan } from './viec.js';
 
 const $ = id => document.getElementById(id);
 const FOLDER = 'application/vnd.google-apps.folder', SHEET = 'application/vnd.google-apps.spreadsheet';
-let token, docs = [], head = [], soId, nhan = []; // nhan: file nhận từ Zalo/ứng dụng khác (xem sw.js)
+let token, docs = [], head = [], soId, nhan = [], viec = [], viecId; // nhan: file chờ lưu (từ Zalo/ứng dụng khác, hoặc trong 00_INBOX); viec: việc cần làm (xem viec.js)
 
 const api = async (url, opt = {}) => {
   const r = await fetch(url, { ...opt, headers: { Authorization: 'Bearer ' + token, ...opt.headers } });
   if (!r.ok) throw new Error(r.status === 401 ? 'Phiên đăng nhập hết hạn, bấm Đăng nhập lại.' : r.status === 403 ? 'Google không cho phép (không đủ quyền với file này).' : 'Lỗi Google ' + r.status);
-  return r.json();
+  return r.status === 204 ? null : r.json();
 };
 const ls = async q => (await api('https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=files(id,name,mimeType,webViewLink)&q=' + encodeURIComponent(q + ' and trashed=false'))).files;
 const say = t => $('msg').textContent = t || '';
@@ -108,6 +109,63 @@ function hienNhan() {
     className: 'phu', textContent: (i ? '' : '✓ ') + f.name, onclick: () => { nhan.unshift(...nhan.splice(i, 1)); hienNhan(); } }))] : []));
 }
 
+// ---- Việc cần làm: Trang tính _CONGVIEC (trong thư mục CONGTRINH) + sự kiện Google Lịch để điện thoại tự nhắc hạn ----
+const homNay = () => new Date().toLocaleDateString('sv-SE'); // yyyy-mm-dd theo giờ máy
+const LICH = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+
+async function soViec(goc) {
+  const [f] = await ls(`'${goc}' in parents and mimeType='${SHEET}' and name='_CONGVIEC'`);
+  if (f) return f.id;
+  const t = await api('https://sheets.googleapis.com/v4/spreadsheets', json({ properties: { title: '_CONGVIEC' }, sheets: [{ properties: { title: 'VIEC' },
+    data: [{ startRow: 0, startColumn: 0, rowData: [{ values: COT_VIEC.map(c => ({ userEnteredValue: { stringValue: c } })) }] }] }] }));
+  const { parents } = await api(`https://www.googleapis.com/drive/v3/files/${t.spreadsheetId}?fields=parents`);
+  await api(`https://www.googleapis.com/drive/v3/files/${t.spreadsheetId}?addParents=${goc}&removeParents=${parents.join(',')}&fields=id`, { method: 'PATCH' });
+  return t.spreadsheetId;
+}
+
+async function taiViec() {
+  viec = parseViec((await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC`)).values);
+  const nhom = chia(viec, homNay()), dong = (t, han) => {
+    const el = document.createElement('div'); el.className = 'doc';
+    const th = document.createElement('div');
+    const a = document.createElement('div'); a.textContent = t.ten;
+    const b = document.createElement('small'); b.textContent = [t.ct, han ?? t.han].filter(Boolean).join(' · ');
+    th.append(a, b);
+    const x = document.createElement('button'); x.className = 'phu'; x.textContent = 'Xong'; x.setAttribute('aria-label', 'Xong việc: ' + t.ten);
+    x.onclick = () => xong(t);
+    el.append(th, x); return el;
+  };
+  const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dong(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
+  $('dsv').replaceChildren(...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen), ...muc('Sau đó', nhom.sau), ...muc('Chưa có hạn', nhom.khongHan));
+  if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên bên dưới.';
+}
+
+async function themViec() {
+  const ten = $('vten').value.trim(), ct = $('vct').value, han = $('vhan').value;
+  if (!ten) return say('Gõ tên việc trước.');
+  try {
+    let lich = '', ghi = '';
+    if (han) try { // ponytail: múi giờ cố định Việt Nam; sửa hạn tay trong Trang tính không tự cập nhật Lịch
+      const tz = 'Asia/Ho_Chi_Minh';
+      lich = (await api(LICH, json({ summary: ct && ct !== 'Chung' ? `${ten} (${ct})` : ten, start: { dateTime: han + 'T08:00:00', timeZone: tz }, end: { dateTime: han + 'T08:30:00', timeZone: tz },
+        reminders: { useDefault: false, overrides: [0, 1440, 4320].map(minutes => ({ method: 'popup', minutes })) } }))).id; // nhắc lúc 8h sáng ngày hạn, 1 ngày và 3 ngày trước
+    } catch (e) { ghi = 'Chưa tạo được nhắc trên Google Lịch: ' + e.message; }
+    await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [[ten, ct, han, 'Mở', ghi, lich]] }));
+    $('vten').value = ''; $('vhan').value = '';
+    await taiViec(); say(ghi || 'Đã thêm việc.');
+  } catch (e) { say(e.message); }
+}
+
+async function xong(t) {
+  try {
+    const hang = (await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC!A${t.dong}:A${t.dong}`)).values?.[0]?.[0];
+    if (hang !== t.ten) { await taiViec(); return say('Danh sách việc vừa thay đổi, đã tải lại. Bấm Xong lần nữa.'); } // sổ bị sửa/đổi thứ tự ở nơi khác
+    await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC!D${t.dong}?valueInputOption=RAW`, { ...json({ values: [['Xong']] }), method: 'PUT' });
+    if (t.lich) await api(`${LICH}/${t.lich}`, { method: 'DELETE' }).catch(() => {}); // việc xong rồi thì thôi nhắc; lỗi Lịch không chặn
+    await taiViec(); say(`Xong: ${t.ten}`);
+  } catch (e) { say(e.message); }
+}
+
 // Gửi link bản hiện hành: tìm file Drive có tên bắt đầu bằng "<mã>-<rev>", mở quyền "ai có link đều xem được" (sau khi hỏi), rồi mở bảng chia sẻ của máy.
 // File hiện hành của tài liệu (cùng mã, đúng Rev trong sổ). Cùng mã cùng rev có thể có .xlsx và .pdf: ưu tiên PDF.
 async function tim(d) {
@@ -158,6 +216,8 @@ async function vao(resp) {
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
     $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false;
+    $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
+    viecId = await soViec(goc.id); await taiViec();
     chonCT();
   } catch (e) { say(e.message); }
 }
@@ -166,11 +226,12 @@ $('vao').onclick = () => {
   if (!CLIENT_ID) return say('Chưa điền CLIENT_ID trong config.js (xem README).');
   google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
-    scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets', // quyền ghi: đổi quyền chia sẻ khi Gửi, lưu bản mới, ghi Rev vào sổ
+    scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar.events', // quyền ghi: đổi quyền chia sẻ khi Gửi, lưu bản mới, ghi Rev vào sổ
     callback: vao,
   }).requestAccessToken();
 };
 $('ct').onchange = chonCT;
 $('q').oninput = hien;
+$('vthem').onclick = themViec;
 docNhan();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
