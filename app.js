@@ -1,6 +1,7 @@
 import { CLIENT_ID, ROOT_NAME } from './config.js';
 import { NK, serial } from './nhatky.js';
 import { soat, docChu, lap, dsMau } from './vanban.js';
+import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
@@ -13,7 +14,7 @@ const api = async (url, opt = {}) => {
   if (!r.ok) throw new Error(r.status === 401 ? 'Phiên đăng nhập hết hạn, bấm Đăng nhập lại.' : r.status === 403 ? 'Google không cho phép (không đủ quyền với file này).' : 'Lỗi Google ' + r.status);
   return r.status === 204 ? null : opt.raw ? r.text() : r.json();
 };
-const ls = async q => (await api('https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=files(id,name,mimeType,webViewLink)&q=' + encodeURIComponent(q + ' and trashed=false'))).files;
+const ls = async (q, cot = 'id,name,mimeType,webViewLink') => (await api(`https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=files(${cot})&q=` + encodeURIComponent(q + ' and trashed=false'))).files;
 const say = t => $('msg').textContent = t || '';
 
 function hien() {
@@ -113,14 +114,15 @@ async function docNhan() {
 // File chờ lưu: nhận từ Zalo (Android) hoặc đang nằm trong 00_INBOX của công trình (iPhone: Zalo → Lưu vào Drive → 00_INBOX). File đầu danh sách là file đang chọn.
 async function docInbox() {
   const cha = await thuMuc($('ct').value, '00_INBOX');
-  nhan = nhan.filter(f => !f.cha).concat((await ls(`'${cha}' in parents and mimeType!='${FOLDER}'`)).map(f => ({ ...f, cha })));
+  nhan = nhan.filter(f => !f.cha).concat((await ls(`'${cha}' in parents and mimeType!='${FOLDER}'`)).filter(f => !f.mimeType.startsWith('image/') || f.name.startsWith(TL)).map(f => ({ ...f, cha }))); // ảnh hiện trường đi đường riêng (mục Ảnh hiện trường); ảnh đã đánh dấu TAILIEU_ là tài liệu
   hienNhan();
 }
 function hienNhan() {
   const n = $('nhan'); n.hidden = !nhan.length;
   const dong = Object.assign(document.createElement('div'), { textContent: `Có ${nhan.length} file chờ lưu. Chọn file, rồi bấm “Bản mới” ở đúng tài liệu:` });
-  n.replaceChildren(...(nhan.length ? [dong, ...nhan.map((f, i) => Object.assign(document.createElement('button'), {
-    className: 'phu', textContent: (i ? '' : '✓ ') + f.name, onclick: () => { nhan.unshift(...nhan.splice(i, 1)); hienNhan(); } }))] : []));
+  n.replaceChildren(...(nhan.length ? [dong, ...nhan.flatMap((f, i) => [Object.assign(document.createElement('button'), {
+    className: 'phu', textContent: (i ? '' : '✓ ') + f.name, onclick: () => { nhan.unshift(...nhan.splice(i, 1)); hienNhan(); } }),
+    ...(f.name.startsWith(TL) && f.mimeType?.startsWith('image/') ? [Object.assign(document.createElement('button'), { className: 'phu', textContent: 'Là ảnh hiện trường', onclick: () => doiTen(f, f.name.slice(TL.length)).then(() => { nhan = nhan.filter(x => x !== f); hienNhan(); taiAnh(); }).catch(e => say(e.message)) })] : [])])] : []));
 }
 
 // ---- Việc cần làm: Trang tính _CONGVIEC (trong thư mục CONGTRINH) + sự kiện Google Lịch để điện thoại tự nhắc hạn ----
@@ -271,7 +273,7 @@ const nkApi = (id, p, opt) => api(`https://sheets.googleapis.com/v4/spreadsheets
 const nkKey = () => 'nk:' + $('ct').value; // bản nháp theo công trình, xóa khi lưu thành công
 function nkNhap() { try { localStorage.setItem(nkKey(), JSON.stringify({ d: $('nkd').value, f: NK.map((_, i) => $('nk' + i).value), vc: nkVc })); } catch {} }
 async function moNhatKy() {
-  const ct = $('ct').value; // người dùng đổi công trình giữa chừng thì bỏ kết quả của công trình cũ
+  const ct = $('ct').value; nkDm = []; // người dùng đổi công trình giữa chừng thì bỏ kết quả của công trình cũ
   $('nk').hidden = false; $('nkf').hidden = true; nkId = null; nkVc = [];
   try {
     const f = await sheetCo(`name contains '${q($('ct').selectedOptions[0].text.split('_')[0])}-NK-NHATKY'`);
@@ -395,6 +397,82 @@ const lapVb = () => moTab(async () => {
   return f.webViewLink;
 });
 
+// Ảnh hiện trường: ảnh trong 00_INBOX (tải bằng app Google Drive) xếp vào 09_HINHANH/yyyy-mm/yyyy-mm-dd và đổi tên chuẩn. Chỉ di chuyển và đổi tên, không xóa, không nén.
+// Ảnh nào chỉ đoán được ngày thì phải được xác nhận ngày; chưa có ngày thì ảnh ở lại INBOX, không xếp.
+const doiTen = (f, ten) => api(`https://www.googleapis.com/drive/v3/files/${f.id}?fields=id`, { ...json({ name: ten }), method: 'PATCH' });
+const TL = 'TAILIEU_'; // tiền tố đánh dấu ảnh chụp tài liệu (bản vẽ, biên bản), ghi nhớ ngay trên Drive
+let anhDs = [];
+const ddmm = d => d.split('-').reverse().slice(0, 2).join('/'), ngayAnh = f => f.nguon === 'doan' ? f.ngaySua || '' : f.ngay;
+async function taiAnh() {
+  const ct = $('ct').value; $('anx').hidden = true; anhDs = [];
+  try {
+    const cha = await thuMuc(ct, '00_INBOX');
+    const ds = await ls(`'${cha}' in parents and mimeType contains 'image/'`, 'id,name,mimeType,createdTime,thumbnailLink,imageMediaMetadata(time)');
+    if ($('ct').value !== ct) return;
+    anhDs = ds.filter(f => !f.name.startsWith(TL)).map(f => ({ ...f, cha, ...ngayChup(f) })); // ảnh đã đánh dấu tài liệu thì không hiện ở đây
+    const hm = new Map([...nkDm.map(([ma, ten]) => [ma, `${ma} · ${ten}`]), ['CHUNG', 'CHUNG · Toàn cảnh, việc chung'], ['ATLD', 'ATLD · An toàn lao động'], ['VATLIEU', 'VATLIEU · Vật liệu nhập về']]); // luôn có ba mục chung ở cuối
+    $('anhm').replaceChildren(...[...hm].map(([ma, ten]) => new Option(ten, ma)));
+    $('anms').textContent = anhDs.length ? `Có ${anhDs.length} ảnh chờ xếp trong 00_INBOX. Tick các ảnh cùng một hạng mục, chọn hạng mục, bấm Xếp; ảnh chưa tick vẫn ở lại cho lượt sau.` : 'Không có ảnh chờ xếp. Tải ảnh lên thư mục 00_INBOX của công trình bằng app Google Drive.';
+    $('anx').hidden = !anhDs.length; veAnh();
+  } catch (e) { $('anms').textContent = e.message; }
+}
+function veAnh() {
+  $('anl').replaceChildren(...anhDs.map(f => {
+    const el = document.createElement('div'); el.className = 'doc anh';
+    const lb = document.createElement('label'), cb = Object.assign(document.createElement('input'), { type: 'checkbox', checked: !!f.chon });
+    cb.setAttribute('aria-label', 'Chọn ảnh ' + f.name); cb.onchange = () => { f.chon = cb.checked; tomTatAnh(); };
+    const im = Object.assign(document.createElement('img'), { src: f.thumbnailLink || '', alt: f.name, loading: 'lazy', referrerPolicy: 'no-referrer' });
+    im.onerror = async () => { im.onerror = null; try { const r = await fetch(f.thumbnailLink, { headers: { Authorization: 'Bearer ' + token } }); if (r.ok) im.src = URL.createObjectURL(await r.blob()); } catch {} }; // link ảnh nhỏ cần cookie Google; không có thì thử bằng mã đăng nhập của app
+    lb.append(cb, im);
+    const th = document.createElement('div'), s = document.createElement('small'); s.textContent = f.nguon === 'doan' ? `Chưa rõ ngày chụp (đoán ${ddmm(f.ngay)}). Bấm Dùng ngày này hoặc chọn ngày; chưa có ngày thì chưa xếp, ảnh ở lại INBOX.` : `Ngày chụp ${f.ngay.split('-').reverse().join('/')}`;
+    th.append(s);
+    if (f.nguon === 'doan') {
+      const d = Object.assign(document.createElement('input'), { type: 'date', value: f.ngaySua || '' }); d.setAttribute('aria-label', 'Ngày chụp của ' + f.name);
+      d.onchange = () => { f.ngaySua = d.value; tomTatAnh(); };
+      const dung = Object.assign(document.createElement('button'), { className: 'phu', textContent: 'Dùng ngày này' }); dung.onclick = () => { d.value = f.ngaySua = f.ngay; tomTatAnh(); };
+      th.append(d, dung);
+    }
+    const tl = Object.assign(document.createElement('button'), { className: 'phu', textContent: 'Đây là tài liệu' }); tl.setAttribute('aria-label', 'Chuyển ' + f.name + ' sang file chờ lưu của tài liệu');
+    tl.onclick = async () => {
+      try {
+        await doiTen(f, TL + f.name); const moi = { ...f, name: TL + f.name }; nhan.push(moi); anhDs = anhDs.filter(x => x !== f); hienNhan(); veAnh();
+        const hoan = Object.assign(document.createElement('button'), { className: 'phu', textContent: 'Hoàn tác' }); // bấm nhầm thì gỡ được
+        hoan.onclick = async () => { try { await doiTen(moi, f.name); nhan = nhan.filter(x => x !== moi); anhDs.push(f); hienNhan(); veAnh(); $('anms').textContent = 'Đã hoàn tác.'; } catch (e) { $('anms').textContent = e.message; } };
+        $('anms').replaceChildren(`Đã chuyển ${f.name} sang file chờ lưu của tài liệu. `, hoan);
+      } catch (e) { $('anms').textContent = e.message; }
+    };
+    th.append(tl); el.append(lb, th); return el;
+  }));
+  tomTatAnh();
+}
+function tomTatAnh() {
+  const c = anhDs.filter(f => f.chon), dem = {};
+  for (const f of c) { if (ngayAnh(f)) dem[ddmm(ngayAnh(f))] = (dem[ddmm(ngayAnh(f))] || 0) + 1; }
+  const co = Object.values(dem).reduce((s, n) => s + n, 0), chua = c.length - co;
+  $('anor').textContent = !c.length ? 'Chưa tick ảnh nào.' : (co ? `Sẽ xếp ${co} ảnh: ` + Object.entries(dem).map(([k, n]) => `${k} (${n})`).join(', ') : 'Chưa có ảnh nào đủ ngày để xếp.') + (chua ? ` ${chua} ảnh chưa có ngày sẽ ở lại INBOX.` : '');
+  $('anb').disabled = !co;
+  $('and').hidden = !c.some(f => f.nguon === 'doan' && !f.ngaySua);
+}
+async function xepAnh() {
+  const ct = $('ct').value, ma = $('ct').selectedOptions[0].text.split('_')[0], hm = $('anhm').value, mota = $('anmt').value, ds = anhDs.filter(f => f.chon), nhom = {};
+  for (const f of ds) if (ngayAnh(f)) (nhom[ngayAnh(f)] ||= []).push(f); // ảnh chưa có ngày không động tới: ở lại INBOX
+  let xong = 0, loi = '';
+  const dem = Object.values(nhom).flat().length;
+  const dich = f => api(`https://www.googleapis.com/drive/v3/files/${f.id}?addParents=${f.dir}&removeParents=${f.cha}&fields=id`, { ...json({ name: f.moi }), method: 'PATCH' });
+  try {
+    for (const [ngay, fs] of Object.entries(nhom).sort()) {
+      const dir = await thuMuc(ct, `09_HINHANH/${ngay.slice(0, 7)}/${ngay}`);
+      let stt = sttTiep(ma, ngay, (await ls(`'${dir}' in parents`)).map(f => f.name));
+      for (const f of fs.sort((x, y) => x.name.localeCompare(y.name))) { // cùng ngày giữ thứ tự tên file (tên Zalo bắt đầu bằng giờ)
+        await dich({ ...f, dir, moi: tenAnh(ma, ngay, stt++, hm, mota, f.name) });
+        $('anb').textContent = `Đang xếp ${++xong}/${dem}`;
+      }
+    }
+    $('anmt').value = '';
+  } catch (e) { loi = ' Dừng giữa chừng: ' + e.message; }
+  await taiAnh(); $('anms').textContent = `Đã xếp ${xong}/${dem} ảnh vào 09_HINHANH.${loi} ` + $('anms').textContent;
+}
+
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
 // ponytail: không có máy chủ nên không có refresh token, mỗi giờ phải xin lại một lần.
 const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth2.initTokenClient({
@@ -415,7 +493,7 @@ async function vao(resp) {
     try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec(); taiHan(cts);
-    $('tt').hidden = false;
+    $('tt').hidden = false; $('anh').hidden = false;
     doiCT();
   } catch (e) { say(e.message); }
 }
@@ -424,13 +502,13 @@ async function vao(resp) {
 function doiCT() {
   try { localStorage.setItem('ct', $('ct').value); } catch {}
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
-  chonCT(); moNhatKy(); taiTT();
+  chonCT(); moNhatKy().then(taiAnh); taiTT();
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
-const khoa = (id, fn) => async () => {
+const khoa = (id, fn, sau) => async () => {
   const b = $(id), chu = b.textContent; if (b.disabled) return;
   b.disabled = true; b.textContent = 'Đang lưu...';
-  try { await fn(); } finally { b.disabled = false; b.textContent = chu; }
+  try { await fn(); } finally { b.disabled = false; b.textContent = chu; sau?.(); }
 };
 
 $('vao').onclick = () => {
@@ -448,6 +526,9 @@ $('vb').ontoggle = taiMau;
 $('vbl').onclick = khoa('vbl', lapVb);
 $('ttnd').onclick = () => moTab(async () => 'https://drive.google.com/drive/folders/' + await thuMuc(gocId, '_CHUNG/THONGTU_NGHIDINH'), ttMs); // anh tự bỏ thông tư, nghị định vào; dùng chung mọi công trình
 $('nkt').onclick = themVc;
+$('anb').onclick = khoa('anb', xepAnh, tomTatAnh);
+$('anc').onclick = () => { const tat = anhDs.every(f => f.chon); anhDs.forEach(f => f.chon = !tat); veAnh(); };
+$('and').onclick = () => { anhDs.forEach(f => { if (f.chon && f.nguon === 'doan' && !f.ngaySua) f.ngaySua = f.ngay; }); veAnh(); };
 $('nkl').onclick = khoa('nkl', luuNhatKy);
 $('nkf').oninput = nkNhap;
 $('q').oninput = hien;
