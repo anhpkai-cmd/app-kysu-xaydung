@@ -20,7 +20,8 @@ export function bangCong(v, thang, hom) {
     return { ngay: dmy(ngayCua(n)), nguoi: [4, 5, 6, 7].map(i => +r[i] || 0), he, nghi: HE[r[3]] !== undefined ? r[3] : '' };
   });
   const tong = NHOM.map((_, i) => so(dong.reduce((s, d) => s + d.nguoi[i] * d.he, 0)));
-  const thieu = []; for (let n = tu; n <= toi; n++) if (!theo.has(n)) thieu.push(dmy(ngayCua(n)).slice(0, 5));
+  const thieu = []; // ngày chưa ghi, bỏ Chủ nhật ((n + 6) % 7 là thứ trong tuần, 0 = Chủ nhật); ponytail: ngày lễ vẫn bị báo
+  for (let n = tu; n <= toi; n++) if (!theo.has(n) && (n + 6) % 7) thieu.push(dmy(ngayCua(n)).slice(0, 5));
   return { dong, tong, thieu };
 }
 
@@ -80,7 +81,8 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('chamcong.js')) 
   const b = bangCong(v, '2026-10', '2026-10-05');
   a.deepEqual(b.tong, [14, 6, 2, 1.5]); // 10 + 8×0,5; ngày trùng lấy dòng đầu; nghỉ cả ngày 0; ngoài tháng bỏ
   a.deepEqual(b.thieu, ['03/10', '05/10']); a.equal(b.dong.length, 3); a.equal(b.dong[1].nghi, 'Nghỉ sáng');
-  a.equal(bangCong(v, '2026-02', '2026-10-05').thieu.length, 28); a.equal(bangCong([], '2026-12', '2026-12-31').thieu.length, 31);
+  a.equal(bangCong(v, '2026-02', '2026-10-05').thieu.length, 24); a.equal(bangCong([], '2026-12', '2026-12-31').thieu.length, 27); // bỏ 4 Chủ nhật
+  a.deepEqual(bangCong([], '2026-10', '2026-10-12').thieu.slice(2, 4), ['03/10', '05/10']); // 04/10 là Chủ nhật
   const o = oBang('Chợ Hiếu Lễ', '2026-10', b); a.deepEqual(o[6], ['01/10/2026', 10, 4, 2, 1, '']); a.deepEqual(o[7], ['02/10/2026', 4, 2, 0, 0.5, 'Nghỉ sáng']); a.deepEqual(o.at(-4), ['Tổng công', 14, 6, 2, 1.5, '']);
   a.match(tinBang('CT01-CC-202610-01', 'Chợ Hiếu Lễ', '2026-10', b, 'https://x'), /Nhóm 1: đất, BT, phục vụ: 14 công\n.*\n.*\n.*: 1,5 công\nGhi 3 ngày/);
   console.log('ok');
