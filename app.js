@@ -265,19 +265,18 @@ async function gui(d) {
     const bqKhoa = 'bq:' + d.ma, bq = (() => { try { return JSON.parse(localStorage.getItem(bqKhoa)) || []; } catch { return []; } })(); // cảnh báo anh đã xác nhận "đúng rồi" cho tài liệu này
     try {
       say('Đang soát văn bản với thông tin công trình...');
-      const van = await docChu(g, ds), tt = ttTin();
-      if (van != null) {
+      const doc = await docChu(g, ds), van = doc?.chu, tt = ttTin();
+      if (doc) {
+        const pham = doc.trangDau ? ' (chỉ soát trang đầu của bảng tính, các trang sau chưa soát)' : '';
         const kq = soat(van, tt), lech = kq.lech.filter(x => !bq.includes(x)), thieu = kq.thieu.filter(x => !bq.includes(x)); canh = [...lech, ...thieu];
         const chuaTT = tt.length ? '' : '\n\nChưa so được với thông tin công trình: trang Thông tin chưa có mục nào.';
-        soatXong = !/\p{L}{3}/u.test(van) ? '\n\nKhông đọc được chữ trong file (bản scan mờ?), chưa soát được.' : !lech.length && !thieu.length ? chuaTT || '\n\nĐã soát: khớp thông tin công trình.'
-          : chuaTT + (lech.length ? '\n\n⚠ CÓ THỂ SAI:\n' + lech.join('\n') : '') + (thieu.length ? '\n\nKhông thấy trong văn bản (bỏ qua nếu văn bản không cần):\n' + thieu.join('\n') : '')
-            + '\n\nBấm OK nghĩa là các dòng trên đúng rồi, lần sau tài liệu này không nhắc lại.';
+        soatXong = !/\p{L}{3}/u.test(van) ? '\n\nKhông đọc được chữ trong file (bản scan mờ?), chưa soát được.' : !lech.length && !thieu.length ? chuaTT || `\n\nĐã soát${pham}: khớp thông tin công trình.`
+          : chuaTT + (pham ? '\n\nĐã soát' + pham + '.' : '') + (lech.length ? '\n\n⚠ CÓ THỂ SAI:\n' + lech.join('\n') : '') + (thieu.length ? '\n\nKhông thấy trong văn bản (bỏ qua nếu văn bản không cần):\n' + thieu.join('\n') : '');
       }
     } catch (e) { soatXong = `\n\nChưa soát được: ${e.message}`; }
     const tra = await lyDoTra(so).catch(() => []);
     say();
     if (!confirm(`Gửi "${f.name}"?\nBất kỳ ai có link đều xem được file này.${soatXong}${tra.length ? '\n\nNhớ kiểm lại, hồ sơ công trình này từng bị trả vì:\n' + tra.map(x => '• ' + x).join('\n') : ''}`)) return;
-    if (canh.length) try { localStorage.setItem(bqKhoa, JSON.stringify([...bq, ...canh])); } catch {}
     await api(`https://www.googleapis.com/drive/v3/files/${f.id}/permissions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' }) });
     say();
     const ten = f.name.replace(/_NHAP(?=\.\w+$|$)/, ''); // gửi đi thì không còn là bản nháp (luồng 1: bỏ _NHAP khi gửi)
@@ -287,6 +286,10 @@ async function gui(d) {
     try { // sổ gửi nhận: trả lời "đã gửi bản nào chưa"; người nhận chọn trong bảng chia sẻ nên app không biết, để trống
       await guiNhan(so, [new Date().toLocaleDateString('en-GB'), d.ma, d.rev, 'Gửi', '', navigator.share ? 'Chia sẻ link' : 'Chép link', ten, '']);
     } catch (e) { say(`Đã gửi, nhưng chưa ghi được vào sổ NHATKY_GUINHAN: ${e.message}`); }
+    // gửi vội vẫn được, nhưng cảnh báo chỉ thôi nhắc khi anh xác nhận riêng là nó sai (không gộp vào nút Gửi)
+    // câu hỏi đặt sao cho bấm OK theo thói quen là vẫn nhắc; muốn thôi nhắc phải chủ động bấm Hủy
+    if (canh.length && !confirm(`Lần gửi sau ${d.ma} vẫn nhắc các cảnh báo này chứ?\n${canh.join('\n')}\n\nOK: vẫn nhắc (nên chọn nếu chưa sửa).\nHủy: các dòng trên là báo nhầm, khỏi nhắc nữa.`))
+      try { localStorage.setItem(bqKhoa, JSON.stringify([...bq, ...canh])); } catch {}
   } catch (e) { if (e.name !== 'AbortError') say(e.message); }
 }
 
