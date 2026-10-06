@@ -21,7 +21,8 @@ export const MAU = [
 export const canhNguoi = (c, mau) => ({ ...c, nguoi: mau.nguoi && lienHe(c.tt, mau.nguoi) });
 export const macDinh = (mau, c) => Object.fromEntries(mau.truong.map(([k, , d]) => [k, Array.isArray(d) ? d[0] : d(c)]));
 export const soan = (mau, v, c) => mau.dung(v, canhNguoi(c, mau));
-export const zalo = (mau, c) => { const r = mau.nguoi && lienHe(c.tt, mau.nguoi), s = (r?.[3] ?? '').replace(/[^\d+]/g, ''); return s ? { ten: r[1], href: 'https://zalo.me/' + s.replace(/^\+/, '').replace(/^0/, '84') } : null; };
+export const zaloSo = r => { const s = (r?.[3] ?? '').replace(/[^\d+]/g, ''); return s ? 'https://zalo.me/' + s.replace(/^\+/, '').replace(/^0/, '84') : null; }; // dòng liên hệ -> link Zalo, không có số thì null
+export const zalo = (mau, c) => { const r = mau.nguoi && lienHe(c.tt, mau.nguoi), href = zaloSo(r); return href ? { ten: r[1], href } : null; };
 
 if (typeof process !== 'undefined' && process.argv[1]?.endsWith('tin.js')) { // chạy: node tin.js
   const a = await import('node:assert/strict');

@@ -5,8 +5,8 @@
 :root[data-skin="dark"]{ color-scheme:dark; --paper:oklch(17% .025 255); --card:oklch(21.5% .028 255); --ink:oklch(94% .01 240);
   --mute:oklch(70% .025 245); --rule:oklch(30% .03 255); --accent:oklch(80% .07 225); --on-accent:oklch(18% .03 255);
   --soft:oklch(28% .04 245); --late:oklch(74% .13 22); --late-bg:oklch(25% .045 20); --ok:oklch(76% .09 170); --warn:oklch(76% .15 60); --wash:oklch(17% .025 255 / .68); color-scheme:dark }
-body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))}
-header{flex-wrap:wrap;position:sticky;top:0;z-index:3;background:var(--paper)}
+body{padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+header{flex-wrap:wrap;padding-top:calc(8px + env(safe-area-inset-top,0px));padding-bottom:8px;gap:8px 12px;position:sticky;top:0;z-index:3;background:var(--paper)}
 header h1{font-size:22px;letter-spacing:-.01em}
 #cts{flex:1 0 100%} #cts label{margin:0 0 4px;font-size:13px} #cts select{font-size:16px;font-weight:600}
 h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:600;margin:24px 0 8px}

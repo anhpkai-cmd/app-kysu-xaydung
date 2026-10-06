@@ -1,5 +1,5 @@
 // Khung màn hình: mỗi khối trong index.html ghi data-s="tên màn"; địa chỉ #tên chọn màn đang hiện (nút Back của điện thoại chạy được).
-const TAB = { home: 'home', bv: 'bv', qr: 'bv', viec: 'viec', nk: 'nk', anh: 'nk' }, DOI = { han: 'viec', ds: 'bv', loc: 'bv' }; // màn không ghi ở đây thuộc tab Thêm
+const TAB = { home: 'home', bv: 'bv', qr: 'bv', viec: 'viec', nk: 'nk', anh: 'nk', cc: 'nk' }, DOI = { han: 'viec', ds: 'bv', loc: 'bv' }; // màn không ghi ở đây thuộc tab Thêm
 function di() {
   let s = location.hash.slice(1); s = DOI[s] || s;
   if (!document.querySelector(`[data-s~="${s}"]`)) s = 'home';

@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f4f6fa">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg">
@@ -27,6 +27,10 @@
   .doc>div{min-width:0;overflow-wrap:anywhere}
   .doc b{display:block;font-size:14px;color:var(--mute);font-weight:600}
   .doc small{color:var(--mute)}
+  .ycv{display:grid;grid-template-columns:1fr 6em;gap:8px}
+  #ycl label{color:var(--ink);font-size:16px;margin:0;display:flex;gap:10px;align-items:center}
+  #ycl input[type=checkbox]{min-height:24px;width:24px;flex:none}
+  [aria-invalid=true]{border:2px solid oklch(55% .22 27)}
   .nut{display:grid;gap:8px}
   #nhan button{display:block;margin-top:8px;max-width:100%;height:auto;min-height:44px;padding:8px 12px;white-space:normal;text-align:left;overflow-wrap:anywhere}
   .phu{background:transparent;color:var(--ink);border:1px solid var(--rule)}
@@ -39,7 +43,7 @@
   .anh th,.anh>div{min-width:0}
   #ttms:empty,#nkmsg:empty,#anms:empty,#sotms:empty,#tqms:empty,#vtms:empty{display:none}
   #tqd .cb,#sotn .cb{font-weight:600;color:var(--accent)}
-  #sotds{display:grid;gap:8px} #tnms:empty,#tnz[hidden]{display:none} #tnt,#hopt{width:100%;box-sizing:border-box;font:inherit;color:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--card)}
+  #sotds{display:grid;gap:8px} #tnms:empty,#tnz[hidden],#psz[hidden],#psm[hidden],#psms:empty{display:none} #tnt,#hopt,#pst{width:100%;box-sizing:border-box;font:inherit;color:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--card)}
   .cot{flex-direction:column;align-items:stretch}
   .cot .nut{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
   summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
@@ -74,6 +78,25 @@
     <p id="tnms" role="status"></p>
     <p><button id="tnc">Chép tin</button> <a id="tnz" class="nutlk" hidden target="_blank" rel="noopener">Mở Zalo</a></p>
     </details>
+  </section>
+  <section id="ps" data-s="ps" hidden>
+    <h2>Phát sinh, chỉ đạo hiện trường</h2>
+    <p id="psms" role="status"></p>
+    <details id="psf"><summary>+ Ghi yêu cầu miệng (CĐT, TVGS bảo làm thêm, đổi vật liệu...)</summary>
+    <label for="psai">Người yêu cầu</label><input id="psai" list="psais" autocomplete="off" placeholder="chọn trong danh bạ công trình hoặc gõ tên"><datalist id="psais"></datalist>
+    <label for="psd">Ngày</label><input id="psd" type="date">
+    <label for="psn">Nội dung yêu cầu</label><input id="psn" placeholder="ví dụ: làm thêm rãnh thoát nước">
+    <label for="psv">Vị trí</label><input id="psv">
+    <label for="psk1">Khối lượng ước</label><input id="psk1" inputmode="decimal"> <label for="psdv">Đơn vị</label><input id="psdv" placeholder="m, m3, cái...">
+    <label for="psa">Ảnh hiện trường (nếu có)</label><input id="psa" type="file" accept="image/*">
+    <p><button id="psg">Ghi sổ và soạn tin xác nhận</button></p>
+    </details>
+    <div id="psk" hidden>
+    <label for="pst">Tin xác nhận gửi người yêu cầu (sửa được trước khi chép)</label><textarea id="pst" rows="7"></textarea>
+    <p><button id="psc">Chép tin</button> <a id="psz" class="nutlk" hidden target="_blank" rel="noopener">Mở Zalo</a></p>
+    </div>
+    <div id="psds"></div>
+    <p><a id="psm" class="nutlk" hidden target="_blank" rel="noopener">Mở sổ phát sinh (làm phụ lục)</a></p>
   </section>
   <section id="tq" data-s="home" hidden>
     <h2>Thời tiết công trình</h2>
@@ -183,6 +206,16 @@
     </details>
     <h3>Danh mục vật tư</h3>
     <div id="vtdm"></div>
+    <details><summary>+ Phiếu yêu cầu vật tư</summary>
+    <p id="ycgy"></p>
+    <p>Đánh dấu các vật tư cần, ghi số lượng và đơn vị (vật tư có dự toán thì app điền sẵn số còn thiếu).</p>
+    <div id="ycl"></div><datalist id="ycdvs"><option>tấn<option>kg<option>bao<option>m3<option>m2<option>m<option>cây<option>viên<option>cái<option>lít</datalist>
+    <label for="ycd">Ngày cần về</label><input id="ycd" type="date">
+    <label for="ycgc">Ghi chú (nếu có)</label><input id="ycgc">
+    <p><button id="ycthem" class="phu">Thêm vào phiếu</button></p>
+    <div id="ycds"></div>
+    <p><button id="ycgui">Lập phiếu và gửi</button></p>
+    </details>
     <details><summary>+ Thêm vật tư vào danh mục</summary>
     <label for="vtten">Tên vật tư</label><input id="vtten" placeholder="ví dụ: Xi măng PCB40">
     <label for="vtqc">Quy cách, nhãn hiệu</label><input id="vtqc">
@@ -194,15 +227,23 @@
   </section>
   <section id="more" data-s="more">
     <h2>Hồ sơ và tin nhắn</h2>
-    <div class="luoi"><a href="#tn">Tin nhắn Zalo<small>Soạn sẵn</small></a><a href="#tt">Thông tin công trình<small>Liên hệ, họp CĐT</small></a></div>
+    <div class="luoi"><a href="#tn">Tin nhắn Zalo<small>Soạn sẵn</small></a></div>
     <h2>Công trường</h2>
-    <div class="luoi"><a href="#vt">Vật tư<small>Nhập, lấy mẫu</small></a><a href="#ntl">Lịch nghiệm thu<small>Sắp tới</small></a></div>
+    <div class="luoi"><a href="#vt">Vật tư<small>Nhập, lấy mẫu</small></a><a href="#ntl">Lịch nghiệm thu<small>Sắp tới</small></a><a href="#cc">Chấm công<small>Tổ đội theo tháng</small></a><a href="#ps">Phát sinh<small>Yêu cầu miệng, chỉ đạo</small></a><a href="#tt">Thông tin công trình<small>Liên hệ, họp CĐT</small></a></div>
     <h2>Khác</h2>
     <div class="luoi"><a href="#cai">Cài đặt<small>Giao diện</small></a></div>
   </section>
   <section id="cai" data-s="cai">
     <h2>Giao diện</h2>
     <div class="luoi"><button data-skin="light">Sáng</button><button data-skin="dark">Tối</button></div>
+  </section>
+  <section id="cc" data-s="cc" hidden>
+    <h2>Chấm công tổ đội</h2>
+    <p>Cộng số người các nhóm đã ghi trong Nhật ký ngày. Nghỉ nửa buổi tính nửa công, nghỉ cả ngày không tính.</p>
+    <label for="cct">Tháng</label><input id="cct" type="month">
+    <p id="ccms" role="status"></p>
+    <div id="ccds"></div>
+    <p><button id="cclap">Lập bảng công gửi tổ trưởng ký</button></p>
   </section>
 </main>
 <nav aria-label="Menu chính">
