@@ -44,6 +44,20 @@ Thêm cột **Hạn hiệu lực** vào trang DANHMUC của `_SODANGKY` (cột k
 
 Mục "Thông tin công trình" đọc trang `THONGTIN` trong `_SODANGKY` (app tự tạo trang này lần đầu). Mỗi dòng: Nhóm (Liên hệ hoặc Thông tin), Tên, Chi tiết, Điện thoại. Liên hệ có số điện thoại thì có nút Gọi và Zalo. Thêm dòng ngay trong app; sửa hoặc xóa thì làm trực tiếp trong Trang tính. Trang chỉ có một ô "Công trình đang làm" ở đầu, app nhớ lần chọn cuối; tài liệu, thông tin, nhật ký đều theo ô đó. Trang THONGTIN chỉ được tạo khi bấm Thêm lần đầu. Nhật ký đang nhập dở được lưu nháp trên máy theo từng công trình, lưu thành công thì xóa nháp.
 
+## Ảnh hiện trường
+
+Tải ảnh lên thư mục `00_INBOX` của công trình bằng app Google Drive (từ Zalo hoặc Timemark). Mục "Ảnh hiện trường" hiện lưới ảnh nhỏ. Tick các ảnh cùng một hạng mục, chọn hạng mục (mã trong trang DANHMUC của file nhật ký; luôn có thêm CHUNG, ATLD, VATLIEU ở cuối), gõ mô tả nếu muốn, bấm Xếp; ảnh chưa tick ở lại cho lượt sau. Dòng trên nút cho biết trước các ảnh sẽ vào ngày nào.
+
+Ảnh được chuyển (không xóa, không nén) vào `09_HINHANH/yyyy-mm/yyyy-mm-dd/` và đặt tên `CT01-HA-20261006-001_HM2-1.1_MoTa.jpg`. Ngày chụp lấy theo EXIF, rồi mốc thời gian đầu tên file Zalo (chỉ nhận khi nằm trong khoảng 2020 đến ngày mai). Ảnh chỉ đoán được ngày (theo ngày tải lên) thì app hỏi: bấm "Dùng ngày này" (hoặc "Dùng ngày đoán cho các ảnh đã tick") hoặc chọn ngày; chưa có ngày thì ảnh ở lại INBOX, không xếp. Có nút "Chọn tất cả / Bỏ chọn". Ảnh chụp tài liệu (bản vẽ, biên bản) thì bấm "Đây là tài liệu": file được đổi tên thêm tiền tố `TAILIEU_` ngay trên Drive và chuyển sang danh sách file chờ lưu (giữ lại cả khi mở app lần sau). Nếu ảnh nhỏ hiện ô xám trên iPhone, app tự thử tải lại bằng mã đăng nhập. `node anh.js` tự kiểm tra.
+
+Lưu ý ảnh HEIC của iPhone: bước điền báo cáo tuần vào mẫu Excel sẽ không chèn được HEIC. Hoặc đặt iPhone: Cài đặt, Camera, Định dạng, chọn "Tương thích nhất" (ra JPG), hoặc báo cáo phải lấy bản JPG từ Drive (`thumbnailLink` cỡ lớn). Chưa có sổ ảnh riêng: tên file đã mang đủ công trình, ngày, hạng mục, mô tả.
+
+## Hôm nay còn sót gì
+
+Khung đầu trang liệt kê: việc quá hạn hoặc đến hạn hôm nay, giấy tờ hết hạn trong 7 ngày, và với **từng công trình** (không chỉ công trình đang chọn): nhật ký hôm nay chưa ghi, ảnh chờ xếp. Chạm một dòng thì app chuyển sang đúng công trình đó. Mục nào không kiểm tra được (chưa có Google Sheet nhật ký, mất sóng) thì hiện "Chưa kiểm tra được...", và chỉ ghi "Hôm nay không còn gì sót" khi mọi mục đã kiểm tra xong. Việc quét chỉ đọc, không tạo thư mục hay chuyển Excel. Để app mở qua đêm thì sang ngày mới app tự tải lại.
+
+Nút **Nhắc tôi lúc 17h mỗi ngày** tạo một sự kiện lặp trên Google Lịch (thứ 2 đến thứ 7, 17:00); bấm lại không tạo trùng, đã bật thì nút thành **Tắt nhắc 17h** (xóa sự kiện). Lịch chỉ nhắc mở app, nội dung nằm trong app. Cần bật Google Calendar API.
+
 ## Vật tư
 
 Mục "Vật tư" ghi vào file nhật ký `CTxx-NK-NHATKY` của công trình (cùng file với Nhật ký ngày):
