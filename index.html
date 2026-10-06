@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f6f3ee">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<title>Sổ tay kỹ sư</title>
+<style>
+  /* Hallmark · audit pass · một màu nhấn (cam an toàn), nền/mực pha cùng tông, không #000/#fff */
+  :root{
+    --paper:oklch(97% .01 75); --card:oklch(99% .006 75); --ink:oklch(22% .012 75);
+    --mute:oklch(48% .012 75); --rule:oklch(88% .012 75); --accent:oklch(55% .17 45); --on-accent:oklch(98% .01 75);
+    --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --gap:16px;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --paper:oklch(16% .01 75); --card:oklch(21% .012 75); --ink:oklch(94% .008 75);
+    --mute:oklch(72% .012 75); --rule:oklch(32% .012 75); --accent:oklch(72% .16 50); --on-accent:oklch(16% .01 75);
+  }}
+  html,body{overflow-x:clip}
+  body{font:16px/1.5 var(--font);margin:0;background:var(--paper);color:var(--ink)}
+  header{display:flex;gap:var(--gap);align-items:center;justify-content:space-between;padding:12px var(--gap);border-bottom:1px solid var(--rule)}
+  h1{font-size:20px;font-weight:700;margin:0}
+  main{padding:var(--gap);max-width:720px;margin:auto}
+  label{display:block;font-size:14px;color:var(--mute);margin:12px 0 4px}
+  button,select,input{font:inherit;color:inherit;min-height:44px;padding:0 12px;border-radius:8px;border:1px solid var(--rule);background:var(--card);box-sizing:border-box}
+  select,input{width:100%}
+  button{background:var(--accent);color:var(--on-accent);border:0;font-weight:600;cursor:pointer;white-space:nowrap}
+  button:active{filter:brightness(.92)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .doc{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:12px var(--gap);margin:8px 0;display:flex;gap:var(--gap);align-items:center;justify-content:space-between}
+  .doc>div{min-width:0;overflow-wrap:anywhere}
+  .doc b{display:block;font-size:14px;color:var(--mute);font-weight:600}
+  .doc small{color:var(--mute)}
+  #msg{color:var(--ink);background:var(--card);border-left:3px solid var(--accent);padding:8px 12px;margin:0 0 var(--gap)}
+  #msg:empty{display:none}
+  @media (prefers-reduced-motion:no-preference){button{transition:filter .15s}}
+</style>
+</head>
+<body>
+<header><h1>Sổ tay kỹ sư</h1><button id="vao">Đăng nhập Google</button></header>
+<main>
+  <p id="msg" role="status">Bấm “Đăng nhập Google” để xem sổ đăng ký công trình.</p>
+  <div id="loc" hidden>
+    <label for="ct">Công trình</label><select id="ct"></select>
+    <label for="q">Tìm tài liệu</label><input id="q" type="search" placeholder="ví dụ: móng, cọc, KC-005">
+  </div>
+  <div id="ds"></div>
+</main>
+<script type="module" src="app.js"></script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+</body>
+</html>
