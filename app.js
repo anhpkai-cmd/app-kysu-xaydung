@@ -4,8 +4,8 @@ import { soat, docChu, lap, dsMau } from './vanban.js';
 import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { url as urlTT, parse as parseTT, viTri, nhatKy, tomTat, canhBao, NGAY } from './thoitiet.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
-import { khoiQR, lamQR, moQR, inQR, sauBanMoi as qrSauBanMoi } from './qr.js';
-import { moVatTu, luuVe, themVatTu, demVatTu } from './vattu.js';
+import { khoiQR, lamQR, moQR, inQR, sauBanMoi as qrSauBanMoi, laBanVe } from './qr.js';
+import { moVatTu, luuVe, themVatTu, demVatTu, soVn } from './vattu.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
 const $ = id => document.getElementById(id);
@@ -40,7 +40,7 @@ function hien() {
     tr.onclick = () => biTra(d);
     const th = document.createElement('div'); th.append(b, t, s);
     const nut = document.createElement('div'); nut.className = 'nut'; const qr = document.createElement('button'); qr.className = 'phu'; qr.textContent = 'QR'; qr.setAttribute('aria-label', 'Mã QR của ' + d.ma); qr.onclick = () => lamQR(d);
-    nut.append(x, g, m, tr, qr);
+    nut.append(x, g, m, tr); if (laBanVe(d.ma)) nut.append(qr);
     el.append(th, nut);
     return el;
   }));
@@ -342,22 +342,27 @@ function hienVc() {
     b.onclick = () => { nkVc.splice(i, 1); hienVc(); nkNhap(); }; el.append(t, b); return el;
   }));
 }
-function themVc() {
-  const kl = parseFloat($('nkk').value);
-  if (!(kl > 0)) return $('nkmsg').textContent = 'Nhập khối lượng lớn hơn 0.';
-  nkVc.push({ ma: $('nkv').value, kl }); $('nkk').value = ''; $('nkmsg').textContent = ''; hienVc(); nkNhap();
+function themVc() { // trả true nếu đã thêm (hoặc không có gì để thêm là lỗi)
+  const kl = soVn($('nkk').value);
+  if (!(kl > 0)) return $('nkmsg').textContent = `“${$('nkk').value}” không đọc được thành số lớn hơn 0. Ví dụ 12.500 hoặc 15,5.`, false;
+  nkVc.push({ ma: $('nkv').value, kl }); $('nkk').value = ''; $('nkmsg').textContent = ''; hienVc(); nkNhap(); return true;
 }
 async function luuNhatKy() {
   if (!$('nkd').value) return $('nkmsg').textContent = 'Chọn ngày.';
+  if ($('nkk').value.trim() && !themVc()) return; // khối lượng gõ rồi mà chưa bấm "Thêm việc vào ngày": tự thêm, không bỏ rơi; gõ sai thì dừng để sửa
+  const ngayHt = $('nkd').value.split('-').reverse().join('/');
   try {
     const ngay = serial($('nkd').value), cot = async tr => ((await nkApi(nkId, `values/${tr}!A:A?valueRenderOption=UNFORMATTED_VALUE`)).values || []);
-    const [a, b] = await Promise.all([cot('NGAY'), cot('KHOILUONG')]);
-    if (a.some(r => r[0] === ngay)) return $('nkmsg').textContent = `Ngày ${$('nkd').value} đã có trong nhật ký. Muốn sửa thì mở sheet sửa trực tiếp, app không ghi đè.`;
+    const [a, b] = await Promise.all([cot('NGAY'), cot('KHOILUONG')]), co = a.some(r => r[0] === ngay);
+    if (co) { // ngày đã có: không ghi đè dòng nhật ký; chỉ cho thêm khối lượng còn thiếu
+      if (!nkVc.length) return $('nkmsg').textContent = `Ngày ${ngayHt} đã có trong nhật ký. Muốn sửa các ô khác thì mở sheet sửa trực tiếp; còn thiếu khối lượng thì thêm việc vào ngày rồi bấm Lưu.`;
+      if (!confirm(`Ngày ${ngayHt} đã có trong nhật ký. Chỉ thêm ${nkVc.length} việc/khối lượng vừa nhập vào ngày đó (không sửa các ô nhật ký đã có)?`)) return;
+    }
     const n = a.length + 1, ov = NK.map((_, i) => { const v = $('nk' + i).value; return v !== '' && $('nk' + i).type === 'number' ? +v : v; });
-    const data = [{ range: `NGAY!A${n}:L${n}`, values: [[ngay, ...ov]] }];
+    const data = co ? [] : [{ range: `NGAY!A${n}:L${n}`, values: [[ngay, ...ov]] }];
     nkVc.forEach((v, i) => { const m = b.length + 1 + i; data.push({ range: `KHOILUONG!A${m}:B${m}`, values: [[ngay, v.ma]] }, { range: `KHOILUONG!E${m}`, values: [[v.kl]] }); }); // cột C, D là công thức, không ghi đè
     await nkApi(nkId, 'values:batchUpdate', json({ valueInputOption: 'RAW', data }));
-    $('nkmsg').textContent = `Đã lưu nhật ký ngày ${$('nkd').value} (${nkVc.length} việc).`; nkVc = []; hienVc(); try { localStorage.removeItem(nkKey()); } catch {}
+    $('nkmsg').textContent = co ? `Đã thêm ${nkVc.length} việc vào nhật ký ngày ${ngayHt}.` : `Đã lưu nhật ký ngày ${ngayHt} (${nkVc.length} việc).`; nkVc = []; hienVc(); try { localStorage.removeItem(nkKey()); } catch {}
     if ($('nkd').value === homNay()) sotCap({ nk: true });
   } catch (e) { $('nkmsg').textContent = e.message; }
 }
@@ -545,6 +550,7 @@ function veSot() {
     [hanLoi.length, () => 'Chưa kiểm tra được hạn giấy tờ của: ' + hanLoi.join(', '), '#han'],
     ...sotCt.filter(c => c.nk === false).map(c => [1, () => c.ma + ' chưa ghi nhật ký hôm nay', '#nk', c.id]),
     ...sotCt.filter(c => c.nk === null).map(c => [1, () => 'Chưa kiểm tra được nhật ký ' + c.ma + ' (chưa có Google Sheet nhật ký hoặc mất sóng)', '#nk', c.id]),
+    ...sotCt.filter(c => c.vt?.nt).map(c => [c.vt.nt, x => `${c.ma}: ${x} công việc cần nghiệm thu trong 2 ngày tới hoặc đã quá ngày`, '#ntl', c.id]),
     ...sotCt.filter(c => c.vt?.can).map(c => [c.vt.can, x => `${c.ma}: ${x} lô vật tư chưa xong (CO/CQ, lấy mẫu, nghiệm thu)`, '#vt', c.id]),
     ...sotCt.filter(c => c.vt === null).map(c => [1, () => 'Chưa kiểm tra được vật tư của ' + c.ma, '#vt', c.id]),
     ...sotCt.filter(c => c.anh === null).map(c => [1, () => 'Chưa kiểm tra được ảnh chờ của ' + c.ma, '#anh', c.id]),
@@ -589,7 +595,7 @@ async function taiTQ() {
   const ct = $('ct').value; tqDs = []; tqMs(); veTT();
   let vt; try { vt = localStorage.getItem(tqKey()); } catch {}
   $('tqv').value = vt || ''; const vi = viTri(vt);
-  if (!vi) return tqMs('Chưa có vị trí công trình. Bấm "Lấy vị trí máy" khi đang ở công trường, hoặc gõ tọa độ.');
+  if (!vi) { $('tq').querySelector('details').open = true; return tqMs('Chưa có vị trí công trình. Bấm "Lấy vị trí máy" khi đang ở công trường, hoặc gõ tọa độ.'); }
   try {
     const r = await fetch(urlTT(...vi)), j = await r.json();
     if (!r.ok) throw new Error(j.reason || r.status);
@@ -643,7 +649,7 @@ function doiCT() {
   try { localStorage.setItem('ct', $('ct').value); } catch {}
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
   const ct = $('ct').value;
-  moQR(); chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, sot: sotCap, id: nkId }); }); taiTT(); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
+  moQR(); chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), sot: sotCap, id: nkId }); }); taiTT(); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
 khoiQR({ api, ls, thuMuc, json, tim, blob, ct: () => $('ct').value, say, hoi: t => confirm(t), q, FOLDER });

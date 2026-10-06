@@ -6,7 +6,7 @@ const chu = s => String(s).normalize('NFC').toLowerCase().replace(/\s+/g, ' ').t
   .replace(/ngày (\d{1,2}) tháng (\d{1,2}) năm (\d{4})/g, (_, d, m, y) => `${hai(d)}/${hai(m)}/${y}`)
   .replace(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b/g, (_, d, m, y) => `${hai(d)}/${hai(m)}/${y}`);
 // Số tiền từ 1 triệu: có dấu phân cách (423.301.185, 423,301,185) hoặc viết liền ngay trước đ/đồng/VNĐ (423301185 đồng).
-const TIEN = /\d{1,3}(?:[.,]\d{3}){2,}|\d{7,}(?=\s*(?:đ|vn))/giu;
+const TIEN = /(?<!\d)(?:\d{1,3}(?:[.,]\d{3}){2,}|\d{7,}(?=\s*(?:đ|vn)))/giu; // (?<!\d): không bắt giữa số điện thoại 0911.472.472
 const tien = s => (String(s).match(TIEN) || []).map(x => +x.replace(/\D/g, ''));
 // Số bằng chữ ("bốn trăm hai mươi ba triệu ... đồng") thành số; gặp chữ lạ thì NaN (không đoán, không báo).
 const CHUSO = { 'không': 0, 'một': 1, 'mốt': 1, 'hai': 2, 'ba': 3, 'bốn': 4, 'tư': 4, 'năm': 5, 'lăm': 5, 'nhăm': 5, 'sáu': 6, 'bảy': 7, 'bẩy': 7, 'tám': 8, 'chín': 9 };
@@ -34,9 +34,12 @@ export function soat(van, tt) {
   const sai = [...co].filter(n => !biet.some(b => b.n === n)).flatMap(n => biet.filter(b => Math.abs(n - b.n) <= b.n * 0.05).slice(0, 1).map(b => ({ ...b, sai: n })));
   const thieu = tt.filter(([ten, gt]) => { const s = tien(gt); return !sai.some(b => b.ten === ten) && (s.length ? !s.every(n => co.has(n)) : !v.includes(chu(gt))); }).map(([ten, gt]) => `${ten}: ${gt}`);
   // số bằng số và bằng chữ trong cùng văn bản phải khớp nhau: "423.301.185 đồng (Bằng chữ: Bốn trăm ... đồng)"
-  const chuLech = [...String(van).normalize('NFC').toLowerCase().replace(/\s+/g, ' ').matchAll(new RegExp(`(${TIEN.source})[^\\d]{0,60}?bằng chữ\\s*:?\\s*([^\\d()]+?)\\s*đồng`, 'giu'))]
-    .map(([, n, c]) => [+n.replace(/\D/g, ''), c, bangChu(c)]).filter(([n, c, m]) => !/\p{L}/u.test(c) || (!isNaN(m) && m !== n)) // chưa ghi chữ (còn ……) cũng báo
+  // ô tổng Excel định dạng General ra số liền, có thể lẻ (613430400.4): bắt số không mở đầu bằng 0 (khác số điện thoại), dưới 1.000 tỷ (khác số tài khoản)
+  const vb = String(van).normalize('NFC').toLowerCase().replace(/\s+/g, ' ');
+  const cap = [...vb.matchAll(new RegExp(`(${TIEN.source}|(?<!\\d)[1-9]\\d{6,11}(?:\\.\\d+)?(?![\\d.]))[^\\d]{0,60}?bằng chữ\\s*:?\\s*([^\\d()]+?)\\s*đồng`, 'giu'))];
+  const chuLech = cap.map(([, n, c]) => [/^\d+(\.\d+)?$/.test(n) ? Math.round(+n) : +n.replace(/\D/g, ''), c, bangChu(c)]).filter(([n, c, m]) => !/\p{L}/u.test(c) || (!isNaN(m) && m !== n)) // chưa ghi chữ (còn ……) cũng báo
     .map(([n, c, m]) => `${/\p{L}/u.test(c) ? `Số ${so(n)} đ nhưng bằng chữ ghi "${c}" (${so(m)} đ)` : `Số ${so(n)} đ chưa ghi bằng chữ`}. Đúng là: ${soChu(n)} đồng`);
+  if (!cap.length && vb.includes('bằng chữ')) thieu.push('Dòng "Bằng chữ": chưa soát được (không thấy số tiền ngay trước, tự xem lại)');
   return { lech: [...chuLech, ...sai.map(b => `Văn bản ghi ${so(b.sai)} đ, thông tin công trình ghi ${b.ten} là ${so(b.n)} đ`)], thieu };
 }
 // Số thành chữ cho dòng "Bằng chữ: ...". ponytail: đến hàng trăm tỷ (dưới 10^12), đủ cho công trình thường.
@@ -111,9 +114,16 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vanban.js')) { 
   a.equal(soChu(423301185), 'Bốn trăm hai mươi ba triệu ba trăm lẻ một nghìn một trăm tám mươi lăm');
   a.equal(soChu(1005000000), 'Một tỷ không trăm lẻ năm triệu'); a.equal(soChu(21), 'Hai mươi mốt'); a.equal(soChu(15), 'Mười lăm'); a.equal(soChu(0), 'Không');
   for (const n of [1, 10, 101, 110, 1001, 20500, 613406400, 999999999999, 100000000000]) a.equal(bangChu(soChu(n).toLowerCase()), n); // đọc ngược phải ra đúng số
-  // báo giá mẫu thật của anh: tổng 613.406.400 nhưng dòng bằng chữ ghi 613.430.400
+  // tổng bằng số khác dòng bằng chữ (gõ sai một chữ)
   a.equal(soat('TỔNG CỘNG,,,"613,406,400"\n"Bằng chữ: Sáu trăm mười ba triệu, bốn trăm ba mươi nghìn, bốn trăm đồng."', []).lech[0].split('Đúng là: ')[1], 'Sáu trăm mười ba triệu bốn trăm lẻ sáu nghìn bốn trăm đồng');
   a.deepEqual(soat('TỔNG,"613,406,400"\n"Bằng chữ: ……… đồng."', []).lech, ['Số 613.406.400 đ chưa ghi bằng chữ. Đúng là: Sáu trăm mười ba triệu bốn trăm lẻ sáu nghìn bốn trăm đồng']); // mẫu báo giá chưa điền
+  a.equal(soat('TỔNG CỘNG THANH TOÁN,,,613430400,\n"Bằng chữ: Sáu trăm mười ba triệu, bốn trăm lẻ sáu nghìn, bốn trăm đồng.",,', []).lech.length, 1); // ô tổng không định dạng nghìn
+  a.equal(soat('TỔNG CỘNG THANH TOÁN,,,613430400,\nBằng chữ: Sáu trăm mười ba triệu bốn trăm ba mươi nghìn bốn trăm đồng.,,', []).lech.length, 0);
+  a.deepEqual(soat('Điện thoại: 0911472472 - Bằng chữ: một trăm đồng', []).lech, []); // số điện thoại không phải tổng tiền
+  a.deepEqual(soat('Tài khoản 8977777797979 Bằng chữ: một trăm đồng', []).lech, []); // số tài khoản cũng vậy
+  a.deepEqual(soat('ĐT 0911.472.472, giá 1.000.000 đ', [['Giá', '911.472.472 đ']]).lech, []); // không bắt giữa số điện thoại có dấu chấm
+  a.equal(soat('TỔNG,613430400.4,\nBằng chữ: Sáu trăm mười ba triệu bốn trăm ba mươi nghìn bốn trăm đồng.', []).lech.length, 0); // tổng lẻ do VAT: làm tròn rồi so
+  a.deepEqual(soat('Tổng cộng xem bảng trên. Bằng chữ: một trăm đồng', []).thieu, ['Dòng "Bằng chữ": chưa soát được (không thấy số tiền ngay trước, tự xem lại)']);
   a.deepEqual(conSot('Kính gửi {{Chủ đầu tư}}, ngày {{Ngày}} {{Chủ đầu tư}} {x}'), ['{{Chủ đầu tư}}', '{{Ngày}}']);
   console.log('ok');
 }

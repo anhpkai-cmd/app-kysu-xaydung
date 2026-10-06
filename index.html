@@ -106,6 +106,7 @@
     <p id="qrms" role="status"></p>
     <div id="qrds"></div>
     <p><button id="qri" class="phu">In tờ A4 các mã đã chọn</button></p>
+    <p class="hint">Nếu điện thoại không in được, mở app trên máy tính để in.</p>
   </section>
   <section id="tt" hidden>
     <h2>Thông tin công trình</h2>
@@ -142,10 +143,14 @@
       <h3>Việc làm trong ngày</h3>
       <div id="nkds"></div>
       <label for="nkv">Công việc</label><select id="nkv"></select>
-      <label for="nkk">Khối lượng</label><input id="nkk" type="number" min="0" step="any" inputmode="decimal">
+      <label for="nkk">Khối lượng</label><input id="nkk" inputmode="decimal" placeholder="ví dụ 12,5 hoặc 1.250">
       <p><button id="nkt" class="phu">Thêm việc vào ngày</button></p>
       <p><button id="nkl">Lưu nhật ký</button></p>
     </div>
+  </section>
+  <section id="ntl" hidden>
+    <h2>Lịch nghiệm thu</h2>
+    <div id="ntds"></div>
   </section>
   <section id="vt" hidden>
     <h2>Vật tư</h2>

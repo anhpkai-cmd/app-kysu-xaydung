@@ -4,6 +4,7 @@
 import { qrcode } from './qrcode.mjs'; // MIT, Kazuhiko Arase (qrcode-generator 2.0.4), nguyên bản
 
 export const KHO = 'QR_HIENHANH';
+export const laBanVe = ma => /-(BV|SD)-/.test(ma); // chỉ bản vẽ được công khai bằng mã QR (hợp đồng, báo giá có giá tiền thì không)
 export const lien = id => `https://drive.google.com/file/d/${id}/view`;
 export const duoi = ten => /\.[A-Za-z0-9]{1,5}$/.exec(ten)?.[0] ?? '';
 export const tenQR = (ma, rev, ngay, ten, goc) => `${ma} bản ${rev}${ngay ? ' ngày ' + ngay.replaceAll('/', '-') : ''} - ${ten}${duoi(goc)}`.replace(/[\\/:*?"<>|]/g, '-');
@@ -29,11 +30,12 @@ async function thay(ex, nguon, d, rev, ngay) {
 
 // Nút QR ở tài liệu: tạo mã (hỏi xác nhận, có cảnh báo), hoặc cập nhật nếu đã có mã mà Rev lệch.
 export async function lamQR(d) {
+  if (!laBanVe(d.ma)) return X.say('Chỉ bản vẽ mới tạo được mã QR.');
   try {
     const [src] = await X.tim(d); if (!src) return;
     let fol = await kho(), ex = fol && await cua(fol, d.ma);
     if (!ex) {
-      if (!X.hoi(`Tạo mã QR cho "${d.ma} ${d.ten}"?\n\nAi có mã QR (hoặc link của nó) đều xem được bản vẽ này, KHÔNG cần đăng nhập Google. Chỉ dán ở nơi nội bộ.\nKhi có bản mới, mã giữ nguyên và tự trỏ sang bản mới. Thu hồi bất cứ lúc nào bằng nút "Thu hồi" ở mục Mã QR bản vẽ.`)) return;
+      if (!X.hoi(`Tạo mã QR cho "${d.ma} ${d.ten}"?\n\nAi có mã QR (hoặc link của nó) đều xem được bản vẽ này, KHÔNG cần đăng nhập Google. Chỉ dán ở nơi nội bộ.\nKhi có bản mới, mã giữ nguyên và tự trỏ sang bản mới. Thu hồi bất cứ lúc nào bằng nút "Thu hồi" ở mục Mã QR bản vẽ.${/\.pdf$/i.test(src.name) ? '' : '\n\nChú ý: file này không phải PDF, điện thoại người quét có thể không xem được.'}`)) return;
       fol ||= await X.thuMuc(X.ct(), KHO);
       X.say('Đang tạo mã QR...'); // tạo ở trạng thái tắt, mở quyền xong mới bật: lỗi giữa chừng thì mã không bao giờ "bật" mà không dùng được
       const f = await X.api(`${goiY(src.id)}/copy?fields=id`, X.json({ name: tenQR(d.ma, d.rev, d.ngay, d.ten, src.name), parents: [fol], appProperties: { ma: d.ma, rev: d.rev, on: '0' } }));
@@ -83,6 +85,7 @@ export function inQR() {
 
 if (typeof process !== 'undefined' && process.argv[1]?.endsWith('qr.js')) { // chạy: node qr.js (khung nhìn QR đã được kiểm bằng máy đọc QR một lần, xem README)
   const a = await import('node:assert/strict');
+  a.ok(laBanVe('CT01-BV-KC-005') && laBanVe('CT01-SD-DN-001') && !laBanVe('CT01-HD-001') && !laBanVe('CT01-BG-002'));
   a.equal(lien('abc'), 'https://drive.google.com/file/d/abc/view');
   a.equal(tenQR('CT01-BV-KC-005', 'R03', '06/10/2026', 'Móng M1/M2', 'x.pdf'), 'CT01-BV-KC-005 bản R03 ngày 06-10-2026 - Móng M1-M2.pdf');
   a.equal(tenQR('A', 'R01', '', 'B', 'noext'), 'A bản R01 - B'); a.equal(duoi('a.b.PDF'), '.PDF');

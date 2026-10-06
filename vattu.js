@@ -4,7 +4,7 @@
 //   Thí nghiệm, kết quả, xử lý tính theo LÔ (cột Mã lô): một lô có thể gồm nhiều lần về, ghi cùng giá trị lên mọi dòng của lô.
 // - NGHIEMTHU: nghiệm thu vật liệu đầu vào thêm một dòng mã VATLIEU, nội dung kết thúc bằng "lô <mã>".
 import { serial } from './nhatky.js';
-import { iso, cong } from './viec.js';
+import { iso, cong, conLai, nhan } from './viec.js';
 import { tenChuan } from './register.js';
 
 export const DM = ['Vật tư', 'Quy cách', 'ĐV', 'Ngày đệ trình', 'Ngày duyệt', 'Tần suất lấy mẫu', 'Ghi chú', 'KL dự toán'];
@@ -56,29 +56,43 @@ export const tong = (lo, ten) => lo.filter(l => bo(l.ten) === bo(ten)).reduce((s
 // Số tiếp theo sau số lớn nhất đã có (file bị chuyển đi hay lô bị xóa cũng không trùng): ảnh phiếu "<gốc>-01", mã lô "<gốc>-1".
 export const soTiep = (goc, ten, rong = 2) => String(Math.max(0, ...ten.filter(n => n.startsWith(goc + '-')).map(n => +(n.slice(goc.length + 1).match(/^\d+/)?.[0] ?? 0))) + 1).padStart(rong, '0');
 
+// Lịch nghiệm thu tự sinh từ trang DANHMUC (tiến độ đã trình: cột F Kết thúc KH, G Lũy kế thực hiện): công việc sắp kết thúc trong `toi` ngày
+// hoặc đã quá ngày mà trang NGHIEMTHU chưa có dòng mã đó với Kết quả "Đạt". Mã chung (CHUNG, ATLD, VATLIEU) không có nghiệm thu công việc.
+export function lichNt(cv, nt, hom, toi = 14) {
+  const xong = new Set((nt || []).slice(1).filter(r => r[4] === 'Đạt').map(r => r[1]));
+  return (cv || []).slice(1).filter(r => r[0] && !['CHUNG', 'ATLD', 'VATLIEU'].includes(r[0]) && !xong.has(r[0]) && iso(r[5] ?? ''))
+    .map(r => ({ ma: r[0], ten: r[1] ?? '', kt: iso(r[5]), luyke: +r[6] || 0, n: conLai(r[5], hom) })).filter(x => x.n <= toi).sort((a, b) => a.n - b.n);
+}
+// Giấy tờ, số liệu còn thiếu trước buổi nghiệm thu (app tự kiểm được). ponytail: chưa soát ảnh, bản vẽ theo hạng mục; muốn soát thì đọc tên ảnh 09_HINHANH (có mã hạng mục).
+export const thieuNt = (x, lo, dm) => [
+  ...(x.luyke > 0 ? [] : ['Chưa có khối lượng thực hiện trong nhật ký']),
+  ...(n => n ? [`Còn ${n} lô vật tư chưa nghiệm thu đầu vào (xem mục Vật tư)`] : [])(lo.filter(l => canLam(l, dm).length).length),
+];
+const homNay = () => new Date().toLocaleDateString('sv-SE');
+
 // Đọc cả file (chỉ đọc, trang chưa có thì coi như trống). Dùng cho mục Vật tư và khung Còn sót.
 export async function docFile(api, id) {
   const sh = `https://sheets.googleapis.com/v4/spreadsheets/${id}`;
-  const co = (await api(`${sh}?fields=sheets.properties.title`)).sheets.map(s => s.properties.title).filter(t => ['VATTU', 'DMVATTU', 'NGHIEMTHU'].includes(t));
+  const co = (await api(`${sh}?fields=sheets.properties.title`)).sheets.map(s => s.properties.title).filter(t => ['VATTU', 'DMVATTU', 'NGHIEMTHU', 'DANHMUC'].includes(t));
   const v = Object.fromEntries(await Promise.all(co.map(async t => [t, (await api(`${sh}/values/${t}?valueRenderOption=UNFORMATTED_VALUE`)).values || []])));
-  return { dau: Object.fromEntries(co.map(t => [t, v[t][0] || []])), dm: docDm(v.DMVATTU), lo: docLo(v.VATTU, v.NGHIEMTHU) };
+  return { dau: Object.fromEntries(co.map(t => [t, v[t][0] || []])), dm: docDm(v.DMVATTU), lo: docLo(v.VATTU, v.NGHIEMTHU), lich: lichNt(v.DANHMUC, v.NGHIEMTHU, homNay()) };
 }
 // Cho khung Còn sót: số lô cấm dùng và số lô chưa xong (bỏ qua lô chỉ còn chờ kết quả thí nghiệm, vì đó là việc của phòng thí nghiệm).
-const dem = (dm, lo) => {
+const dem = (dm, lo, lich) => {
   const v = lo.map(l => canLam(l, dm)).filter(x => x.length);
-  return { cam: v.filter(x => x[0].cam).length, can: v.filter(x => !x[0].cam && !x.every(y => y.chu.startsWith('Chờ kết quả'))).length };
+  return { nt: lich.filter(x => x.n <= 2).length, cam: v.filter(x => x[0].cam).length, can: v.filter(x => !x[0].cam && !x.every(y => y.chu.startsWith('Chờ kết quả'))).length };
 };
-export const demVatTu = async (api, id) => { const { dm, lo } = await docFile(api, id); return dem(dm, lo); };
+export const demVatTu = async (api, id) => { const { dm, lo, lich } = await docFile(api, id); return dem(dm, lo, lich); };
 
 // ---- Phần giao diện. h: hàm dùng chung của app.js (api, ls, thuMuc, json, taiLen, taoViec) và id file nhật ký ----
-let h, dm = [], lo = [], dau = {}, treo = null; // dau: dòng tiêu đề từng trang đã có; treo: ảnh phiếu đã tải nhưng chưa ghi được dòng
+let h, dm = [], lo = [], lich = [], dau = {}, treo = null; // dau: dòng tiêu đề từng trang đã có; treo: ảnh phiếu đã tải nhưng chưa ghi được dòng
 const $ = x => document.getElementById(x), ms = t => $('vtms').textContent = t || '';
-const homNay = () => new Date().toLocaleDateString('sv-SE'), maCt = () => $('ct').selectedOptions[0].text.split('_')[0];
+const maCt = () => $('ct').selectedOptions[0].text.split('_')[0];
 const sh = p => `https://sheets.googleapis.com/v4/spreadsheets/${h.id}${p}`;
 const tao = (tag, chu, lop) => Object.assign(document.createElement(tag), { textContent: chu ?? '', className: lop ?? '' });
 
 export async function moVatTu(ham) {
-  h = ham; dm = []; lo = []; dau = {};
+  h = ham; dm = []; lo = []; lich = []; dau = {}; $('ntl').hidden = false; $('ntds').replaceChildren();
   const ct = $('ct').value; $('vt').hidden = false; $('vtcan').replaceChildren(); $('vtdm').replaceChildren(); $('vtl').replaceChildren();
   if (!$('vtd').value) $('vtd').value = homNay();
   $('vtl').onchange = goiYLo; $('vtluu').textContent = 'Lưu lần về vào ' + maCt(); $('vtthem').textContent = 'Thêm vào danh mục ' + maCt();
@@ -87,7 +101,7 @@ export async function moVatTu(ham) {
   try {
     const f = await docFile(h.api, h.id); // đọc thì không ghi: trang thiếu chỉ được tạo khi lưu
     if ($('ct').value !== ct) return;
-    ({ dau, dm, lo } = f); ms(); ve(); h.sot?.({ vt: dem(dm, lo) }); // khung Còn sót theo kịp sau mỗi lần ghi
+    ({ dau, dm, lo, lich } = f); ms(); ve(); h.sot?.({ vt: dem(dm, lo, lich) }); // khung Còn sót theo kịp sau mỗi lần ghi
   } catch (e) { ms(e.message); }
 }
 
@@ -108,6 +122,13 @@ function ve() {
     if (!d.duyet) { const [chu, cot] = d.detrinh ? ['Đã duyệt', 'E'] : ['Đã đệ trình', 'D']; el.append(nutBam(chu, `${chu} ${d.ten}`, () => ghiDm(d, cot))); }
     el.append(nutBam(d.dt ? 'Sửa dự toán' : 'Nhập dự toán', 'Khối lượng dự toán ' + d.ten, () => ghiDm(d, 'H')));
     return el;
+  }));
+  $('ntds').replaceChildren(...(lich.length ? [] : [tao('p', 'Không có công việc nào cần nghiệm thu trong 14 ngày tới (theo ngày kết thúc trong trang DANHMUC của file nhật ký).')]), ...lich.map(x => {
+    const el = tao('div', '', 'doc cot'), th = tao('div'), nut = tao('div', '', 'nut'), viec = `Nghiệm thu: ${x.ten} (${x.ma})`;
+    th.append(tao('div', x.ten), tao('small', `${x.ma} · kết thúc theo tiến độ ${ngayVn(x.kt)} · ${nhan(x.n)}`), ...thieuNt(x, lo, dm).map(t => tao('div', '• ' + t)));
+    if (!h.coViec?.(viec)) nut.append(nutBam('Nhắc tôi', 'Nhắc nghiệm thu ' + x.ten, async () => { const g = await h.taoViec(viec, $('ct').selectedOptions[0].text, x.n > 0 ? x.kt : homNay()); await moVatTu(h); ms(g || `Đã thêm việc “${viec}”, Google Lịch nhắc trước 3 ngày và 1 ngày.`); }));
+    nut.append(nutBam('Đã nghiệm thu', 'Đã nghiệm thu ' + x.ten, () => ghiNt(x)));
+    el.append(th, nut); return el;
   }));
   $('vtl').replaceChildren(...dm.map((d, i) => new Option(d.ten + (d.qc ? ` · ${d.qc}` : '') + (d.dv ? ` (${d.dv})` : ''), i)));
   goiYLo();
@@ -160,6 +181,15 @@ async function ghiLo(l, n) {
     if (n.viec === 'hong') ghi = await h.taoViec(`${laBeTong(l.ten) ? 'Báo TVGS, khoan lõi kiểm định' : 'Xử lý lô không đạt'}: ${l.ten}, lô ${l.ma}`, ct, homNay());
   } catch (e) { ghi = 'Chưa thêm được việc nhắc: ' + e.message; }
   await moVatTu(h); ms(`Đã ghi: ${l.ten}, lô ${l.ma}.` + (n.viec ? ' Đã thêm việc nhắc vào Việc cần làm.' : '') + (ghi ? ' ' + ghi : ''));
+}
+
+// Nghiệm thu công việc: thêm một dòng NGHIEMTHU (ngày, mã, nội dung, kết quả Đạt, số biên bản). Chỉ thêm dòng, không sửa dòng cũ.
+async function ghiNt(x) {
+  const s = hoiNgay(); if (!s) return;
+  const bb = prompt(`Số biên bản nghiệm thu ${x.ten} (để trống nếu chưa có)`, ''); if (bb === null) return;
+  await damBao('NGHIEMTHU', NT);
+  await them('NGHIEMTHU', [serial(iso(s)), x.ma, `Nghiệm thu: ${x.ten}`, '', 'Đạt', bb.trim(), '']);
+  await moVatTu(h); ms(`Đã ghi nghiệm thu ${x.ten} ngày ${ngayVn(s)}.`);
 }
 
 // Trang chưa có thì tạo; tiêu đề thiếu cột cuối thì thêm vào cuối, không đụng ô tiêu đề đã có.
@@ -250,6 +280,11 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vattu.js')) { /
   a.equal(tong(lo, 'Xi măng PCB40'), 30); a.equal(ngayVn(46301), '06/10/2026'); a.equal(ngayVn('6/10/2026'), '06/10/2026');
   for (const [x, y] of [['12.500', 12500], ['1.234.567,8', 1234567.8], ['15,5', 15.5], ['12.5', 12.5], ['20', 20], [' 3 ', 3]]) a.equal(soVn(x), y);
   for (const x of ['abc', '1.2.3', '', '1,2,3', '-5']) a.ok(isNaN(soVn(x)));
+  const cv = [['Mã'], ['CB-1', 'Lán trại', 'CT', 1, '29/09/2026', '03/10/2026', 1], ['HM1-1', 'Tháo mái', 'm2', 500, '04/10/2026', '10/10/2026', 0], ['HM1-2', 'Lợp mái', 'm2', 500, '11/10/2026', 46330], ['HM2-1', 'Bệ', 'm3', 20, '', '30/12/2026'], ['VATLIEU', 'Vật liệu'], ['HM2-2', 'Sơn', 'm2', 1, '', '']];
+  const lc = lichNt(cv, [NT, [46300, 'CB-1', 'x', '', 'Hẹn lại'], [46301, 'HM1-1', 'x', '', 'Không đạt']], '2026-10-06');
+  a.deepEqual(lc.map(x => [x.ma, x.n]), [['CB-1', -3], ['HM1-1', 4]]); // hẹn lại, không đạt vẫn còn; HM1-2 ngày số 46330 = 04/11 (quá 14 ngày); không ngày thì bỏ
+  a.deepEqual(lichNt(cv, [NT, [46300, 'CB-1', 'x', '', 'Đạt']], '2026-10-06').map(x => x.ma), ['HM1-1']);
+  a.deepEqual(thieuNt(lc[1], lo, dm), ['Chưa có khối lượng thực hiện trong nhật ký', 'Còn 6 lô vật tư chưa nghiệm thu đầu vào (xem mục Vật tư)']); a.deepEqual(thieuNt(lc[0], [], dm), []);
   a.equal(soDt(19, 20, 'tấn'), '19/20 tấn (95%)'); a.equal(soDt(21, 20, 'tấn'), '21/20 tấn (105%), VƯỢT dự toán'); a.equal(soDt(5, 0, 'm3'), '5 m3');
   a.equal(soTiep('CT01-GN-20261006', []), '01'); a.equal(soTiep('CT01-GN-20261006', ['CT01-GN-20261006-01_A.jpg', 'CT01-GN-20261006-03_B.jpg', 'CT01-GN-20261007-09_C.jpg']), '04');
   a.equal(soTiep('L20261006', ['L20261006-1', 'L20261006-2', 'D5'], 1), '3');
