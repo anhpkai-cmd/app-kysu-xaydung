@@ -97,3 +97,7 @@ Mục "Lịch nghiệm thu" tự liệt kê các công việc trong trang `DANHM
 - Mỗi việc ghi những gì còn thiếu mà app tự kiểm được: chưa có khối lượng thực hiện trong nhật ký, còn lô vật tư chưa nghiệm thu đầu vào.
 - **Nhắc tôi** thêm việc "Nghiệm thu: ..." vào Việc cần làm, hạn là ngày kết thúc (Google Lịch nhắc trước 3 ngày, 1 ngày). **Đã nghiệm thu** hỏi ngày và số biên bản rồi thêm một dòng vào `NGHIEMTHU` (không sửa dòng cũ).
 - Khung **Còn sót** đếm việc cần nghiệm thu trong 2 ngày tới hoặc đã quá ngày.
+
+## Tin nhắn Zalo soạn sẵn
+
+Mục "Tin nhắn soạn sẵn" soạn bốn loại tin hay gửi: báo tổ đội lịch ngày mai, báo chủ đầu tư dừng thi công do mưa, mời nghiệm thu (tư vấn giám sát), nhắc nhà cung cấp giao hàng. Tên công trình (trang Thông tin, dòng "Tên công trình", nếu có), ngày, dự báo thời tiết, việc đến hạn ngày mai và người nhận (liên hệ có vai trò "Chủ đầu tư" hoặc "Giám sát" trong trang Thông tin) được điền sẵn; chỉ phải gõ phần còn lại. Sửa tin trong khung rồi bấm **Chép tin**, mở Zalo và dán; nếu liên hệ có số điện thoại thì có nút mở đúng cuộc trò chuyện Zalo. Không cần bot Zalo, không gửi gì đi từ app. Đổi một ô thì tin được soạn lại cả (chữ sửa tay trong khung sẽ mất). `node tin.js` tự kiểm tra.
