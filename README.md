@@ -51,3 +51,9 @@ Tải ảnh lên thư mục `00_INBOX` của công trình bằng app Google Driv
 Ảnh được chuyển (không xóa, không nén) vào `09_HINHANH/yyyy-mm/yyyy-mm-dd/` và đặt tên `CT01-HA-20261006-001_HM2-1.1_MoTa.jpg`. Ngày chụp lấy theo EXIF, rồi mốc thời gian đầu tên file Zalo (chỉ nhận khi nằm trong khoảng 2020 đến ngày mai). Ảnh chỉ đoán được ngày (theo ngày tải lên) thì app hỏi: bấm "Dùng ngày này" (hoặc "Dùng ngày đoán cho các ảnh đã tick") hoặc chọn ngày; chưa có ngày thì ảnh ở lại INBOX, không xếp. Có nút "Chọn tất cả / Bỏ chọn". Ảnh chụp tài liệu (bản vẽ, biên bản) thì bấm "Đây là tài liệu": file được đổi tên thêm tiền tố `TAILIEU_` ngay trên Drive và chuyển sang danh sách file chờ lưu (giữ lại cả khi mở app lần sau). Nếu ảnh nhỏ hiện ô xám trên iPhone, app tự thử tải lại bằng mã đăng nhập. `node anh.js` tự kiểm tra.
 
 Lưu ý ảnh HEIC của iPhone: bước điền báo cáo tuần vào mẫu Excel sẽ không chèn được HEIC. Hoặc đặt iPhone: Cài đặt, Camera, Định dạng, chọn "Tương thích nhất" (ra JPG), hoặc báo cáo phải lấy bản JPG từ Drive (`thumbnailLink` cỡ lớn). Chưa có sổ ảnh riêng: tên file đã mang đủ công trình, ngày, hạng mục, mô tả.
+
+## Hôm nay còn sót gì
+
+Khung đầu trang liệt kê: việc quá hạn hoặc đến hạn hôm nay, giấy tờ hết hạn trong 7 ngày, và với **từng công trình** (không chỉ công trình đang chọn): nhật ký hôm nay chưa ghi, ảnh chờ xếp. Chạm một dòng thì app chuyển sang đúng công trình đó. Mục nào không kiểm tra được (chưa có Google Sheet nhật ký, mất sóng) thì hiện "Chưa kiểm tra được...", và chỉ ghi "Hôm nay không còn gì sót" khi mọi mục đã kiểm tra xong. Việc quét chỉ đọc, không tạo thư mục hay chuyển Excel. Để app mở qua đêm thì sang ngày mới app tự tải lại.
+
+Nút **Nhắc tôi lúc 17h mỗi ngày** tạo một sự kiện lặp trên Google Lịch (thứ 2 đến thứ 7, 17:00); bấm lại không tạo trùng, đã bật thì nút thành **Tắt nhắc 17h** (xóa sự kiện). Lịch chỉ nhắc mở app, nội dung nằm trong app. Cần bật Google Calendar API.
