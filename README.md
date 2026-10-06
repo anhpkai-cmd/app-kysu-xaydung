@@ -53,7 +53,7 @@ Mục "Thông tin công trình" đọc trang `THONGTIN` trong `_SODANGKY` (app t
 - **Số bằng chữ trong mẫu:** mục Thông tin nào là số tiền thì có thêm chỗ điền `{{Tên mục bằng chữ}}`, ví dụ `{{Giá trị HĐ bằng chữ}}` thành "Bốn trăm hai mươi ba triệu ... đồng". `{{Ngày dài}}` thành "ngày 06 tháng 10 năm 2026". Báo giá, bảng khối lượng bằng Excel/Trang tính cũng được soát khi Gửi (đọc trang đầu), kể cả tổng tiền bằng số so với dòng bằng chữ.
 - **Thông tư, nghị định:** nút trong mục Thông tin mở thư mục `CONGTRINH/_CHUNG/THONGTU_NGHIDINH` (tự tạo lần đầu bấm). Dòng Thông tin có Chi tiết là đường link `https://...` (ví dụ sổ NotebookLM của công trình) có nút **Mở**.
 - Chạy `node vanban.js` để tự kiểm tra phần soát.
-- **Họp chủ đầu tư:** nút **Chuẩn bị họp chủ đầu tư** trong mục Thông tin gom cho công trình đang chọn: tiến độ 7 ngày (số ngày có nhật ký, số người trung bình, khối lượng từng việc, sự cố), việc đang mở, giấy tờ đang chờ duyệt và 5 lần gửi gần nhất, 6 ảnh mới nhất. Bấm **Gửi bản tin họp** để chia sẻ qua Zalo hoặc chép. Chỉ đọc, không ghi gì. `node hop.js` tự kiểm tra.
+- **Họp chủ đầu tư:** nút **Chuẩn bị họp chủ đầu tư** trong mục Thông tin gom cho công trình đang chọn: tiến độ 7 ngày (số ngày có nhật ký, số người trung bình, khối lượng từng việc, sự cố), việc đang mở, giấy tờ đang chờ duyệt và 5 lần gửi gần nhất trong 30 ngày. Bản tin sửa được: xóa phần nội bộ (việc quá hạn, sự cố) rồi bấm **Chép / gửi (đã xem lại)**. 6 ảnh mới nhất chỉ hiện trên màn hình, không gửi kèm. Chỉ đọc, không ghi gì. `node hop.js` tự kiểm tra.
 
 ## Ảnh hiện trường
 
@@ -86,9 +86,19 @@ Mục "Vật tư" ghi vào file nhật ký `CTxx-NK-NHATKY` của công trình (
 - Khung **Còn sót** đếm lô cấm dùng và lô chưa xong của mọi công trình.
 - Trước khi ghi, app đọc lại các dòng đó; sheet vừa bị sửa ở nơi khác thì không ghi mà tải lại. Chạy `node vattu.js` để tự kiểm tra.
 
+## Mã QR bản vẽ
+
+Ở mỗi **bản vẽ** (mã tài liệu có BV hoặc SD, ví dụ CT01-BV-KC-005; hợp đồng, báo giá không có nút này) có nút **QR**. Bấm (sau khi xác nhận cảnh báo: **ai có mã QR đều xem được bản vẽ, không cần đăng nhập Google**) thì app tạo một bản sao cố định của bản hiện hành trong thư mục `QR_HIENHANH` của công trình, mở quyền "ai có link xem được" và hiện mã QR ở mục "Mã QR bản vẽ". Quét mã bằng camera là mở file trên Drive. Khi bấm **Bản mới** cho tài liệu đó, app thay nội dung và tên của chính file QR (một yêu cầu duy nhất) nên mã QR in sẵn vẫn đúng; tên file ghi "bản R03 ngày ...", Drive hiện tên này trên đầu khi mở. Nếu chưa chuyển được sang bản mới, app báo CHÚ Ý (mã vẫn mở bản cũ) và bấm QR ở tài liệu để thử lại. **Thu hồi** gỡ quyền xem (quét không mở được), **Bật lại** mở lại. Tick các mã rồi bấm **In tờ A4**: mỗi ô một mã, tên và Rev in to để cắt dán (in từ máy tính cho chắc; app cài trên iPhone có thể không mở được hộp in).
+
+Giới hạn: thay nội dung phải tải file về máy rồi tải lại lên (bản vẽ vài chục MB trên 4G sẽ chậm); tài liệu dạng Google Docs không thay được tự động. Thư viện tạo mã `qrcode.mjs` (qrcode-generator 2.0.4, MIT) để nguyên bản; mã sinh ra đã được kiểm bằng máy đọc QR (jsQR). `node qr.js` tự kiểm tra.
+
 ## Lịch nghiệm thu
 
 Mục "Lịch nghiệm thu" tự liệt kê các công việc trong trang `DANHMUC` của file nhật ký (lấy từ tiến độ đã trình) có ngày **Kết thúc KH** trong 14 ngày tới hoặc đã qua, mà trang `NGHIEMTHU` chưa có dòng mã đó với Kết quả "Đạt".
 - Mỗi việc ghi những gì còn thiếu mà app tự kiểm được: chưa có khối lượng thực hiện trong nhật ký, còn lô vật tư chưa nghiệm thu đầu vào.
 - **Nhắc tôi** thêm việc "Nghiệm thu: ..." vào Việc cần làm, hạn là ngày kết thúc (Google Lịch nhắc trước 3 ngày, 1 ngày). **Đã nghiệm thu** hỏi ngày và số biên bản rồi thêm một dòng vào `NGHIEMTHU` (không sửa dòng cũ).
 - Khung **Còn sót** đếm việc cần nghiệm thu trong 2 ngày tới hoặc đã quá ngày.
+
+## Tin nhắn Zalo soạn sẵn
+
+Mục "Tin nhắn soạn sẵn" soạn bốn loại tin hay gửi: báo tổ đội lịch ngày mai, báo chủ đầu tư dừng thi công do mưa, mời nghiệm thu (tư vấn giám sát), nhắc nhà cung cấp giao hàng. Tên công trình (trang Thông tin, dòng "Tên công trình", nếu có), ngày, dự báo thời tiết, việc đến hạn ngày mai và người nhận (liên hệ có vai trò "Chủ đầu tư" hoặc "Giám sát" trong trang Thông tin) được điền sẵn; chỉ phải gõ phần còn lại. Sửa tin trong khung rồi bấm **Chép tin**, mở Zalo và dán; nếu liên hệ có số điện thoại thì có nút mở đúng cuộc trò chuyện Zalo. Không cần bot Zalo, không gửi gì đi từ app. Đổi một ô thì tin được soạn lại cả (chữ sửa tay trong khung sẽ mất). `node tin.js` tự kiểm tra.

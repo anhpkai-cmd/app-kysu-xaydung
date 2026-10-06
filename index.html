@@ -47,13 +47,15 @@
   .anh th,.anh>div{min-width:0}
   #ttms:empty,#nkmsg:empty,#anms:empty,#sotms:empty,#tqms:empty,#vtms:empty{display:none}
   #tqd .cb,#sotn .cb{font-weight:600;color:var(--accent)}
-  #sotds{display:grid;gap:8px}
+  #sotds{display:grid;gap:8px} #tnms:empty,#tnz[hidden]{display:none} #tnt,#hopt{width:100%;box-sizing:border-box;font:inherit;color:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--card)}
   .cot{flex-direction:column;align-items:stretch}
   .cot .nut{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
-  #hopt{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:12px var(--gap);margin:8px 0}
   summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
   #msg:empty,#nhan:empty{display:none}
   @media (prefers-reduced-motion:no-preference){button{transition:filter .15s}}
+  .qrd{align-items:flex-start;gap:12px} #qrms:empty{display:none}
+  #qrtrang{display:grid;grid-template-columns:1fr 1fr;gap:8mm}
+  @media print{body{background:#fff;color:#000} body>*:not(#qrtrang){display:none!important} #qrtrang>div{break-inside:avoid;text-align:center;border:1px dashed #000;padding:4mm} #qrtrang svg{width:60mm;height:60mm} #qrtrang p{font-size:14pt;font-weight:700;margin:2mm 0}}
 </style>
 </head>
 <body>
@@ -68,6 +70,16 @@
     <div id="sotn"></div>
     <p id="sotms" role="status"></p>
     <p><button id="sotb" class="phu">Nhắc tôi lúc 17h mỗi ngày</button></p>
+  </section>
+  <section id="tn" hidden>
+    <h2>Tin nhắn soạn sẵn</h2>
+    <details id="tnd"><summary>Soạn tin Zalo (nghiệm thu, tổ đội, dừng vì mưa, nhà cung cấp)</summary>
+    <label for="tnm">Loại tin</label><select id="tnm"></select>
+    <div id="tnf"></div>
+    <label for="tnt">Tin (sửa được trước khi chép)</label><textarea id="tnt" rows="9"></textarea>
+    <p id="tnms" role="status"></p>
+    <p><button id="tnc">Chép tin</button> <a id="tnz" class="nutlk" hidden target="_blank" rel="noopener">Mở Zalo</a></p>
+    </details>
   </section>
   <section id="tq" hidden>
     <h2>Thời tiết công trình</h2>
@@ -98,13 +110,21 @@
     </details>
   </div>
   <div id="ds"></div>
+  <section id="qr" hidden>
+    <h2>Mã QR bản vẽ</h2>
+    <p>Dán mã ở công trường: tổ trưởng quét bằng camera là mở đúng bản vẽ hiện hành, không cần đăng nhập. Ai có mã QR đều xem được, nên chỉ dán nơi nội bộ.</p>
+    <p id="qrms" role="status"></p>
+    <div id="qrds"></div>
+    <p><button id="qri" class="phu">In tờ A4 các mã đã chọn</button></p>
+    <p class="hint">Nếu điện thoại không in được, mở app trên máy tính để in.</p>
+  </section>
   <section id="tt" hidden>
     <h2>Thông tin công trình</h2>
     <p id="ttms" role="status"></p>
     <div id="ttds"></div>
     <p><button id="ttnd" class="phu">Thông tư, nghị định</button></p>
     <p><button id="hop" class="phu">Chuẩn bị họp chủ đầu tư</button></p>
-    <div id="hopkq" hidden><pre id="hopt"></pre><p><button id="hopg">Gửi bản tin họp (Zalo...)</button></p></div>
+    <div id="hopkq" hidden><p>Bản tin để anh chuẩn bị họp. Xóa phần nội bộ trước khi gửi chủ đầu tư.</p><textarea id="hopt" rows="14"></textarea><p><button id="hopg">Chép / gửi (đã xem lại)</button></p><p>Ảnh mới nhất (chỉ tài khoản của anh mở được, không gửi kèm):</p><ul id="hopa"></ul></div>
     <details><summary>+ Thêm liên hệ hoặc thông tin</summary>
     <label for="ttnh">Loại</label><select id="ttnh"><option>Liên hệ</option><option>Thông tin</option></select>
     <label for="ttten">Tên (người liên hệ, hoặc tên mục như Địa chỉ)</label><input id="ttten">
@@ -170,6 +190,7 @@
     </details>
   </section>
 </main>
+<div id="qrtrang" hidden></div>
 <input id="chon" type="file" hidden>
 <script type="module" src="app.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>

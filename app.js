@@ -5,6 +5,8 @@ import { banHop } from './hop.js';
 import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { url as urlTT, parse as parseTT, viTri, nhatKy, tomTat, canhBao, NGAY } from './thoitiet.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
+import { khoiQR, lamQR, moQR, inQR, sauBanMoi as qrSauBanMoi, laBanVe } from './qr.js';
+import { MAU as MAU_TIN, dmy, macDinh, soan, zalo } from './tin.js';
 import { moVatTu, luuVe, themVatTu, demVatTu, soVn } from './vattu.js';
 import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
@@ -19,6 +21,7 @@ const api = async (url, opt = {}) => {
 };
 const ls = async (q, cot = 'id,name,mimeType,webViewLink') => (await api(`https://www.googleapis.com/drive/v3/files?pageSize=1000&fields=files(${cot})&q=` + encodeURIComponent(q + ' and trashed=false'))).files;
 const say = t => $('msg').textContent = t || '';
+const blob = async url => { const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } }); if (!r.ok) throw new Error('Lỗi tải file ' + r.status); return r.blob(); };
 
 function hien() {
   const kq = loc(docs, $('q').value);
@@ -38,7 +41,8 @@ function hien() {
     const tr = document.createElement('button'); tr.className = 'phu'; tr.textContent = 'Bị trả'; tr.setAttribute('aria-label', 'Ghi lý do bị trả ' + d.ma);
     tr.onclick = () => biTra(d);
     const th = document.createElement('div'); th.append(b, t, s);
-    const nut = document.createElement('div'); nut.className = 'nut'; nut.append(x, g, m, tr);
+    const nut = document.createElement('div'); nut.className = 'nut'; const qr = document.createElement('button'); qr.className = 'phu'; qr.textContent = 'QR'; qr.setAttribute('aria-label', 'Mã QR của ' + d.ma); qr.onclick = () => lamQR(d);
+    nut.append(x, g, m, tr); if (laBanVe(d.ma)) nut.append(qr);
     el.append(th, nut);
     return el;
   }));
@@ -103,7 +107,8 @@ async function tai(d, file) {
       { range: `DANHMUC!${c('Ngày rev')}${d.dong}`, values: [[new Date().toLocaleDateString('en-GB')]] }] }));
     if (file.khoa) await (await caches.open('chia-se')).delete(file.khoa);
     nhan = nhan.filter(f => f !== file); hienNhan();
-    await chonCT(); say(`Đã lưu ${ten}.`);
+    const qrTin = await qrSauBanMoi(d, rev, { ...moi, name: ten, mimeType: file.mimeType || file.type }, new Date().toLocaleDateString('en-GB')); // mã QR của tài liệu (nếu có) chuyển sang bản vừa lưu
+    await chonCT(); say(`Đã lưu ${ten}.${qrTin}`);
   } catch (e) { say(`Lỗi khi ${buoc}: ${e.message}`); }
 }
 
@@ -621,14 +626,44 @@ async function hop() {
   const [ngay, kl, gui, anh] = await Promise.all([doc(nkId, 'NGAY!A:L?valueRenderOption=UNFORMATTED_VALUE'), doc(nkId, 'KHOILUONG!A:E?valueRenderOption=UNFORMATTED_VALUE'), doc(soId, 'NHATKY_GUINHAN!A:H'),
     api('https://www.googleapis.com/drive/v3/files?pageSize=6&orderBy=createdTime desc&fields=files(name,webViewLink)&q=' + encodeURIComponent(`name contains '${q(ma)}-HA-' and mimeType contains 'image/' and trashed=false`)).then(r => r.files).catch(() => [])]);
   if ($('ct').selectedOptions[0].text !== ten) return; // đổi công trình giữa chừng
-  $('hopt').textContent = banHop({ ten, hom: homNay(), ngay, kl, dm: ngay && kl ? nkDm : null, viec: viec.filter(v => v.ct === ten), docs, gui, anh });
+  $('hopt').value = banHop({ ten, hom: homNay(), ngay, kl, dm: ngay && kl ? nkDm : null, viec: viec.filter(v => v.ct === ten), docs, gui });
+  $('hopa').replaceChildren(...anh.map(f => { const li = document.createElement('li'), a = li.appendChild(document.createElement('a')); a.href = f.webViewLink; a.target = '_blank'; a.textContent = f.name; return li; }));
   $('hopkq').hidden = false;
 }
 async function guiHop() {
-  const t = $('hopt').textContent;
+  const t = $('hopt').value;
   try { if (navigator.share) await navigator.share({ text: t }); else { await navigator.clipboard.writeText(t); ttMs('Đã chép bản tin họp, dán vào Zalo.'); } }
   catch (e) { if (e.name !== 'AbortError') ttMs(e.message); }
 }
+
+// ---- Tin nhắn Zalo soạn sẵn (xem tin.js): thông tin lấy lúc mở khung và lúc đổi ô, nên không phụ thuộc thứ tự tải ----
+const tnCtx = () => {
+  const hom = homNay(), ten = $('ct').selectedOptions[0]?.text ?? '', tenCT = ttDong.find(r => /^tên công trình$/i.test(r[1]))?.[2] || ten.split('_').slice(1).join(' ') || ten;
+  return { tenCT, hom: dmy(hom), mai: dmy(cong(hom, 1)), tt: ttDong, thoiTiet: { hom: tqDs[0] && tomTat(tqDs[0]), mai: tqDs[1] && tomTat(tqDs[1]) },
+    viecMai: viec.filter(t => (!t.ct || t.ct === 'Chung' || t.ct === ten) && conLai(t.han, hom) === 1).map(t => t.ten) };
+};
+let tnV = {};
+function tnVe(moi) {
+  const m = MAU_TIN.find(x => x.id === $('tnm').value), c = tnCtx();
+  if (moi) {
+    tnV = macDinh(m, c); $('tnms').textContent = '';
+    $('tnf').replaceChildren(...m.truong.flatMap(([k, nhan, d]) => {
+      const l = document.createElement('label'), o = document.createElement(Array.isArray(d) ? 'select' : 'input'); l.textContent = nhan; l.htmlFor = o.id = 'tn_' + k;
+      if (Array.isArray(d)) o.append(...d.map(x => new Option(x)));
+      o.value = tnV[k]; o.oninput = () => { tnV[k] = o.value; tnVe(); }; // ponytail: đổi ô thì soạn lại cả tin (chữ đã sửa tay trong khung tin sẽ mất); sửa tay là bước cuối
+      return [l, o];
+    }));
+  }
+  $('tnt').value = soan(m, tnV, c);
+  const z = zalo(m, c); $('tnz').hidden = !z; if (z) { $('tnz').href = z.href; $('tnz').textContent = 'Mở Zalo của ' + z.ten; }
+}
+$('tnm').replaceChildren(...MAU_TIN.map(m => new Option(m.ten, m.id)));
+$('tnm').onchange = () => tnVe(true);
+$('tnd').ontoggle = () => { if ($('tnd').open) tnVe(true); };
+$('tnc').onclick = async () => {
+  try { await navigator.clipboard.writeText($('tnt').value); $('tnms').textContent = 'Đã chép. Mở Zalo rồi dán vào khung tin.'; }
+  catch { $('tnt').select(); $('tnms').textContent = document.execCommand?.('copy') ? 'Đã chép. Mở Zalo rồi dán vào khung tin.' : 'Máy không cho chép tự động: giữ vào khung tin, chọn Sao chép.'; }
+};
 
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
 // ponytail: không có máy chủ nên không có refresh token, mỗi giờ phải xin lại một lần.
@@ -646,7 +681,7 @@ async function vao(resp) {
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
     gocId = goc.id;
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
-    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('tq').hidden = false;
+    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('tn').hidden = false; $('qr').hidden = false; $('tq').hidden = false;
     try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec(); taiHan(cts); sotQuet(cts);
@@ -662,9 +697,11 @@ function doiCT() {
   $('hopkq').hidden = true; // bản tin họp của công trình cũ
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
   const ct = $('ct').value;
-  chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), sot: sotCap, id: nkId }); }); taiTT(); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
+  moQR(); chonCT(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu({ api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), sot: sotCap, id: nkId }); }); taiTT(); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
+khoiQR({ api, ls, thuMuc, json, tim, blob, ct: () => $('ct').value, say, hoi: t => confirm(t), q, FOLDER });
+$('qri').onclick = inQR;
 const khoa = (id, fn, sau) => async () => {
   const b = $(id), chu = b.textContent; if (b.disabled) return;
   b.disabled = true; b.textContent = 'Đang lưu...';
