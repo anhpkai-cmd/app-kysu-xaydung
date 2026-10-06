@@ -3,6 +3,7 @@ import { NK, serial } from './nhatky.js';
 import { soat, docChu, lap, dsMau } from './vanban.js';
 import { banHop } from './hop.js';
 import { banBaoCao } from './baocao.js';
+import { goiY, tatCa, dongNk } from './atld.js';
 import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { url as urlTT, parse as parseTT, viTri, nhatKy, tomTat, canhBao, NGAY } from './thoitiet.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
@@ -346,13 +347,14 @@ const nkKey = () => 'nk:' + $('ct').value; // bản nháp theo công trình, xó
 function nkNhap() { try { localStorage.setItem(nkKey(), JSON.stringify({ d: $('nkd').value, f: NK.map((_, i) => $('nk' + i).value), vc: nkVc })); } catch {} }
 async function moNhatKy() {
   const ct = $('ct').value; nkDm = []; // người dùng đổi công trình giữa chừng thì bỏ kết quả của công trình cũ
-  $('nk').hidden = false; $('nkf').hidden = true; nkId = null; nkVc = [];
+  $('nk').hidden = false; $('hat').hidden = false; delete $('hatc').dataset.tay; $('nkf').hidden = true; nkId = null; nkVc = [];
   try {
     const f = await sheetCo(`name contains '${q($('ct').selectedOptions[0].text.split('_')[0])}-NK-NHATKY'`);
     if (!f) return $('nkmsg').textContent = 'Công trình này chưa có Google Sheet nhật ký (đặt file CTxx-NK-NHATKY, Excel hoặc Google Sheet, trong thư mục công trình trên Drive).';
     const dm = ((await nkApi(f.id, 'values/DANHMUC!A2:C')).values || []).filter(r => r[0]);
     if ($('ct').value !== ct) return;
     nkId = f.id; nkDm = dm;
+    hatVe();
     $('nkv').replaceChildren(...nkDm.map(([ma, ten, dv]) => new Option(`${ma} · ${ten}${dv ? ' (' + dv + ')' : ''}`, ma)));
     $('nkc').replaceChildren(...NK.flatMap(([ten, kieu], i) => {
       const l = document.createElement('label'); l.htmlFor = 'nk' + i; l.textContent = ten;
@@ -367,12 +369,37 @@ async function moNhatKy() {
   } catch (e) { $('nkmsg').textContent = e.message; }
 }
 function hienVc() {
+  hatVe();
   $('nkds').replaceChildren(...nkVc.map((v, i) => {
     const el = document.createElement('div'); el.className = 'doc'; const t = document.createElement('span'); t.textContent = `${v.ma} · ${v.kl}`;
     const b = document.createElement('button'); b.className = 'phu'; b.textContent = 'Bỏ'; b.setAttribute('aria-label', 'Bỏ ' + t.textContent);
     b.onclick = () => { nkVc.splice(i, 1); hienVc(); nkNhap(); }; el.append(t, b); return el;
   }));
 }
+// Họp an toàn 5 phút: gợi ý chủ đề theo việc trong ngày (không có thì theo các hạng mục của công trình), ảnh tổ đội vào 09_HINHANH, dòng ghi sẵn vào ô Sự cố, ATLĐ của nhật ký
+const hatNk = NK.findIndex(([t]) => t === 'Sự cố, ATLĐ');
+function hatVe() {
+  const ten = ma => nkDm.find(d => d[0] === ma)?.[1] ?? ma, goc = nkVc.length ? nkVc.map(v => ten(v.ma)) : nkDm.map(d => d[1]), giu = $('hatc').value && $('hatc').dataset.tay;
+  if (!$('hatc').options.length) $('hatc').replaceChildren(...tatCa.map(c => new Option(c.ten)));
+  if (!giu) $('hatc').value = goiY(goc).ten; // người dùng đã tự chọn thì không đổi lại
+  $('haty').replaceChildren(...tatCa.find(c => c.ten === $('hatc').value).y.map(t => Object.assign(document.createElement('li'), { textContent: t })));
+}
+$('hatc').onchange = () => { $('hatc').dataset.tay = 1; hatVe(); };
+$('hatb').onclick = async () => {
+  const f = $('hata').files[0], ct = $('ct').value, ma = maCT({ name: $('ct').selectedOptions[0].text }), ngay = homNay(), chu = $('hatc').value, ms = t => $('hatms').textContent = t;
+  if (!f) return ms('Chụp hoặc chọn ảnh tổ đội trước.');
+  $('hatb').disabled = true; ms('Đang lưu ảnh...');
+  try {
+    const dir = await thuMuc(ct, `09_HINHANH/${ngay.slice(0, 7)}/${ngay}`), stt = sttTiep(ma, ngay, (await ls(`'${dir}' in parents`)).map(x => x.name));
+    const ten = tenAnh(ma, ngay, stt, 'ATLD', 'HopAnToan', f.name);
+    await taiLen(ten, dir, f);
+    $('hata').value = '';
+    if ($('ct').value === ct && !$('nkf').hidden && $('nkd').value === ngay) { $('nk' + hatNk).value = dongNk($('nk' + hatNk).value, chu); nkNhap(); ms(`Đã lưu ảnh ${ten} và ghi vào ô Sự cố, ATLĐ của nhật ký. Bấm Lưu nhật ký để chốt.`); }
+    else ms(`Đã lưu ảnh ${ten}. Nhật ký hôm nay chưa mở nên chưa ghi dòng họp an toàn, hãy ghi tay vào ô Sự cố, ATLĐ.`);
+  } catch (e) { ms('Chưa lưu được ảnh: ' + e.message); }
+  $('hatb').disabled = false;
+};
+
 function themVc() { // trả true nếu đã thêm (hoặc không có gì để thêm là lỗi)
   const kl = soVn($('nkk').value);
   if (!(kl > 0)) return $('nkmsg').textContent = `“${$('nkk').value}” không đọc được thành số lớn hơn 0. Ví dụ 12.500 hoặc 15,5.`, false;
