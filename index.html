@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1a56a0">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<title>Sổ tay kỹ sư</title>
+<style>
+  body{font:16px system-ui,sans-serif;margin:0;background:#f5f6f8;color:#222}
+  header{background:#1a56a0;color:#fff;padding:12px 16px;display:flex;gap:8px;align-items:center}
+  header h1{font-size:18px;margin:0;flex:1}
+  main{padding:12px 16px;max-width:720px;margin:auto}
+  button,select,input{font:inherit;padding:10px 12px;border-radius:8px;border:1px solid #bbb;background:#fff}
+  button{background:#1a56a0;color:#fff;border:0}
+  #q{width:100%;box-sizing:border-box;margin:8px 0}
+  .doc{background:#fff;border-radius:10px;padding:12px;margin:8px 0;box-shadow:0 1px 2px #0002}
+  .doc b{display:block}.doc small{color:#666}
+  .doc button{margin-top:8px}
+  #msg{color:#b00020}
+</style>
+</head>
+<body>
+<header><h1>Sổ tay kỹ sư</h1><button id="vao">Đăng nhập Google</button></header>
+<main>
+  <p id="msg"></p>
+  <select id="ct" hidden></select>
+  <input id="q" type="search" placeholder="Tìm bản vẽ: móng, cọc, KC-005..." hidden>
+  <div id="ds"></div>
+</main>
+<script type="module" src="app.js"></script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+</body>
+</html>
