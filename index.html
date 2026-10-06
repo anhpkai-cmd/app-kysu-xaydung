@@ -45,7 +45,8 @@
   .anh input[type=checkbox]{width:28px;min-height:28px;margin:0}
   .anh img{width:88px;height:88px;object-fit:cover;border-radius:6px;background:var(--rule)}
   .anh th,.anh>div{min-width:0}
-  #ttms:empty,#nkmsg:empty,#anms:empty{display:none}
+  #ttms:empty,#nkmsg:empty,#anms:empty,#sotms:empty{display:none}
+  #sotds{display:grid;gap:8px}
   summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
   #msg:empty,#nhan:empty{display:none}
   @media (prefers-reduced-motion:no-preference){button{transition:filter .15s}}
@@ -57,6 +58,12 @@
   <p id="nhan" role="status" hidden></p>
   <p id="msg" role="status">Bấm “Đăng nhập Google” để xem sổ đăng ký công trình.</p>
   <div id="cts" hidden><label for="ct">Công trình đang làm</label><select id="ct"></select></div>
+  <section id="sot" hidden>
+    <h2>Hôm nay còn sót gì</h2>
+    <div id="sotds"></div>
+    <p id="sotms" role="status"></p>
+    <p><button id="sotb" class="phu">Nhắc tôi lúc 17h mỗi ngày</button></p>
+  </section>
   <section id="viec" hidden>
     <h2>Việc cần làm</h2>
     <div id="dsv"></div>

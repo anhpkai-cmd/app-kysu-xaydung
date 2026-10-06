@@ -185,6 +185,7 @@ function veHan() {
     }
     return el;
   }), ...(hanLoi.length ? [Object.assign(document.createElement('p'), { textContent: 'Không đọc được hạn giấy tờ của: ' + hanLoi.join(', ') })] : []));
+  veSot();
 }
 
 async function themViec() {
@@ -317,6 +318,7 @@ async function luuNhatKy() {
     nkVc.forEach((v, i) => { const m = b.length + 1 + i; data.push({ range: `KHOILUONG!A${m}:B${m}`, values: [[ngay, v.ma]] }, { range: `KHOILUONG!E${m}`, values: [[v.kl]] }); }); // cột C, D là công thức, không ghi đè
     await nkApi(nkId, 'values:batchUpdate', json({ valueInputOption: 'RAW', data }));
     $('nkmsg').textContent = `Đã lưu nhật ký ngày ${$('nkd').value} (${nkVc.length} việc).`; nkVc = []; hienVc(); try { localStorage.removeItem(nkKey()); } catch {}
+    if ($('nkd').value === homNay()) sotCap({ nk: true });
   } catch (e) { $('nkmsg').textContent = e.message; }
 }
 
@@ -413,7 +415,7 @@ async function taiAnh() {
     const hm = new Map([...nkDm.map(([ma, ten]) => [ma, `${ma} · ${ten}`]), ['CHUNG', 'CHUNG · Toàn cảnh, việc chung'], ['ATLD', 'ATLD · An toàn lao động'], ['VATLIEU', 'VATLIEU · Vật liệu nhập về']]); // luôn có ba mục chung ở cuối
     $('anhm').replaceChildren(...[...hm].map(([ma, ten]) => new Option(ten, ma)));
     $('anms').textContent = anhDs.length ? `Có ${anhDs.length} ảnh chờ xếp trong 00_INBOX. Tick các ảnh cùng một hạng mục, chọn hạng mục, bấm Xếp; ảnh chưa tick vẫn ở lại cho lượt sau.` : 'Không có ảnh chờ xếp. Tải ảnh lên thư mục 00_INBOX của công trình bằng app Google Drive.';
-    $('anx').hidden = !anhDs.length; veAnh();
+    $('anx').hidden = !anhDs.length; veAnh(); sotCap({ anh: anhDs.length });
   } catch (e) { $('anms').textContent = e.message; }
 }
 function veAnh() {
@@ -473,6 +475,59 @@ async function xepAnh() {
   await taiAnh(); $('anms').textContent = `Đã xếp ${xong}/${dem} ảnh vào 09_HINHANH.${loi} ` + $('anms').textContent;
 }
 
+// ---- Hôm nay còn sót gì: gom việc, giấy tờ, nhật ký, ảnh vào một chỗ; nhắc 17h mỗi ngày qua Google Lịch (không có máy chủ nên Lịch chỉ nhắc mở app, nội dung xem trong app) ----
+const sotNgay = homNay();
+async function banTinNut() { try { $('sotb').textContent = (await lichTin()).length ? 'Tắt nhắc 17h' : 'Nhắc tôi lúc 17h mỗi ngày'; } catch {} }
+let sotCt = [], sotXong = false; // mỗi công trình: {id, ma, nk: true|false|null, anh: số ảnh|null}; null = chưa kiểm tra được
+const maCT = c => c.name.split('_')[0];
+async function sotQuet(cts) { // quét mọi công trình, chỉ đọc (không tạo thư mục, không chuyển Excel thành Sheet)
+  sotXong = false; const ngay = serial(homNay());
+  sotCt = await Promise.all(cts.map(async c => {
+    const r = { id: c.id, ma: maCT(c), nk: null, anh: null };
+    try { // chưa có Google Sheet nhật ký thì để null: không biết thì không báo ổn
+      const [f] = await ls(`name contains '${q(r.ma)}-NK-NHATKY' and mimeType='${SHEET}'`, 'id'); // file nằm sâu (03_CHATLUONG/NK_NHATKY_TC), tìm theo tên như moNhatKy
+      if (f) r.nk = ((await nkApi(f.id, 'values/NGAY!A:A?valueRenderOption=UNFORMATTED_VALUE')).values || []).some(v => v[0] === ngay);
+    } catch {}
+    try {
+      const [h] = await ls(`'${c.id}' in parents and mimeType='${FOLDER}' and name='00_INBOX'`, 'id');
+      r.anh = h ? (await ls(`'${h.id}' in parents and mimeType contains 'image/'`, 'id,name')).filter(f => !f.name.startsWith(TL)).length : 0;
+    } catch {}
+    return r;
+  }));
+  sotXong = true; veSot();
+}
+function veSot() {
+  const hom = homNay(), nhom = chia(viec, hom), han = hanDs.filter(d => isNaN(d.n) || d.n <= 7);
+  const dong = [ // việc quá hạn trước, ảnh sau cùng
+    [nhom.quaHan.length + nhom.sapDen.filter(t => t.n === 0).length, (x => `${x} việc quá hạn hoặc đến hạn hôm nay`), '#viec'],
+    [han.length, (x => `${x} giấy tờ sắp hết hạn (trong 7 ngày) hoặc đã quá hạn`), '#han'],
+    [hanLoi.length, () => 'Chưa kiểm tra được hạn giấy tờ của: ' + hanLoi.join(', '), '#han'],
+    ...sotCt.filter(c => c.nk === false).map(c => [1, () => c.ma + ' chưa ghi nhật ký hôm nay', '#nk', c.id]),
+    ...sotCt.filter(c => c.nk === null).map(c => [1, () => 'Chưa kiểm tra được nhật ký ' + c.ma + ' (chưa có Google Sheet nhật ký hoặc mất sóng)', '#nk', c.id]),
+    ...sotCt.filter(c => c.anh === null).map(c => [1, () => 'Chưa kiểm tra được ảnh chờ của ' + c.ma, '#anh', c.id]),
+    ...sotCt.filter(c => c.anh > 0).map(c => [c.anh, x => `${c.ma}: ${x} ảnh chờ xếp`, '#anh', c.id]),
+  ].filter(([n]) => n);
+  $('sotds').replaceChildren(...(dong.length ? dong.map(([n, chu, href, id]) => {
+    const l = document.createElement('a'); l.className = 'nutlk'; l.href = href; l.textContent = chu(n);
+    if (id) l.onclick = () => { if ($('ct').value !== id) { $('ct').value = id; doiCT(); } }; // nhảy tới đúng công trình
+    return l;
+  }) : [Object.assign(document.createElement('p'), { textContent: sotXong ? 'Hôm nay không còn gì sót.' : 'Đang kiểm tra các công trình...' })]));
+}
+const sotCap = kq => { const c = sotCt.find(x => x.id === $('ct').value); if (c) { Object.assign(c, kq); veSot(); } };
+const BAN_TIN = 'Sổ tay kỹ sư: hôm nay còn sót gì';
+const lichTin = async () => (await api(`${LICH}?q=${encodeURIComponent(BAN_TIN)}&maxResults=10`)).items?.filter(e => e.status !== 'cancelled' && e.summary === BAN_TIN) || [];
+async function banTin() { // bật hoặc tắt nhắc 17h thứ 2 đến thứ 7; bật chỉ tạo một lần
+  try {
+    const co = await lichTin();
+    if (co.length) { for (const e of co) await api(`${LICH}/${e.id}`, { method: 'DELETE' }); return $('sotms').textContent = 'Đã tắt nhắc 17h.'; }
+    const tz = 'Asia/Ho_Chi_Minh', hom = new Date(), bd = hom.getHours() >= 17 ? cong(homNay(), 1) : homNay(), url = location.origin + location.pathname;
+    await api(LICH, json({ summary: BAN_TIN, description: 'Mở app xem việc còn sót: ' + url, source: { title: 'Mở Sổ tay kỹ sư', url },
+      start: { dateTime: bd + 'T17:00:00', timeZone: tz }, end: { dateTime: bd + 'T17:10:00', timeZone: tz }, recurrence: ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR,SA'],
+      reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 0 }] } }));
+    $('sotms').textContent = 'Đã bật nhắc 17h thứ 2 đến thứ 7 trên Google Lịch. Tắt bằng chính nút này.';
+  } catch (e) { $('sotms').textContent = e.message; }
+}
+
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
 // ponytail: không có máy chủ nên không có refresh token, mỗi giờ phải xin lại một lần.
 const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth2.initTokenClient({
@@ -489,10 +544,11 @@ async function vao(resp) {
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
     gocId = goc.id;
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
-    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false;
+    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false;
     try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
-    viecId = await soViec(goc.id); await taiViec(); taiHan(cts);
+    viecId = await soViec(goc.id); await taiViec(); taiHan(cts); sotQuet(cts);
+    banTinNut();
     $('tt').hidden = false; $('anh').hidden = false;
     doiCT();
   } catch (e) { say(e.message); }
@@ -527,6 +583,8 @@ $('vbl').onclick = khoa('vbl', lapVb);
 $('ttnd').onclick = () => moTab(async () => 'https://drive.google.com/drive/folders/' + await thuMuc(gocId, '_CHUNG/THONGTU_NGHIDINH'), ttMs); // anh tự bỏ thông tư, nghị định vào; dùng chung mọi công trình
 $('nkt').onclick = themVc;
 $('anb').onclick = khoa('anb', xepAnh, tomTatAnh);
+document.onvisibilitychange = () => { if (!document.hidden && sotNgay && sotNgay !== homNay()) location.reload(); }; // mở lại app sang ngày mới thì tải lại
+$('sotb').onclick = khoa('sotb', banTin, banTinNut);
 $('anc').onclick = () => { const tat = anhDs.every(f => f.chon); anhDs.forEach(f => f.chon = !tat); veAnh(); };
 $('and').onclick = () => { anhDs.forEach(f => { if (f.chon && f.nguon === 'doan' && !f.ngaySua) f.ngaySua = f.ngay; }); veAnh(); };
 $('nkl').onclick = khoa('nkl', luuNhatKy);
