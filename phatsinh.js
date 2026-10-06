@@ -4,7 +4,7 @@
 import { zaloSo } from './tin.js';
 
 export const COT = ['Ngày', 'Người yêu cầu', 'Vai trò', 'Nội dung', 'Vị trí', 'KL ước', 'Đơn vị', 'Ảnh', 'Trạng thái'];
-const CHO = 'Chờ xác nhận';
+export const CHO = 'Chờ xác nhận';
 export const dongPS = v => [v.ngay, v.ai, v.vaiTro, v.nd, v.vt, v.kl, v.dv, v.anh || '', CHO];
 export const docPS = v => (v || []).slice(1).map((r, i) => ({ ngay: r[0] ?? '', ai: r[1] ?? '', nd: r[3] ?? '', kl: [r[5], r[6]].filter(Boolean).join(' '), tt: r[8] ?? '', dong: i + 2 })).filter(x => x.nd);
 export const tinPS = (v, tenCT) => `Kính gửi ${v.ai || 'anh/chị'}${v.vaiTro ? ` (${v.vaiTro})` : ''}, nhà thầu xin xác nhận lại: ngày ${v.ngay} tại công trình ${tenCT}${v.vt ? `, vị trí ${v.vt}` : ''}, anh/chị có yêu cầu: ${v.nd}.`
