@@ -233,7 +233,9 @@ export function themYc() {
 export async function lapYc() {
   if (!h?.id) return ms('Chưa mở được file nhật ký của công trình này.');
   if (!phieu.length) return ms('Thêm ít nhất một vật tư vào phiếu.');
-  const ct = $('ct').value, tenCt = $('ct').selectedOptions[0].text, ten = h.tenCt(), ds = [...phieu]; // tenCt: tên thư mục (việc cần làm lọc theo nó); ten: tên công trình thật ghi trên phiếu
+  const ct = $('ct').value, tenCt = $('ct').selectedOptions[0].text, ds = [...phieu]; // tenCt: tên thư mục (việc cần làm lọc theo nó); ten: tên công trình thật ghi trên phiếu
+  let ten = h.tenCt();
+  if (ten === '(tên công trình)') { if (!confirm(`Trang Thông tin chưa có dòng "Tên công trình", phiếu sẽ ghi "${tenCt}". Vẫn lập phiếu?`)) return; ten = tenCt; }
   ms('Đang lập phiếu...');
   const goc = await h.thuMucMau(), mau = (await h.dsMau(goc)).find(f => f.name.startsWith(MAU_YC)) || await taoMauYc(goc);
   const dir = await h.thuMuc(ct, '05_VATTU_DOITHICONG/PHIEU_YEUCAU'), so = `${maCt()}-YC-VT-${homNay().replaceAll('-', '')}`;
