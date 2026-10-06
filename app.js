@@ -52,7 +52,7 @@ async function sheetCo(dk) {
 }
 const q = s => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'"); // thoát ký tự trong truy vấn Drive
 const json = o => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(o) });
-const g = { api, ls, json }; // cho vanban.js
+const g = { api, ls, json, tam: () => thuMuc(gocId, '_TAM') }; // cho vanban.js; _TAM: chỗ để bản tạm khi soát
 
 // Đi theo đường dẫn "02_BANVE/KC_KETCAU/HIENHANH" từ thư mục công trình, thiếu thư mục nào thì tạo.
 async function thuMuc(id, duong) {
@@ -236,15 +236,15 @@ const xem = d => moTab(async () => { const [f] = await tim(d); if (f) say(); ret
 
 async function gui(d) {
   try {
-    const ds = await tim(d), [f] = ds;
+    const ds = await tim(d), [f] = ds, so = soId;
     if (!f) return;
-    let soatXong = ''; // soát trước khi gửi: lỗi soát không chặn việc gửi, nhưng phải báo
+    let soatXong = '\n\nChưa soát: file không phải văn bản (Word, PDF, Google Docs).'; // soát trước khi gửi: lỗi soát không chặn việc gửi, nhưng phải báo
     try {
       say('Đang soát văn bản với thông tin công trình...');
       const van = await docChu(g, ds), tt = ttTin();
       if (van != null) {
         const { lech, thieu } = soat(van, tt);
-        soatXong = !tt.length ? '\n\nChưa soát: trang Thông tin công trình chưa có mục nào.' : !lech.length && !thieu.length ? '\n\nĐã soát: khớp thông tin công trình.'
+        soatXong = !/\p{L}{3}/u.test(van) ? '\n\nKhông đọc được chữ trong file (bản scan mờ?), chưa soát được.' : !tt.length ? '\n\nChưa soát: trang Thông tin công trình chưa có mục nào.' : !lech.length && !thieu.length ? '\n\nĐã soát: khớp thông tin công trình.'
           : (lech.length ? '\n\n⚠ CÓ THỂ SAI:\n' + lech.join('\n') : '') + (thieu.length ? '\n\nKhông thấy trong văn bản (bỏ qua nếu văn bản không cần):\n' + thieu.join('\n') : '');
       }
     } catch (e) { soatXong = `\n\nChưa soát được: ${e.message}`; }
@@ -252,8 +252,14 @@ async function gui(d) {
     if (!confirm(`Gửi "${f.name}"?\nBất kỳ ai có link đều xem được file này.${soatXong}`)) return;
     await api(`https://www.googleapis.com/drive/v3/files/${f.id}/permissions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' }) });
     say();
-    if (navigator.share) await navigator.share({ title: f.name, url: f.webViewLink });
-    else { await navigator.clipboard.writeText(f.webViewLink); say('Đã chép link ' + f.name); }
+    const ten = f.name.replace(/_NHAP(?=\.\w+$|$)/, ''); // gửi đi thì không còn là bản nháp (luồng 1: bỏ _NHAP khi gửi)
+    if (ten !== f.name) await api(`https://www.googleapis.com/drive/v3/files/${f.id}?fields=id`, { ...json({ name: ten }), method: 'PATCH' });
+    if (navigator.share) await navigator.share({ title: ten, url: f.webViewLink });
+    else { await navigator.clipboard.writeText(f.webViewLink); say('Đã chép link ' + ten); }
+    try { // sổ gửi nhận: trả lời "đã gửi bản nào chưa"; người nhận chọn trong bảng chia sẻ nên app không biết, để trống
+      await api(`https://sheets.googleapis.com/v4/spreadsheets/${so}/values/NHATKY_GUINHAN:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+        json({ values: [[new Date().toLocaleDateString('en-GB'), d.ma, d.rev, 'Gửi', '', navigator.share ? 'Chia sẻ link' : 'Chép link', ten, '']] }));
+    } catch (e) { say(`Đã gửi, nhưng chưa ghi được vào sổ NHATKY_GUINHAN: ${e.message}`); }
   } catch (e) { if (e.name !== 'AbortError') say(e.message); }
 }
 
@@ -373,7 +379,7 @@ async function themTT() {
 }
 
 // Văn bản gửi đi (hợp đồng, báo giá, biên bản): mẫu chung trong CONGTRINH/_CHUNG/MAUBIEU_CONGTY, chỗ cần điền ghi {{Tên mục}} như cột Tên của mục Thông tin.
-// Văn bản lập ra nằm ở 07_VANBAN/DI của công trình và được ghi vào sổ đăng ký (Nháp, R01), nên Xem, Gửi (có soát), Bản mới dùng như mọi tài liệu khác.
+// Văn bản lập ra nằm ở 07_VANBAN/DI của công trình và được ghi vào sổ đăng ký (Nháp, R00), nên Xem, Gửi (có soát), Bản mới dùng như mọi tài liệu khác.
 const ttTin = () => ttDong.filter(r => (r[0] || 'Thông tin') === 'Thông tin').map(r => [r[1], r[2] ?? '']);
 const MAU = '_CHUNG/MAUBIEU_CONGTY', VB = '07_VANBAN/DI';
 let mau = [];
@@ -388,11 +394,11 @@ async function taiMau() {
 const lapVb = () => moTab(async () => {
   const m = mau[$('vbm').value], ten = $('vbt').value.trim() || m?.name.replace(/\.\w+$/, '');
   if (!m || !soId) return void say(!m ? 'Chưa có mẫu để chọn.' : 'Công trình này chưa có sổ đăng ký _SODANGKY.');
-  const dau = `${$('ct').selectedOptions[0].text.split('_')[0]}-VB-DI-${homNay().replaceAll('-', '')}-`;
+  const dau = `${$('ct').selectedOptions[0].text.split('_')[0]}-${$('vbloai').value}-DI-${homNay().replaceAll('-', '')}-`; // luồng 1: văn bản đi dùng ngày thay số hiệu
   const ma = dau + String(docs.filter(d => d.ma.startsWith(dau)).length + 1).padStart(2, '0'), so = soId, ngay = new Date().toLocaleDateString('en-GB');
   say('Đang lập văn bản...');
-  const f = await lap(g, m, tenChuan(ma, 'R01', ten, ''), await thuMuc($('ct').value, VB), ttTin());
-  const o = { 'Mã tài liệu': ma, 'Tên': ten, 'Rev hiện hành': 'R01', 'Ngày rev': ngay, 'Trạng thái': 'Nháp', 'Thư mục chuẩn': VB };
+  const f = await lap(g, m, tenChuan(ma, 'R00', ten, '') + '_NHAP', await thuMuc($('ct').value, VB), ttTin()); // R00 = lần phát hành đầu, _NHAP bỏ khi Gửi
+  const o = { 'Mã tài liệu': ma, 'Tên': ten, 'Rev hiện hành': 'R00', 'Ngày rev': ngay, 'Trạng thái': 'Nháp', 'Thư mục chuẩn': VB };
   await api(`https://sheets.googleapis.com/v4/spreadsheets/${so}/values/DANHMUC:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [head.map(h => o[h] ?? '')] }));
   $('vbt').value = ''; await chonCT();
   say(f.thieu.length ? `Đã lập ${ma}. Còn chỗ chưa điền vì mục Thông tin chưa có: ${f.thieu.join(', ')}.` : `Đã lập ${ma}. Sửa xong thì bấm Gửi, app sẽ soát lại trước khi gửi.`);
