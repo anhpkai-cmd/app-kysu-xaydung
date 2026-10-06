@@ -46,4 +46,8 @@ Mục "Thông tin công trình" đọc trang `THONGTIN` trong `_SODANGKY` (app t
 
 ## Ảnh hiện trường
 
-Tải ảnh lên thư mục `00_INBOX` của công trình bằng app Google Drive (từ Zalo hoặc Timemark). Mục "Ảnh hiện trường" liệt kê ảnh chờ; chọn hạng mục (mã trong trang DANHMUC của file nhật ký, hoặc CHUNG, ATLD, VATLIEU), gõ mô tả nếu muốn, bấm Xếp. Ảnh được chuyển (không xóa, không nén) vào `09_HINHANH/yyyy-mm/yyyy-mm-dd/` và đặt tên `CT01-HA-20261006-001_HM2-1.1_MoTa.jpg`. Ngày chụp lấy theo EXIF, rồi mốc thời gian đầu tên file Zalo, cuối cùng là ngày tải lên. Cả đợt ảnh dùng chung một hạng mục. `node anh.js` tự kiểm tra.
+Tải ảnh lên thư mục `00_INBOX` của công trình bằng app Google Drive (từ Zalo hoặc Timemark). Mục "Ảnh hiện trường" hiện lưới ảnh nhỏ. Tick các ảnh cùng một hạng mục, chọn hạng mục (mã trong trang DANHMUC của file nhật ký; luôn có thêm CHUNG, ATLD, VATLIEU ở cuối), gõ mô tả nếu muốn, bấm Xếp; ảnh chưa tick ở lại cho lượt sau. Dòng trên nút cho biết trước các ảnh sẽ vào ngày nào.
+
+Ảnh được chuyển (không xóa, không nén) vào `09_HINHANH/yyyy-mm/yyyy-mm-dd/` và đặt tên `CT01-HA-20261006-001_HM2-1.1_MoTa.jpg`. Ngày chụp lấy theo EXIF, rồi mốc thời gian đầu tên file Zalo (chỉ nhận khi nằm trong khoảng 2020 đến ngày mai). Ảnh chỉ đoán được ngày (theo ngày tải lên) thì app hỏi: bấm "Dùng ngày này" hoặc chọn ngày; để trống thì ảnh vào `09_HINHANH/_CHUAXEP`, giữ nguyên tên. Ảnh chụp tài liệu (bản vẽ, biên bản) thì bấm "Đây là tài liệu" để chuyển sang danh sách file chờ lưu. `node anh.js` tự kiểm tra.
+
+Lưu ý ảnh HEIC của iPhone: bước điền báo cáo tuần vào mẫu Excel sẽ không chèn được HEIC. Hoặc đặt iPhone: Cài đặt, Camera, Định dạng, chọn "Tương thích nhất" (ra JPG), hoặc báo cáo phải lấy bản JPG từ Drive (`thumbnailLink` cỡ lớn). Chưa có sổ ảnh riêng: tên file đã mang đủ công trình, ngày, hạng mục, mô tả.
