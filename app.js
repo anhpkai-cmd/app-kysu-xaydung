@@ -1,7 +1,7 @@
 import { CLIENT_ID, ROOT_NAME } from './config.js';
 import { NK, serial } from './nhatky.js';
 import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
-import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan } from './viec.js';
+import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso } from './viec.js';
 
 const $ = id => document.getElementById(id);
 const FOLDER = 'application/vnd.google-apps.folder', SHEET = 'application/vnd.google-apps.spreadsheet';
@@ -152,6 +152,25 @@ async function taiViec() {
   if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên bên dưới.';
 }
 
+// Giấy tờ có ngày hết hiệu lực (cột "Hạn hiệu lực" trong sổ đăng ký) còn ≤ 30 ngày hoặc đã quá hạn, gom từ mọi công trình.
+async function taiHan(cts) {
+  const hom = homNay();
+  const ds = (await Promise.all(cts.map(async c => {
+    try {
+      const [s] = await ls(`'${c.id}' in parents and mimeType='${SHEET}' and name contains '_SODANGKY'`);
+      return s ? parse((await api(`https://sheets.googleapis.com/v4/spreadsheets/${s.id}/values/DANHMUC`)).values).map(d => ({ ...d, ct: c.name, n: conLai(d.han, hom) })) : [];
+    } catch { return []; } // một công trình lỗi thì bỏ qua, không chặn các công trình khác
+  }))).flat().filter(d => d.n <= 30).sort((x, y) => x.n - y.n);
+  $('han').replaceChildren(...(ds.length ? [Object.assign(document.createElement('h3'), { textContent: `Giấy tờ sắp hết hạn (${ds.length})` })] : []), ...ds.map(d => {
+    const el = document.createElement('div'); el.className = 'doc';
+    const th = document.createElement('div'), t = document.createElement('div'), s = document.createElement('small');
+    t.textContent = d.ten; s.textContent = `${d.ct} · ${d.ma} · ${nhanHan(d.n)} (${d.han})`; th.append(t, s);
+    const b = document.createElement('button'); b.className = 'phu'; b.textContent = 'Nhắc tôi'; b.setAttribute('aria-label', 'Tạo việc nhắc gia hạn ' + d.ten);
+    b.onclick = () => { $('vten').value = 'Gia hạn: ' + d.ten; $('vct').value = d.ct; $('vhan').value = iso(d.han); $('vten').focus(); say('Kiểm tra rồi bấm Thêm việc để tạo nhắc trên Google Lịch.'); };
+    el.append(th, b); return el;
+  }));
+}
+
 async function themViec() {
   const ten = $('vten').value.trim(), ct = $('vct').value, han = $('vhan').value;
   if (!ten) return say('Gõ tên việc trước.');
@@ -283,7 +302,7 @@ async function vao(resp) {
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
     $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('loc').hidden = false;
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
-    viecId = await soViec(goc.id); await taiViec();
+    viecId = await soViec(goc.id); await taiViec(); taiHan(cts);
     chonCT(); moNhatKy();
   } catch (e) { say(e.message); }
 }

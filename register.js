@@ -1,11 +1,13 @@
 // Đọc bảng DANHMUC của sổ đăng ký thành danh sách tài liệu, và lọc theo từ khóa. Không phụ thuộc trình duyệt.
 const COT = { ma: 'Mã tài liệu', ten: 'Tên', rev: 'Rev hiện hành', ngay: 'Ngày rev', tt: 'Trạng thái', tukhoa: 'Từ khóa', dir: 'Thư mục chuẩn' };
+const HAN = 'Hạn hiệu lực'; // cột không bắt buộc: ngày hết hiệu lực (bảo lãnh, bảo hiểm, giấy phép...)
 
 export function parse(values) {
   const [head = [], ...rows] = values;
   const at = Object.fromEntries(Object.entries(COT).map(([k, v]) => [k, head.indexOf(v)]));
   if (Object.values(at).includes(-1)) throw new Error('Sổ đăng ký thiếu cột: ' + Object.values(COT).filter(v => !head.includes(v)).join(', '));
-  return rows.map((r, i) => ({ r, dong: i + 2 })).filter(({ r }) => r[at.ma]).map(({ r, dong }) => ({ ...Object.fromEntries(Object.keys(COT).map(k => [k, r[at[k]] ?? ''])), dong })); // dong = số dòng trong Sheet
+  const han = head.indexOf(HAN);
+  return rows.map((r, i) => ({ r, dong: i + 2 })).filter(({ r }) => r[at.ma]).map(({ r, dong }) => ({ ...Object.fromEntries(Object.keys(COT).map(k => [k, r[at[k]] ?? ''])), han: han < 0 ? '' : r[han] ?? '', dong })); // dong = số dòng trong Sheet
 }
 
 const bo = s => s.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/g, 'd').toLowerCase();
@@ -29,7 +31,8 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('register.js')) 
   a.equal(loc(d, 'MONG').length, 1);
   a.equal(loc(d, 'cột').length, 0);
   a.throws(() => parse([['Tên']]));
-  a.equal(d[0].dong, 2);
+  a.equal(d[0].dong, 2); a.equal(d[0].han, '');
+  a.equal(parse([['Mã tài liệu', 'Tên', 'Rev hiện hành', 'Ngày rev', 'Trạng thái', 'Từ khóa', 'Thư mục chuẩn', 'Hạn hiệu lực'], ['X', 'Bảo lãnh', 'R01', '', '', '', '', '31/12/2026']])[0].han, '31/12/2026');
   a.equal(revTiep('R02'), 'R03'); a.equal(revTiep('RB'), '');
   a.ok(revHopLe('R03', 'R02')); a.ok(!revHopLe('R02', 'R02')); a.ok(!revHopLe('R01', 'R02')); a.ok(!revHopLe('r3', 'R02')); a.ok(revHopLe('RB1', 'R02')); // RB1 không phải dạng số: không so được
   a.equal(tenChuan('CT01-BV-KC-005', 'R03', 'Móng M1, M2', 'Ảnh chụp 1.PDF'), 'CT01-BV-KC-005-R03_MongM1M2.pdf');

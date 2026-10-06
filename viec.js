@@ -12,6 +12,7 @@ const ngay = s => {
   m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
   return m ? Date.UTC(+m[3], m[2] - 1, +m[1]) : NaN;
 };
+export const iso = s => isNaN(ngay(s)) ? '' : new Date(ngay(s)).toISOString().slice(0, 10); // về yyyy-mm-dd cho ô chọn ngày
 export const conLai = (han, homNay) => Math.round((ngay(han) - ngay(homNay)) / 864e5); // NaN nếu chưa có hạn
 
 export function chia(tasks, homNay, sap = 3) {
@@ -33,7 +34,7 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('viec.js')) { //
   a.equal(t[3].dong, 5);
   a.equal(conLai('2026-10-07', '2026-10-06'), 1);
   a.equal(conLai('07/10/2026', '2026-10-06'), 1);
-  a.ok(isNaN(conLai('', '2026-10-06')));
+  a.ok(isNaN(conLai('', '2026-10-06'))); a.equal(iso('07/10/2026'), '2026-10-07'); a.equal(iso('abc'), '');
   const g = chia(t, '2026-10-06');
   a.deepEqual(g.quaHan.map(x => x.ten), ['A']); a.deepEqual(g.sapDen.map(x => x.ten), ['B']);
   a.deepEqual(g.sau.map(x => x.ten), ['C']); a.deepEqual(g.khongHan.map(x => x.ten), ['D']);
