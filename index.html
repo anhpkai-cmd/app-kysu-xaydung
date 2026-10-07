@@ -95,7 +95,13 @@
       <div class="card"><div class="ch"><h3>Vật tư theo tình trạng</h3><a class="nutlk" href="#vt">Mở</a></div><div id="bdv"></div></div>
     </div>
     <div class="viz">
-      <div class="card"><div class="ch"><h3>Thời tiết 3 ngày</h3></div><div id="bdw"></div></div>
+      <div class="card"><div class="ch"><h3>Thời tiết 3 ngày</h3></div><div id="bdw"></div>
+      <p id="tqms" role="status"></p>
+    <details id="tqdt"><summary>Vị trí công trình</summary>
+    <label for="tqv">Tọa độ (vĩ độ, kinh độ)</label><input id="tqv" inputmode="decimal" placeholder="10.77, 106.70">
+    <p><button id="tql" class="phu">Lưu vị trí</button> <button id="tqg" class="phu">Lấy vị trí máy</button></p>
+    </details>
+      </div>
       <div class="card"><div class="ch"><h3>Bản vẽ vừa cập nhật</h3><a class="nutlk" href="#bv">Mở</a></div><div id="bdb"></div></div>
     </div>
   </section>
@@ -110,15 +116,6 @@
   <section id="sap" data-s="home" hidden>
     <h2>Sắp đến hạn</h2>
     <div id="sapds"></div>
-  </section>
-  <section id="tq" data-s="home" hidden>
-    <h2>Thời tiết công trình</h2>
-    <div id="tqd"></div>
-    <p id="tqms" role="status"></p>
-    <details><summary>Vị trí công trình</summary>
-    <label for="tqv">Tọa độ (vĩ độ, kinh độ)</label><input id="tqv" inputmode="decimal" placeholder="10.77, 106.70">
-    <p><button id="tql" class="phu">Lưu vị trí</button> <button id="tqg" class="phu">Lấy vị trí máy</button></p>
-    </details>
   </section>
   <section id="nhanh" data-s="home" hidden>
     <h2>Làm nhanh</h2>
