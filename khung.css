@@ -100,3 +100,23 @@ body.dn .side .sdx{display:flex}
 .cot .nut{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
 #tct{display:none}
 @media (min-width:900px){#tct:not([hidden]){display:block} #tct .kpi b.nho{font-size:20px}}
+
+/* Biểu đồ trang chủ (chỉ máy tính) và icon màu trên thẻ số liệu */
+:root{--c1:oklch(48% .11 245);--c2:oklch(50% .09 190);--c3:oklch(56% .14 65);--c4:oklch(50% .12 295)}
+:root[data-skin="dark"]{--c1:oklch(78% .09 245);--c2:oklch(78% .09 190);--c3:oklch(80% .12 70);--c4:oklch(78% .1 295)}
+.chip{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:color-mix(in oklch,var(--cc) 14%,var(--card))}
+.chip.c1{--cc:var(--c1)}.chip.c2{--cc:var(--c2)}.chip.c3{--cc:var(--c3)}.chip.c4{--cc:var(--c4)}
+.kpi span .chip svg{stroke:var(--cc)}
+.viz{display:none}
+@media (min-width:900px){
+  .viz{display:grid;grid-template-columns:3fr 2fr;gap:12px;margin-top:12px}
+  .viz .card{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:14px 16px;min-width:0}
+  .viz .ch{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px} .viz .ch h3{margin:0;font-size:15px} .viz .ch span{font-size:13px;color:var(--mute)}
+  .bars{width:100%;height:auto;display:block}
+  .bars .cb{fill:color-mix(in oklch,var(--accent) 55%,var(--card))} .bars .cb.today{fill:var(--accent)} .bars .cb.late{fill:var(--late)}
+  .bl{display:grid;grid-template-columns:repeat(15,1fr);text-align:center;font-size:12px;line-height:1.3;color:var(--mute)} .bl .now{color:var(--ink);font-weight:700} .bl b{color:var(--ink);font-size:13px;display:inline-block;min-height:1.3em}
+  .donut{display:flex;align-items:center;gap:16px} .donut svg{width:132px;flex:none}
+  .donut .track{fill:none;stroke:var(--rule);stroke-width:14} .donut .big{font-size:22px;font-weight:700;fill:var(--ink)} .donut .sm{font-size:10px;fill:var(--mute)}
+  .donut ul{list-style:none;margin:0;padding:0;display:grid;gap:6px;flex:1;font-size:14px}
+  .donut li{display:flex;align-items:center;gap:8px} .donut li i{width:10px;height:10px;border-radius:3px;flex:none} .donut li b{margin-left:auto;font-variant-numeric:tabular-nums}
+}
