@@ -173,12 +173,31 @@ const dongViec = (t, han) => { // một dòng việc có nút Xong (dùng ở m�
 };
 async function taiViec() {
   viec = parseViec((await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC`)).values);
-  const nhom = chia(viec, homNay()), dong = dongViec;
-  const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dong(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
-  $('dsv').replaceChildren(...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen), ...muc('Sau đó', nhom.sau), ...muc('Chưa có hạn', nhom.khongHan));
-  if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên bên dưới.';
-  veHan(); veTT();
+  veDsv(); veHan(); veTT();
 }
+// Mục Việc có thể lọc theo thẻ ở Trang chủ (hom: việc hôm nay, qua: quá hạn, sap: sắp đến hạn): số dòng hiện ra phải bằng số trên thẻ (veKpi), kể cả giấy tờ ở veHan.
+const LOC_VIEC = { hom: 'Hôm nay', qua: 'Quá hạn', sap: 'Sắp đến hạn' };
+let locV = '';
+const hanLoc = () => locV === 'hom' ? [] : locV === 'qua' ? hanDs.filter(d => d.n < 0) : locV === 'sap' ? hanDs.filter(d => d.n >= 0) : hanDs;
+function veDsv() {
+  const hom = homNay(), nhom = chia(viec, hom, locV ? 7 : 3), dong = dongViec;
+  const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dong(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
+  const loc = { hom: [['Hôm nay', nhom.sapDen.filter(t => t.n === 0)]], qua: [['Quá hạn', nhom.quaHan]], sap: [['Sắp đến hạn', nhom.sapDen.filter(t => t.n > 0)]] }[locV];
+  $('dsv').replaceChildren(...(loc ? loc.flatMap(([t, ds]) => muc(t, ds)) : [...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen), ...muc('Sau đó', nhom.sau), ...muc('Chưa có hạn', nhom.khongHan)]));
+  if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên bên dưới.';
+  const b = $('viecloc'); b.hidden = !locV;
+  if (locV) { const bo = Object.assign(document.createElement('button'), { className: 'phu', textContent: 'Xem tất cả', onclick: () => { locV = ''; veDsv(); veHan(); } }); b.replaceChildren(`Đang xem: ${LOC_VIEC[locV]}. `, bo); }
+}
+const tinhKpi = () => { const hom = homNay(), n7 = chia(viec, hom, 7); return { hom: n7.sapDen.filter(t => t.n === 0).length, qua: n7.quaHan.length + hanDs.filter(d => d.n < 0).length, sap: n7.sapDen.filter(t => t.n > 0).length + hanDs.filter(d => d.n >= 0).length }; };
+function veKpi() {
+  const k = tinhKpi(), c = sotCt.find(x => x.id === $('ct').value);
+  $('kpi').hidden = $('sot').hidden; $('kpv').textContent = k.hom; $('als').textContent = k.sap; $('alq').textContent = k.qua;
+  $('kpvs').textContent = k.qua ? `${k.qua} quá hạn` : ''; $('kpvs').className = k.qua ? 'w' : '';
+  $('kpa').textContent = c?.anh === null ? '–' : anhDs.length; // đúng số ảnh ở mục Xếp ảnh (gồm cả 00_INBOX ngoài cùng)
+}
+document.querySelectorAll('[data-l]').forEach(a => a.onclick = () => { locV = a.dataset.l; locTay = location.hash !== '#viec'; veDsv(); veHan(); });
+let locTay = false;
+addEventListener('hashchange', () => { if (!locTay && locV) { locV = ''; veDsv(); veHan(); } locTay = false; }); // vào mục Việc từ nơi khác thì hiện đủ, không lọc
 
 // Giấy tờ có ngày hết hiệu lực (cột "Hạn hiệu lực" trong sổ đăng ký) còn ≤ 30 ngày, đã quá hạn, hoặc ngày không đọc được; gom từ mọi công trình.
 let hanDs = [], hanLoi = [];
@@ -217,7 +236,8 @@ function veHan() {
   veSap();
   const qh = chia(viec, homNay()).quaHan.length + hanDs.filter(d => d.n < 0).length; $('vdot').textContent = qh || ''; $('vdot').setAttribute('aria-label', qh + ' mục quá hạn'); // chấm đỏ ở tab Việc = việc quá hạn + giấy tờ, thiết bị quá hạn (đúng số người dùng thấy)
   const tieu = t => Object.assign(document.createElement('h3'), { textContent: t });
-  $('han').replaceChildren(...(hanDs.length ? [tieu(`Giấy tờ sắp hết hạn (${hanDs.length})`)] : []), ...hanDs.map(d => {
+  const hd = hanLoc();
+  $('han').replaceChildren(...(hd.length ? [tieu(`Giấy tờ sắp hết hạn (${hd.length})`)] : []), ...hd.map(d => {
     const el = document.createElement('div'); el.className = 'doc';
     const th = document.createElement('div'), t = document.createElement('div'), s = document.createElement('small');
     const ten = `Gia hạn: ${d.ten}`, dat = viec.some(v => v.ten.startsWith(ten) && v.ct === d.ct); // đã có việc nhắc đang mở thì không nhắc lại
@@ -231,7 +251,7 @@ function veHan() {
     }
     const g = document.createElement('button'); g.className = 'phu'; g.textContent = 'Đã gia hạn'; g.setAttribute('aria-label', 'Đã gia hạn ' + d.ten); g.onclick = () => giaHan(d); el.append(g);
     return el;
-  }), ...(hanLoi.length ? [Object.assign(document.createElement('p'), { textContent: 'Không đọc được hạn giấy tờ của: ' + hanLoi.join(', ') })] : []));
+  }), ...(hanLoi.length && !locV ? [Object.assign(document.createElement('p'), { textContent: 'Không đọc được hạn giấy tờ của: ' + hanLoi.join(', ') })] : []));
   veSot();
 }
 
@@ -609,6 +629,7 @@ async function sotQuet(cts) { // quét mọi công trình, chỉ đọc (không 
   sotXong = true; veSot();
 }
 function veSot() {
+  veKpi();
   const hom = homNay(), nhom = chia(viec, hom), han = hanDs.filter(d => isNaN(d.n) || d.n <= 7);
   const dong = [ // giấy tờ, nhật ký, vật tư, ảnh (lô vật tư cấm dùng và việc hôm nay được vẽ riêng ở trên)
     [han.length, (x => `${x} giấy tờ sắp hết hạn (trong 7 ngày) hoặc đã quá hạn`), '#han'],
@@ -762,7 +783,7 @@ const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth
 }).requestAccessToken(opt);
 async function vao(resp) {
   if (resp.error) return say('Đăng nhập không được: ' + resp.error);
-  token = resp.access_token; $('vao').hidden = true;
+  token = resp.access_token; $('vao').hidden = true; document.body.classList.add('dn'); // dn: đã đăng nhập (hiện nút Đăng xuất ở thanh bên)
   try { localStorage.removeItem('dx'); } catch {}
   try { localStorage.setItem(KHO, JSON.stringify({ token, het: resp.het ?? Date.now() + (resp.expires_in - 60) * 1000 })); } catch {}
   try {

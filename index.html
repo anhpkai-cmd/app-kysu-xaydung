@@ -74,6 +74,17 @@
 <main>
   <p id="nhan" role="status" hidden></p>
   <p id="msg" role="status">Bấm “Đăng nhập Google” để xem sổ đăng ký công trình.</p>
+<div class="home">
+  <section id="kpi" data-s="home" hidden>
+    <div class="kpis">
+      <a class="kpi" href="#viec" data-l="hom"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z M8 12l3 3 5-6"/></svg>Việc hôm nay</span><b id="kpv">0</b><small id="kpvs"></small></a>
+      <a class="kpi pc" href="#anh"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4z M4 16l5-5 4 4 3-3 4 4"/></svg>Ảnh chờ xếp</span><b id="kpa">0</b><small id="kpas">Công trình đang chọn</small></a>
+    </div>
+    <div class="alerts">
+      <a class="alert r" href="#viec" data-l="qua"><span>Quá hạn</span><b id="alq">0</b></a>
+      <a class="alert o" href="#viec" data-l="sap"><span>Sắp đến hạn</span><b id="als">0</b></a>
+    </div>
+  </section>
   <section id="sot" data-s="home" hidden>
     <h2>Hôm nay còn sót gì</h2>
     <div id="sotds"></div>
@@ -81,6 +92,24 @@
     <p id="sotms" role="status"></p>
     <p><button id="sotb" class="phu">Nhắc tôi lúc 17h mỗi ngày</button></p>
   </section>
+  <section id="sap" data-s="home" hidden>
+    <h2>Sắp đến hạn</h2>
+    <div id="sapds"></div>
+  </section>
+  <section id="tq" data-s="home" hidden>
+    <h2>Thời tiết công trình</h2>
+    <div id="tqd"></div>
+    <p id="tqms" role="status"></p>
+    <details><summary>Vị trí công trình</summary>
+    <label for="tqv">Tọa độ (vĩ độ, kinh độ)</label><input id="tqv" inputmode="decimal" placeholder="10.77, 106.70">
+    <p><button id="tql" class="phu">Lưu vị trí</button> <button id="tqg" class="phu">Lấy vị trí máy</button></p>
+    </details>
+  </section>
+  <section id="nhanh" data-s="home" hidden>
+    <h2>Làm nhanh</h2>
+    <div class="luoi"><a href="#anh"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z M4 16l5-5 4 4 3-3 4 4 M15.5 9.5h.01"/></svg></span>Xếp ảnh<small>Ảnh chờ trong INBOX</small></a><a href="#nk"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z M9 9h6M9 13h6M9 17h3"/></svg></span>Viết nhật ký<small>Hôm nay</small></a><a href="#vt"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10"/></svg></span>Vật tư về<small>Chụp phiếu giao nhận</small></a><a href="#tn"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z M10 9a2 2 0 1 1 3 1.7c-.7.4-1 .8-1 1.3 M12 14h.01"/></svg></span>Tin Zalo<small>Soạn sẵn</small></a></div>
+  </section>
+</div>
   <section id="tn" data-s="tn" hidden>
     <h2>Tin nhắn soạn sẵn</h2>
     <details id="tnd"><summary>Soạn tin Zalo (nghiệm thu, tổ đội, dừng vì mưa, nhà cung cấp)</summary>
@@ -111,25 +140,9 @@
     <div id="psds"></div>
     <p><a id="psm" class="nutlk" hidden target="_blank" rel="noopener">Mở sổ phát sinh (làm phụ lục)</a></p>
   </section>
-  <section id="tq" data-s="home" hidden>
-    <h2>Thời tiết công trình</h2>
-    <div id="tqd"></div>
-    <p id="tqms" role="status"></p>
-    <details><summary>Vị trí công trình</summary>
-    <label for="tqv">Tọa độ (vĩ độ, kinh độ)</label><input id="tqv" inputmode="decimal" placeholder="10.77, 106.70">
-    <p><button id="tql" class="phu">Lưu vị trí</button> <button id="tqg" class="phu">Lấy vị trí máy</button></p>
-    </details>
-  </section>
-  <section id="sap" data-s="home" hidden>
-    <h2>Sắp đến hạn</h2>
-    <div id="sapds"></div>
-  </section>
-  <section id="nhanh" data-s="home" hidden>
-    <h2>Làm nhanh</h2>
-    <div class="luoi"><a href="#anh"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z M4 16l5-5 4 4 3-3 4 4 M15.5 9.5h.01"/></svg></span>Xếp ảnh<small>Ảnh chờ trong INBOX</small></a><a href="#nk"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z M9 9h6M9 13h6M9 17h3"/></svg></span>Viết nhật ký<small>Hôm nay</small></a><a href="#vt"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10"/></svg></span>Vật tư về<small>Chụp phiếu giao nhận</small></a><a href="#tn"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z M10 9a2 2 0 1 1 3 1.7c-.7.4-1 .8-1 1.3 M12 14h.01"/></svg></span>Tin Zalo<small>Soạn sẵn</small></a></div>
-  </section>
   <section id="viec" data-s="viec" hidden>
     <h2>Việc cần làm</h2>
+    <p id="viecloc" role="status" hidden></p>
     <div id="dsv"></div>
     <div id="han"></div>
     <details id="hanf"><summary>+ Thêm thiết bị cần kiểm định, thẻ an toàn, giấy tờ có hạn</summary>
