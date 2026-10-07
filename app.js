@@ -11,7 +11,7 @@ import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
 import { khoiQR, lamQR, moQR, inQR, sauBanMoi as qrSauBanMoi, laBanVe } from './qr.js';
 import { LOAI as LOAI_HAN, dong as dongHan, COT_HAN } from './han.js';
 import { MAU as MAU_TIN, dmy, macDinh, soan, zalo } from './tin.js';
-import { moPS, ghiPS, docPS, CHO as PS_CHO } from './phatsinh.js';
+import { moPS, locPSCho, ghiPS, docPS, CHO as PS_CHO } from './phatsinh.js';
 import { docFile, chuY, ngayVn as ngayVt, moVatTu, locNtMoi, luuVe, themVatTu, demVatTu, soVn, themYc, lapYc, veYc } from './vattu.js';
 import { moCC, doiThang, sauLap, lapCC } from './chamcong.js';
 import { COT as COT_VIEC, parse as parseViec, tenTatCa, dongXong, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
@@ -196,13 +196,15 @@ function veKpi() {
   let xx = 0; try { xx = +localStorage.getItem('xx:' + homNay()) || 0; } catch {}
   $('kpvs').textContent = `hôm nay đã xong ${xx} việc`; $('kpvs').className = '';
   $('alm').textContent = k.moi; $('alm').parentNode.hidden = !k.moi; // thẻ Nghiệm thu chưa mời chỉ hiện khi có
-  const vt = c?.vt; $('kpt').textContent = vt ? vt.cam + vt.can : '–'; $('kpts').textContent = vt?.cam ? `${vt.cam} lô cấm dùng` : vt === null ? 'Chưa đọc được' : ''; $('kpts').className = vt?.cam ? 'w' : '';
+  const vt = c?.vt; $('kpt').textContent = vt ? vt.cam + vt.can : '–'; $('kpts').textContent = vt ? [vt.cam && `${vt.cam} cấm dùng`, vt.can && `${vt.can} chưa xong thủ tục`].filter(Boolean).join(', ') : vt === null ? 'Chưa đọc được' : ''; $('kpts').className = vt?.cam ? 'w' : '';
+  $('kpps').querySelector('b').textContent = psCho ?? '–';
   $('kpa').textContent = c?.anh === null ? '–' : anhDs.length; // đúng số ảnh ở mục Xếp ảnh (gồm cả 00_INBOX ngoài cùng)
 }
 document.querySelectorAll('[data-l]').forEach(a => a.onclick = () => { locV = a.dataset.l; locTay = location.hash !== '#viec'; veDsv(); veHan(); });
-let locTay = false;
+let locTay = false, psCho; // psCho: số phát sinh chờ xác nhận của công trình đang chọn (undefined: chưa đọc, null: lỗi)
+$('kpps').onclick = () => { locTay = location.hash !== '#ps'; locPSCho(true); };
 document.querySelector('.alert.b').onclick = () => { locTay = location.hash !== '#ntl'; locNtMoi(true); };
-addEventListener('hashchange', () => { if (!locTay) { locNtMoi(false); if (locV) { locV = ''; veDsv(); veHan(); } } locTay = false; }); // vào mục Việc từ nơi khác thì hiện đủ, không lọc
+addEventListener('hashchange', () => { if (!locTay) { locNtMoi(false); locPSCho(false); if (locV) { locV = ''; veDsv(); veHan(); } } locTay = false; }); // vào mục Việc từ nơi khác thì hiện đủ, không lọc
 
 // Giấy tờ có ngày hết hiệu lực (cột "Hạn hiệu lực" trong sổ đăng ký) còn ≤ 30 ngày, đã quá hạn, hoặc ngày không đọc được; gom từ mọi công trình.
 let hanDs = [], hanLoi = [];
@@ -820,7 +822,7 @@ function doiCT() {
   $('hopkq').hidden = true; // bản tin họp của công trình cũ
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
   const ct = $('ct').value;
-  Promise.all([chonCT(), taiTT()]).then(() => $('ct').value === ct && moPS({ api, json, taiLen, thuMuc, ctx: () => ({ so: soId, ct: $('ct').value, ma: maCT({ name: $('ct').selectedOptions[0].text }), tenCT: tnCtx().tenCT, tt: ttDong }) })); // sổ phát sinh cần sổ đăng ký và danh bạ
+  Promise.all([chonCT(), taiTT()]).then(() => $('ct').value === ct && moPS({ cho: n => { psCho = n; veKpi(); }, api, json, taiLen, thuMuc, ctx: () => ({ so: soId, ct: $('ct').value, ma: maCT({ name: $('ct').selectedOptions[0].text }), tenCT: tnCtx().tenCT, tt: ttDong }) })); // sổ phát sinh cần sổ đăng ký và danh bạ
   moQR(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu(hv = { api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), daMoi: t => tenViec.has(t), thuMucMau: () => thuMuc(gocId, MAU), dsMau: d => dsMau(g, d), lapMau: (m, ten, dir) => lap(g, m, ten, dir, ttTin()), tenCt: () => tnCtx().tenCT, moiNt, sot: sotCap, id: nkId }), moCC(hv); }); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
