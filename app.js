@@ -178,16 +178,17 @@ async function taiViec() {
 }
 // Mục Việc có thể lọc theo thẻ ở Trang chủ (hom: việc hôm nay, qua: quá hạn, sap: sắp đến hạn): số dòng hiện ra phải bằng số trên thẻ (veKpi), kể cả giấy tờ ở veHan.
 const LOC_VIEC = { hom: 'Hôm nay', qua: 'Quá hạn', sap: 'Sắp đến hạn' };
-let locV = '';
-const hanLoc = () => locV === 'hom' ? [] : locV === 'qua' ? hanDs.filter(d => d.n < 0) : locV === 'sap' ? hanDs.filter(d => d.n >= 0) : hanDs;
+let locV = '', locC = ''; // locV 'ct': các mục trong 7 ngày tới của công trình locC (thẻ Theo công trình)
+const viecCt = ct => chia(viec, homNay(), 7).sapDen.filter(t => t.ct === ct), hanCt = ct => hanDs.filter(d => d.ct === ct && d.n >= 0 && d.n <= 7); // số trên thẻ = dòng ở mục Việc
+const hanLoc = () => locV === 'hom' ? [] : locV === 'qua' ? hanDs.filter(d => d.n < 0) : locV === 'sap' ? hanDs.filter(d => d.n >= 0) : locV === 'ct' ? hanCt(locC) : hanDs;
 function veDsv() {
   const hom = homNay(), nhom = chia(viec, hom, locV ? 7 : 3), dong = dongViec;
   const muc = (tieuDe, ds) => ds.length ? [Object.assign(document.createElement('h3'), { textContent: `${tieuDe} (${ds.length})` }), ...ds.map(t => dong(t, t.n === undefined || isNaN(t.n) ? undefined : nhanHan(t.n)))] : [];
-  const loc = { hom: [['Hôm nay', nhom.sapDen.filter(t => t.n === 0)]], qua: [['Quá hạn', nhom.quaHan]], sap: [['Sắp đến hạn', nhom.sapDen.filter(t => t.n > 0)]] }[locV];
+  const loc = { hom: [['Hôm nay', nhom.sapDen.filter(t => t.n === 0)]], qua: [['Quá hạn', nhom.quaHan]], sap: [['Sắp đến hạn', nhom.sapDen.filter(t => t.n > 0)]], ct: [['Trong 7 ngày tới', viecCt(locC)]] }[locV];
   $('dsv').replaceChildren(...(loc ? loc.flatMap(([t, ds]) => muc(t, ds)) : [...muc('Quá hạn', nhom.quaHan), ...muc('Sắp đến hạn', nhom.sapDen), ...muc('Sau đó', nhom.sau), ...muc('Chưa có hạn', nhom.khongHan)]));
   if (!viec.length) $('dsv').textContent = 'Chưa có việc nào. Thêm việc đầu tiên bên dưới.';
   const b = $('viecloc'); b.hidden = !locV;
-  if (locV) { const bo = Object.assign(document.createElement('button'), { className: 'phu', textContent: 'Xem tất cả', onclick: () => { locV = ''; veDsv(); veHan(); } }); b.replaceChildren(`Đang xem: ${LOC_VIEC[locV]}. `, bo); }
+  if (locV) { const bo = Object.assign(document.createElement('button'), { className: 'phu', textContent: 'Xem tất cả', onclick: () => { locV = ''; veDsv(); veHan(); } }); b.replaceChildren(`Đang xem: ${locV === 'ct' ? locC + ', 7 ngày tới' : LOC_VIEC[locV]}. `, bo); }
 }
 const tinhKpi = () => { const hom = homNay(), n7 = chia(viec, hom, 7), c = sotCt.find(x => x.id === $('ct').value); return { moi: (c?.vt?.moi || []).filter(t => !tenViec.has(t)).length, hom: n7.sapDen.filter(t => t.n === 0).length, qua: n7.quaHan.length + hanDs.filter(d => d.n < 0).length, sap: n7.sapDen.filter(t => t.n > 0).length + hanDs.filter(d => d.n >= 0).length }; };
 function veKpi() {
@@ -198,6 +199,14 @@ function veKpi() {
   $('alm').textContent = k.moi; $('alm').parentNode.hidden = !k.moi; // thẻ Nghiệm thu chưa mời chỉ hiện khi có
   const vt = c?.vt; $('kpt').textContent = vt ? vt.cam + vt.can : '–'; $('kpts').textContent = vt ? [vt.cam && `${vt.cam} cấm dùng`, vt.can && `${vt.can} chưa xong thủ tục`].filter(Boolean).join(', ') : vt === null ? 'Chưa đọc được' : ''; $('kpts').className = vt?.cam ? 'w' : '';
   $('kpps').querySelector('b').textContent = psCho ?? '–';
+  const cts = [...$('ct').options].filter(o => o.value); // thẻ Theo công trình: chỉ hiện khi có từ 2 công trình
+  $('tcts').parentNode.hidden = $('sot').hidden || cts.length < 2;
+  $('tcts').replaceChildren(...cts.map(o => {
+    const a = Object.assign(document.createElement('a'), { className: 'kpi', href: '#viec' }), n = viecCt(o.text).length + hanCt(o.text).length, tiep = sotCt.find(x => x.id === o.value)?.vt?.tiep;
+    a.append(Object.assign(document.createElement('span'), { textContent: o.text.split('_')[0] }), Object.assign(document.createElement('b'), { textContent: n, className: 'nho' }), Object.assign(document.createElement('small'), { textContent: `mục trong 7 ngày tới · ${o.text.split('_').slice(1).join(' ')}` }), Object.assign(document.createElement('small'), { textContent: tiep ? 'Nghiệm thu tới: ' + ngayVt(tiep).slice(0, 5) : 'Chưa có lịch nghiệm thu' }));
+    a.onclick = () => { locV = 'ct'; locC = o.text; locTay = location.hash !== '#viec'; veDsv(); veHan(); };
+    return a;
+  }));
   $('kpa').textContent = c?.anh === null ? '–' : anhDs.length; // đúng số ảnh ở mục Xếp ảnh (gồm cả 00_INBOX ngoài cùng)
 }
 document.querySelectorAll('[data-l]').forEach(a => a.onclick = () => { locV = a.dataset.l; locTay = location.hash !== '#viec'; veDsv(); veHan(); });

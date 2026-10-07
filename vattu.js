@@ -94,7 +94,7 @@ export const chuY = (dm, lo) => lo.map(l => ({ l, c: canLam(l, dm) })).filter(x 
 export const viecMoi = x => `Mời TVGS nghiệm thu: ${x.ten} (${x.ma})`; // tên việc nhắc mời TVGS (do nút Nhắc tôi tạo)
 let locM = false; // mục Lịch nghiệm thu chỉ hiện các dòng chưa có việc mời TVGS (từ thẻ Trang chủ)
 export const locNtMoi = v => { locM = v; if (lich.length) ve(); };
-export const dem = (dm, lo, lich) => { const v = chuY(dm, lo); return { moi: lich.filter(x => x.n >= 0 && x.n <= 2).map(viecMoi), nt: lich.filter(x => x.n <= 2).length, cam: v.filter(x => x.c[0].cam).length, can: v.filter(x => !x.c[0].cam).length }; };
+export const dem = (dm, lo, lich) => { const v = chuY(dm, lo); return { tiep: lich.find(x => x.n >= 0)?.kt || '', moi: lich.filter(x => x.n >= 0 && x.n <= 2).map(viecMoi), nt: lich.filter(x => x.n <= 2).length, cam: v.filter(x => x.c[0].cam).length, can: v.filter(x => !x.c[0].cam).length }; };
 export const demVatTu = async (api, id) => { const { dm, lo, lich } = await docFile(api, id); return dem(dm, lo, lich); };
 
 // ---- Phần giao diện. h: hàm dùng chung của app.js (api, ls, thuMuc, json, taiLen, taoViec) và id file nhật ký ----

@@ -98,3 +98,5 @@ body.dn .side .sdx{display:flex}
 .cot .nut>*{min-width:0;overflow-wrap:anywhere} /* nút chữ dài (Không cần CO/CQ) xuống dòng, không tràn ô */
 #sotds .doc{margin:0} /* khoảng cách giữa các dòng Còn sót do gap của lưới, không cộng thêm margin */
 .cot .nut{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+#tct{display:none}
+@media (min-width:900px){#tct:not([hidden]){display:block} #tct .kpi b.nho{font-size:20px}}
