@@ -21,21 +21,21 @@ export function docHs(cv, nt, hs) {
   });
 }
 
-let h, ds = [];
+let h, ds = [], loc = false, fifo = Promise.resolve(); // loc: chỉ hiện việc còn thiếu hồ sơ; fifo: các lần ghi nối đuôi nhau
 const $ = id => document.getElementById(id), ms = t => $('hsms').textContent = t ?? '';
 const tao = (tag, chu, lop) => Object.assign(document.createElement(tag), { textContent: chu ?? '', className: lop ?? '' });
 const sh = p => `https://sheets.googleapis.com/v4/spreadsheets/${h.id}${p}`;
 
 function ve() {
-  const du = ds.filter(x => x.du === HS.length).length;
+  const du = ds.filter(x => x.du === HS.length).length, hien = sapXep(ds).filter(x => !loc || x.du < HS.length);
   ms(ds.length ? `${du}/${ds.length} công việc đủ hồ sơ.` : 'Chưa có công việc nào trong trang DANHMUC của file nhật ký.');
-  $('hsds').replaceChildren(...ds.map(x => {
+  $('hsds').replaceChildren(...hien.map(x => {
     const d = tao('details'), s = tao('summary', `${x.ma} · ${x.ten} (${x.du}/${HS.length})`);
     d.append(s, ...x.muc.map(m => {
       const el = tao('div', '', 'doc'), l = tao('span', m.ten + (m.tu ? ' (app tự tích)' : '')); el.append(l);
       if (m.tu) el.append(tao('b', m.tt === 'Có' ? 'Có' : 'Chưa'));
       else {
-        const o = tao('select'); o.setAttribute('aria-label', `${m.ten}: ${x.ma}`); o.append(...TT.map(t => new Option(t))); o.value = m.tt;
+        const o = tao('select'); o.setAttribute('aria-label', `${m.ten}: ${x.ma}`); o.style.cssText = 'flex:none;width:9em'; o.append(...TT.map(t => new Option(t))); o.value = m.tt; // ô chọn cố định chiều ngang (máy tính không giãn hết hàng, tên mục giữ một dòng)
         o.onchange = async () => { o.disabled = true; try { await ghi(x, m, o.value); } catch (e) { ms(e.message); o.value = m.tt; } o.disabled = false; };
         el.append(o);
       }
@@ -49,7 +49,7 @@ function ve() {
 // ham: { api, json, id (file nhật ký) } từ app.js
 export async function moHS(ham) {
   const mo = new Set(h?.id === ham.id ? ds.filter(x => x.open).map(x => x.ma) : []); // sau mỗi lần ghi, mục đang mở vẫn mở
-  h = ham; ds = []; $('hs').hidden = false; $('hsds').replaceChildren();
+  h = ham; ds = []; $('hs').hidden = false; $('hsloc').onchange = e => { loc = e.target.checked; ve(); }; $('hsds').replaceChildren();
   if (!h.id) return ms('Chưa mở được file nhật ký của công trình này.');
   try {
     const id = h.id, co = (await h.api(sh('?fields=sheets.properties.title'))).sheets.map(s => s.properties.title).filter(t => ['DANHMUC', 'NGHIEMTHU', 'HOSO'].includes(t));
@@ -59,8 +59,13 @@ export async function moHS(ham) {
   } catch (e) { ms('Không đọc được hồ sơ: ' + e.message); }
 }
 
+// Việc đã nghiệm thu mà còn thiếu hồ sơ lên đầu (chỉ còn đi gom giấy), rồi đến việc chưa nghiệm thu, việc đủ hồ sơ xuống cuối; cùng nhóm thì theo ngày kết thúc.
+export const sapXep = ds => [...ds].sort((a, b) => (nhom(a) - nhom(b)) || String(a.kt || '9').localeCompare(String(b.kt || '9')));
+const nhom = x => x.du === HS.length ? 2 : x.muc[0].tt === 'Có' ? 0 : 1;
+
 // Trang HOSO chưa có thì tạo cùng tiêu đề (chỉ khi ghi); mỗi lần chọn thêm một dòng, không sửa dòng cũ.
-async function ghi(x, m, tt) {
+const ghi = (x, m, tt) => fifo = fifo.catch(() => {}).then(() => ghiMot(x, m, tt)); // hai lần chọn liền nhau (lần đầu chưa có trang HOSO) không cùng đi tạo trang
+async function ghiMot(x, m, tt) {
   const co = (await h.api(sh('?fields=sheets.properties.title'))).sheets.some(s => s.properties.title === 'HOSO');
   if (!co) {
     await h.api(sh(':batchUpdate'), h.json({ requests: [{ addSheet: { properties: { title: 'HOSO' } } }] }));
@@ -79,6 +84,7 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('hoso.js')) { //
   a.deepEqual(r.map(x => x.ma), ['CB-1', 'HM1-1']); // mã chung, dòng trống bỏ
   a.deepEqual(r[0].muc.map(m => m.tt), ['Có', 'Có', 'Chưa', 'Không cần', 'Có']); // dòng sau cùng thắng (Bản vẽ: Có rồi Chưa); tình trạng lạ bị bỏ qua nên Ảnh vẫn Không cần
   a.equal(r[0].du, 4); a.deepEqual(r[1].muc.map(m => m.tt), ['Chưa', 'Chưa', 'Chưa', 'Chưa', 'Chưa']); // Hẹn lại không tính là đã nghiệm thu; Lũy kế 0 chưa có nhật ký
+  a.deepEqual(sapXep([{ ma: 'A', du: 5, muc: [{ tt: 'Có' }], kt: '2026-01-01' }, { ma: 'B', du: 1, muc: [{ tt: 'Chưa' }], kt: '2026-02-01' }, { ma: 'C', du: 2, muc: [{ tt: 'Có' }], kt: '2026-03-01' }, { ma: 'D', du: 1, muc: [{ tt: 'Chưa' }], kt: '' }]).map(x => x.ma), ['C', 'B', 'D', 'A']); // đã nghiệm thu thiếu giấy, chưa nghiệm thu (không ngày xuống cuối), đủ
   a.deepEqual(docHs(undefined, undefined, undefined), []); a.equal(r[0].kt, '2026-10-05'); a.deepEqual(TAY, [HS[1], HS[2], HS[3]]);
   console.log('ok');
 }
