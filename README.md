@@ -134,3 +134,6 @@ Thêm → Cài đặt → "Đăng xuất / Đổi tài khoản": thu hồi mã �
 
 ## Thanh bên cho máy tính
 Cửa sổ rộng từ 900px (máy tính, laptop) hiện thanh bên xanh than bên trái, thay cho thanh tab dưới: Trang chủ, Bản vẽ, Việc (chấm đỏ là số mục quá hạn), Nhật ký, rồi các nhóm của mục Thêm và nút Đăng xuất. Thanh bên dựng từ chính các liên kết sẵn có, nên thêm một mục vào lưới Thêm là thanh bên tự có. Hẹp hơn 900px (điện thoại) vẫn là 5 tab dưới như cũ.
+
+## Trang chủ dạng bảng điều khiển
+Đầu Trang chủ có thẻ số liệu (Việc hôm nay; trên máy tính thêm Ảnh chờ xếp của công trình đang chọn) và thẻ cảnh báo viền màu (Quá hạn, Sắp đến hạn). Bấm thẻ mở mục Việc đã lọc đúng như thẻ ("Đang xem: Quá hạn", nút Xem tất cả); số trên thẻ bằng số dòng ở mục Việc, gồm cả giấy tờ có hạn. Điện thoại đưa Làm nhanh lên đầu; máy tính chia hai cột và chào "Xin chào anh Phan". Chưa có: thẻ Vật tư cần xử lý, Phát sinh, Nghiệm thu chưa mời và "Theo công trình".
