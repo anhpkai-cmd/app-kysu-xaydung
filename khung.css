@@ -42,3 +42,27 @@ header>div{flex:1;min-width:0}
 .luoi a:has(.ic){display:grid;grid-template-columns:36px minmax(0,1fr);column-gap:10px;align-items:center;align-content:center}
 .luoi .ic{grid-row:span 2;width:36px;height:36px;border-radius:10px;background:var(--soft);display:grid;place-items:center;margin:0}
 .luoi .ic svg{width:20px;height:20px}
+
+/* Thanh bên cho máy tính (rộng từ 900px): nền xanh than cố định ở cả ba giao diện; hẹp hơn thì ẩn và dùng thanh tab dưới */
+.side{display:none}
+@media (min-width:900px){
+  body{padding-left:248px;padding-bottom:0}
+  nav{display:none}
+  .side{--s-bg:oklch(24% .05 258);--s-ink:oklch(92% .02 250);--s-mute:oklch(68% .035 255);--s-on:oklch(48% .12 255);display:flex;flex-direction:column;gap:2px;position:fixed;inset:0 auto 0 0;width:248px;z-index:5;overflow-y:auto;box-sizing:border-box;padding:12px 10px;background:var(--s-bg);color:var(--s-ink)}
+  :root[data-skin="dark"] .side{--s-bg:oklch(14% .03 258)}
+  .side .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 14px;margin-bottom:6px;border-bottom:1px solid oklch(100% 0 0 / .1)}
+  .side .brand i{width:36px;height:36px;border-radius:10px;background:var(--s-on);display:grid;place-items:center;font-style:normal;font-weight:800;font-size:13px;color:#fff}
+  .side .brand b{display:block;font-size:15px;letter-spacing:.02em} .side .brand small{color:var(--s-mute);font-size:12px}
+  .side h3{margin:14px 10px 4px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--s-mute);font-weight:600}
+  .side a,.side .sdx{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 10px;border:0;border-radius:8px;box-sizing:border-box;background:none;color:var(--s-ink);font-size:15px;font-weight:500;text-decoration:none;text-align:left}
+  .side a:hover,.side .sdx:hover{background:oklch(100% 0 0 / .07)}
+  .side svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .side [aria-current="page"]{background:var(--s-on);color:#fff;font-weight:600}
+  .side .dot{margin-left:auto;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:10px;background:var(--late);color:#fff;font-size:12px;font-weight:700;line-height:20px;text-align:center}
+  .side .dot:empty{display:none}
+  .side .sdx{margin-top:auto;color:oklch(78% .12 22)}
+  .side :focus-visible{outline-color:#fff}
+  header{padding-inline:32px} #cts{flex:0 0 260px}
+  main{max-width:1040px;padding:24px 32px}
+  #anl{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px} #anl .doc{margin:0}
+}
