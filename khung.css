@@ -77,7 +77,7 @@ header>div{flex:1;min-width:0}
 .kpi b{font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
 .kpi small{font-size:14px;color:var(--mute)} .kpi small.w{color:var(--late);font-weight:600}
 .kpi.pc{display:none}
-.alerts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+.alerts{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;margin-top:8px}
 .alert{display:flex;flex-direction:column;justify-content:space-between;gap:2px;padding:10px 12px;min-height:76px;box-sizing:border-box;text-decoration:none;color:var(--ink);background:var(--card);border:2px solid var(--a);border-radius:12px}
 .alert span{font-size:13px;font-weight:600;line-height:1.25}
 .alert b{font-size:22px;line-height:1.1;color:var(--a);font-variant-numeric:tabular-nums}
@@ -91,7 +91,6 @@ header>div{flex:1;min-width:0}
   .home>*{grid-column:1/-1} .home>#sot{grid-column:1} .home>#sap{grid-column:2}
   #nhanh{order:0}
   .kpis{grid-template-columns:repeat(2,1fr)} .kpi.pc{display:flex}
-  .alerts{grid-template-columns:repeat(3,1fr)}
 }
 .side .sdx{display:none}
 body.dn .side .sdx{display:flex}
