@@ -74,13 +74,20 @@ const homNay = () => new Date().toLocaleDateString('sv-SE');
 export const tuanToi = (cv, hom) => (cv || []).slice(1).filter(r => r[0] && iso(r[4] ?? '') && (n => n >= 0 && n <= 7)(conLai(r[4], hom))).map(r => `${r[1]} (${ngayVn(r[4])})`);
 export const conThieu = (d, lo) => d.dt > 0 ? Math.max(0, Math.round((d.dt - tong(lo, d.ten)) * 1000) / 1000) : 0;
 // Tin nhắn Zalo kèm link phiếu.
-export const tinPhieu = (so, ct, ds, link) => [`PHIẾU YÊU CẦU VẬT TƯ số ${so}`, `Công trình: ${ct}`, ...ds.map((x, i) => `${i + 1}. ${x.ten}${x.qc ? ' ' + x.qc : ''}: ${x.sl.toLocaleString('vi-VN')} ${x.dv}, cần ngày ${ngayVn(x.can)}${x.gc ? ' (' + x.gc + ')' : ''}`), `Phiếu: ${link}`].join('\n');
-// Mẫu đề xuất (app tạo một lần trong MAUBIEU_CONGTY, anh sửa trực tiếp trong Trang tính: thêm logo, đổi người nhận). Bảng vật tư chèn dưới dòng có ô "STT".
-// Thông tin công ty chỉ có tên và số điện thoại (kho mã công khai: không ghi mã số thuế, tài khoản).
+export const tinPhieu = (so, ct, ds, link) => [`PHIẾU YÊU CẦU VẬT TƯ số ${so}`, `Công trình: ${ct}`, ...ds.map((x, i) => `${i + 1}. ${tenQc(x)}: ${x.sl.toLocaleString('vi-VN')} ${x.dv}, cần ngày ${ngayVn(x.can)}${x.gc ? ' (' + x.gc + ')' : ''}`), `Phiếu: ${link}`].join('\n');
+// Mẫu phiếu do anh đặt trong MAUBIEU_CONGTY (PHIEU-YEU-CAU-VAT-TU_889.xlsx: logo, thông tin công ty). App không tự tạo mẫu: mẫu tự tạo trùng tên sẽ được chọn thay mẫu thật.
+// Bảng vật tư nằm dưới dòng có ô "STT": cột A..F = STT, Tên vật tư và quy cách, Đơn vị tính, Số lượng, Ngày cần, Ghi chú.
 export const MAU_YC = 'PHIEU-YEU-CAU-VAT-TU';
-const MAU_YC_DONG = [['CÔNG TY CỔ PHẦN ĐẦU TƯ XÂY DỰNG HẠ TẦNG 889', '', '', '', '', 'Số: {{Số phiếu}}'], ['Điện thoại: 0911472472', '', '', '', '', '{{Ngày dài}}'], ['Công trình: {{Công trình}}'], [],
-  ['PHIẾU YÊU CẦU VẬT TƯ'], ['Kính gửi: Bộ phận Vật tư công ty. Đồng gửi: Chỉ huy trưởng công trường.'], ['Ban chỉ huy công trường đề nghị cung cấp các vật tư sau:'],
-  ['STT', 'Tên vật tư', 'Quy cách', 'ĐV', 'Số lượng', 'Ngày cần', 'Ghi chú'], [], ['Người yêu cầu', '', '', 'Chỉ huy trưởng', '', 'Bộ phận Vật tư'], ['(ký, ghi rõ họ tên)', '', '', '(ký, ghi rõ họ tên)', '', '(ký, ghi rõ họ tên)']];
+export const tenQc = x => x.qc ? `${x.ten}, ${x.qc}` : x.ten;
+// Chỗ điền bảng. v: cột A..B (chữ hiện ra) của trang mẫu, n: số vật tư. Mẫu có sẵn vài dòng trống dưới dòng "STT" (cột A trống hoặc công thức đánh số, cột B trống);
+// thiếu thì chèn thêm TRƯỚC dòng trống cuối để dải công thức "Tổng số loại" tự giãn theo. Không có dòng "STT" thì null.
+export function choBang(v, n) {
+  const stt = v.findIndex(r => String(r[0] ?? '').trim().toUpperCase() === 'STT');
+  if (stt < 0) return null;
+  let co = 0;
+  while (stt + 1 + co < v.length && /^\d*$/.test(String(v[stt + 1 + co][0] ?? '').trim()) && !String(v[stt + 1 + co][1] ?? '').trim()) co++;
+  return { stt, them: Math.max(0, n - co), at: co ? stt + co : stt + 1, dau: co !== 1 }; // dau: dòng chèn theo kiểu dòng phía trên (không phải dòng tiêu đề)
+}
 
 // Đọc cả file (chỉ đọc, trang chưa có thì coi như trống). Dùng cho mục Vật tư và khung Còn sót.
 export async function docFile(api, id) {
@@ -156,7 +163,7 @@ function ve() {
     const el = tao('div', '', 'doc cot'), nhan = tao('label'), chon = tao('input'), sl = tao('input'), dv = tao('input'), thieu = conThieu(d, lo), v = tao('div', '', 'ycv');
     chon.type = 'checkbox'; nhan.append(chon, ' ' + d.ten + (d.qc ? ` · ${d.qc}` : '') + (thieu ? ` (còn thiếu ${thieu.toLocaleString('vi-VN')} ${d.dv})` : ''));
     sl.inputMode = 'decimal'; sl.placeholder = 'Số lượng'; sl.setAttribute('aria-label', 'Số lượng ' + d.ten);
-    dv.value = d.dv; dv.placeholder = 'Đơn vị'; dv.setAttribute('list', 'ycdvs'); dv.setAttribute('aria-label', 'Đơn vị ' + d.ten);
+    dv.value = d.dv; dv.placeholder = 'Đơn vị tính'; dv.setAttribute('list', 'ycdvs'); dv.setAttribute('aria-label', 'Đơn vị tính ' + d.ten);
     chon.onchange = () => { if (chon.checked && !sl.value && thieu) sl.value = thieu.toLocaleString('vi-VN'); };
     sl.oninput = () => { chon.checked = sl.value.trim() !== ''; sl.removeAttribute('aria-invalid'); };
     el.yc = () => chon.checked && { d, o: sl, sl: sl.value, dv: dv.value.trim(), xoa: () => { chon.checked = false; sl.value = ''; dv.value = d.dv; } };
@@ -228,7 +235,7 @@ export function themYc() {
   const ds = [...$('ycl').children].map(el => el.yc()).filter(Boolean), can = $('ycd').value;
   if (!ds.length) return ms(dm.length ? 'Đánh dấu ít nhất một vật tư.' : 'Thêm vật tư vào danh mục trước.');
   const sai = ds.find(x => !(soVn(x.sl) > 0)); if (sai) return sai.o.setAttribute('aria-invalid', 'true'), sai.o.focus(), ms(sai.sl.trim() ? `Số lượng ${sai.d.ten} “${sai.sl}” không đọc được. Ví dụ 12.500 hoặc 15,5.` : `Ghi số lượng cho ${sai.d.ten}.`);
-  const thieuDv = ds.find(x => !x.dv); if (thieuDv) return ms(`Ghi đơn vị cho ${thieuDv.d.ten}.`);
+  const thieuDv = ds.find(x => !x.dv); if (thieuDv) return ms(`Ghi đơn vị tính cho ${thieuDv.d.ten}.`);
   if (!can) return ms('Chọn ngày cần vật tư về.');
   for (const x of ds) { phieu.push({ ten: x.d.ten, qc: x.d.qc, dv: x.dv, sl: soVn(x.sl), can, gc: $('ycgc').value.trim() }); x.xoa(); }
   $('ycgc').value = ''; ms(); veYc();
@@ -241,16 +248,19 @@ export async function lapYc() {
   let ten = h.tenCt();
   if (ten === '(tên công trình)') { if (!confirm(`Trang Thông tin chưa có dòng "Tên công trình", phiếu sẽ ghi "${tenCt}". Vẫn lập phiếu?`)) return; ten = tenCt; }
   ms('Đang lập phiếu...');
-  const goc = await h.thuMucMau(), mau = (await h.dsMau(goc)).find(f => f.name.startsWith(MAU_YC)) || await taoMauYc(goc);
+  const goc = await h.thuMucMau(), mau = (await h.dsMau(goc)).filter(f => f.name.startsWith(MAU_YC)).at(-1); // dsMau xếp theo tên: tên dài nhất (PHIEU-YEU-CAU-VAT-TU_889) thắng tên trần của mẫu 7 cột cũ, nếu còn
+  if (!mau) throw new Error(`Chưa có mẫu ${MAU_YC} trong thư mục CONGTRINH/_CHUNG/MAUBIEU_CONGTY. Bỏ file mẫu phiếu yêu cầu vật tư vào đó rồi lập lại.`);
   const dir = await h.thuMuc(ct, '05_VATTU_DOITHICONG/PHIEU_YEUCAU'), so = `${maCt()}-YC-VT-${homNay().replaceAll('-', '')}`;
   const ma = `${so}-${soTiep(so, (await h.ls(`'${dir}' in parents and name contains '${so}'`)).map(f => f.name))}`;
   const f = await h.lapMau(mau, ma + '_PhieuYeuCauVatTu', dir);
   const sh2 = `https://sheets.googleapis.com/v4/spreadsheets/${f.id}`, tab = (await h.api(`${sh2}?fields=sheets.properties`)).sheets[0].properties;
-  const v = (await h.api(`${sh2}/values/'${tab.title}'!A1:A60`)).values || [], stt = v.findIndex(r => String(r[0] ?? '').trim().toUpperCase() === 'STT');
-  if (stt < 0) throw new Error(`Mẫu ${mau.name} thiếu dòng tiêu đề bảng có ô "STT" ở cột A.`);
-  await h.api(`${sh2}:batchUpdate`, h.json({ requests: [{ insertDimension: { range: { sheetId: tab.sheetId, dimension: 'ROWS', startIndex: stt + 1, endIndex: stt + 1 + ds.length }, inheritFromBefore: true } },
+  const v = (await h.api(`${sh2}/values/'${tab.title}'!A1:C60`)).values || [];
+  const cho = choBang(v, ds.length);
+  if (!cho) throw new Error(`Mẫu ${mau.name} thiếu dòng tiêu đề bảng có ô "STT" ở cột A.`);
+  if (!/đơn vị/i.test(v[cho.stt][2] ?? '')) throw new Error(`Mẫu ${mau.name} không đúng bố cục 6 cột (STT, Tên vật tư và quy cách, Đơn vị tính, Số lượng, Ngày cần, Ghi chú). Xóa mẫu cũ trong MAUBIEU_CONGTY rồi bỏ mẫu mới vào.`);
+  await h.api(`${sh2}:batchUpdate`, h.json({ requests: [...cho.them ? [{ insertDimension: { range: { sheetId: tab.sheetId, dimension: 'ROWS', startIndex: cho.at, endIndex: cho.at + cho.them }, inheritFromBefore: cho.dau } }] : [],
     ...[['Số phiếu', ma], ['Công trình', ten]].map(([t, gt]) => ({ findReplace: { find: `{{${t}}}`, replacement: gt, allSheets: true } }))] }));
-  await h.api(`${sh2}/values/'${tab.title}'!A${stt + 2}?valueInputOption=RAW`, { ...h.json({ values: ds.map((x, i) => [i + 1, x.ten, x.qc, x.dv, x.sl, ngayVn(x.can), x.gc]) }), method: 'PUT' });
+  await h.api(`${sh2}/values/'${tab.title}'!A${cho.stt + 2}?valueInputOption=RAW`, { ...h.json({ values: ds.map((x, i) => [i + 1, tenQc(x), x.dv, x.sl, ngayVn(x.can), x.gc]) }), method: 'PUT' }); // số thứ tự ghi số thẳng (thay công thức đánh số của dòng đã dùng)
   phieu = []; veYc();
   let ghi = '';
   for (const x of ds) try { ghi = (await h.taoViec(`${x.ten} về (phiếu ${ma})`, tenCt, x.can)) || ghi; } catch (e) { ghi = 'Chưa thêm được việc nhắc: ' + e.message; }
@@ -260,13 +270,6 @@ export async function lapYc() {
   await h.api(`https://www.googleapis.com/drive/v3/files/${f.id}/permissions`, h.json({ role: 'reader', type: 'anyone' }));
   const tin = tinPhieu(ma, ten, ds, f.webViewLink);
   try { if (navigator.share) await navigator.share({ title: ma, text: tin }); else { await navigator.clipboard.writeText(tin); ms(`Đã chép nội dung phiếu ${ma}, dán vào Zalo để gửi.`); } } catch (e) { if (e.name !== 'AbortError') ms(`Phiếu ${ma} đã lập nhưng máy không cho chia sẻ (${e.message}). Link phiếu: ${f.webViewLink}`); }
-}
-async function taoMauYc(goc) { // tạo mẫu đề xuất một lần; từ lần sau dùng mẫu (anh có thể đã sửa) trong MAUBIEU_CONGTY
-  const t = await h.api('https://sheets.googleapis.com/v4/spreadsheets', h.json({ properties: { title: MAU_YC }, sheets: [{ properties: { title: 'PHIEU' },
-    data: [{ startRow: 0, startColumn: 0, rowData: MAU_YC_DONG.map(r => ({ values: r.map(x => ({ userEnteredValue: { stringValue: x } })) })) }] }] }));
-  const { parents } = await h.api(`https://www.googleapis.com/drive/v3/files/${t.spreadsheetId}?fields=parents`);
-  await h.api(`https://www.googleapis.com/drive/v3/files/${t.spreadsheetId}?addParents=${goc}&removeParents=${parents.join(',')}&fields=id`, { method: 'PATCH' });
-  return { id: t.spreadsheetId, name: MAU_YC, mimeType: 'application/vnd.google-apps.spreadsheet' };
 }
 
 // Mời TVGS: mở mẫu "Mời nghiệm thu" của Tin nhắn soạn sẵn (tin.js: tên công trình thật, người nhận, nút mở Zalo), điền sẵn công việc và ngày.
@@ -379,8 +382,14 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vattu.js')) { /
   a.deepEqual(tuanToi(cv, '2026-10-06'), ['Lợp mái (11/10/2026)']); // CB-1, HM1-1 đã bắt đầu; ô Bắt đầu trống thì bỏ
   a.equal(conThieu({ ten: 'Xi măng PCB40', dt: 50 }, lo), 20); a.equal(conThieu({ ten: 'Xi măng PCB40', dt: 10 }, lo), 0); a.equal(conThieu({ ten: 'X', dt: 0 }, lo), 0);
   a.equal(tinPhieu('CT01-YC-VT-20261006-01', 'CT01_ChoHieuLe', [{ ten: 'Thép D10', qc: 'CB300', dv: 'kg', sl: 1200, can: '2026-10-09', gc: '' }], 'https://x'),
-    'PHIẾU YÊU CẦU VẬT TƯ số CT01-YC-VT-20261006-01\nCông trình: CT01_ChoHieuLe\n1. Thép D10 CB300: 1.200 kg, cần ngày 09/10/2026\nPhiếu: https://x');
-  a.ok(MAU_YC_DONG.some(r => r[0] === 'STT'));
+    'PHIẾU YÊU CẦU VẬT TƯ số CT01-YC-VT-20261006-01\nCông trình: CT01_ChoHieuLe\n1. Thép D10, CB300: 1.200 kg, cần ngày 09/10/2026\nPhiếu: https://x');
+  const mauA = [[], ['PHIẾU YÊU CẦU VẬT TƯ'], ['STT', 'TÊN VẬT TƯ, QUY CÁCH'], ...Array(10).fill(['']), ['Tổng số loại vật tư yêu cầu:'], [], ['Ghi chú:']]; // như mẫu thật: 10 dòng trống có công thức đánh số (hiện chữ rỗng)
+  a.deepEqual(choBang(mauA, 3), { stt: 2, them: 0, at: 12, dau: true }); a.deepEqual(choBang(mauA, 10).them, 0);
+  a.deepEqual(choBang(mauA, 12), { stt: 2, them: 2, at: 12, dau: true }); // chèn trước dòng trống cuối (dòng 12), trong dải công thức tổng
+  a.deepEqual(choBang([['STT'], [''], ['Người yêu cầu']], 3), { stt: 0, them: 2, at: 1, dau: false }); // mẫu một dòng trống: theo kiểu dòng trống đó, không theo dòng tiêu đề
+  a.deepEqual(choBang([['STT'], ['Tổng']], 1), { stt: 0, them: 1, at: 1, dau: true }); a.equal(choBang([['x']], 1), null);
+  a.deepEqual(choBang([['STT'], [], [1, 'đã có'], ['']], 1), { stt: 0, them: 0, at: 1, dau: false }); // dòng đã có chữ ở cột B thì dừng
+  a.equal(tenQc({ ten: 'Thép D10', qc: 'CB300' }), 'Thép D10, CB300'); a.equal(tenQc({ ten: 'Cát vàng', qc: '' }), 'Cát vàng');
   a.equal(soDt(19, 20, 'tấn'), '19/20 tấn (95%)'); a.equal(soDt(21, 20, 'tấn'), '21/20 tấn (105%), VƯỢT dự toán'); a.equal(soDt(5, 0, 'm3'), '5 m3');
   a.equal(soTiep('CT01-GN-20261006', []), '01'); a.equal(soTiep('CT01-GN-20261006', ['CT01-GN-20261006-01_A.jpg', 'CT01-GN-20261006-03_B.jpg', 'CT01-GN-20261007-09_C.jpg']), '04');
   a.equal(soTiep('L20261006', ['L20261006-1', 'L20261006-2', 'D5'], 1), '3');

@@ -102,8 +102,9 @@ Mục "Lịch nghiệm thu" tự liệt kê các công việc trong trang `DANHM
 
 ## Phiếu yêu cầu vật tư
 
-Trong mục Vật tư, **+ Phiếu yêu cầu vật tư** gợi ý các công việc tuần tới theo tiến độ và vật tư còn thiếu so với dự toán. Đánh dấu một hay nhiều vật tư, ghi số lượng và đơn vị (đơn vị lấy sẵn từ danh mục, sửa được), chọn ngày cần, bấm **Thêm vào phiếu**, rồi **Lập phiếu và gửi**. Phiếu ghi tên công trình theo dòng "Tên công trình" trong trang Thông tin:
-- Lần đầu app tạo mẫu `PHIEU-YEU-CAU-VAT-TU` trong `CONGTRINH/_CHUNG/MAUBIEU_CONGTY` (gửi Bộ phận Vật tư công ty, đồng gửi Chỉ huy trưởng). Anh sửa mẫu này tùy ý, chỉ cần giữ dòng tiêu đề bảng có ô **STT** ở cột A; các ô `{{Tên mục}}` điền như văn bản gửi đi.
+Trong mục Vật tư, **+ Phiếu yêu cầu vật tư** gợi ý các công việc tuần tới theo tiến độ và vật tư còn thiếu so với dự toán. Đánh dấu một hay nhiều vật tư, ghi số lượng và đơn vị tính (đơn vị lấy sẵn từ danh mục, sửa được), chọn ngày cần, bấm **Thêm vào phiếu**, rồi **Lập phiếu và gửi**. Phiếu ghi tên công trình theo dòng "Tên công trình" trong trang Thông tin:
+- Mẫu là file `PHIEU-YEU-CAU-VAT-TU_889.xlsx` (logo, thông tin công ty) anh bỏ vào `CONGTRINH/_CHUNG/MAUBIEU_CONGTY`; chưa có mẫu thì app báo và không lập. App không tự tạo mẫu. Có nhiều mẫu cùng tiền tố thì app lấy mẫu tên dài nhất; mẫu lệch bố cục (ví dụ mẫu 7 cột cũ) thì app báo và không ghi gì. Giữ nguyên thứ tự cột bảng: STT, Tên vật tư và quy cách, Đơn vị tính, Số lượng, Ngày cần, Ghi chú (tên vật tư và quy cách ghi chung một ô, cách nhau dấu phẩy), và dòng tiêu đề có ô **STT** ở cột A. Các dòng trống có sẵn dưới tiêu đề được điền trước, nhiều vật tư hơn thì app chèn thêm dòng (ô "Tổng số loại" tự giãn theo); các ô `{{Tên mục}}` điền như văn bản gửi đi.
+- Nếu logo mất sau khi app đổi Excel sang Trang tính: mở file mẫu bằng Google Trang tính, Lưu thành Google Trang tính, rồi dùng bản đó làm mẫu.
 - Phiếu lưu ở `05_VATTU_DOITHICONG/PHIEU_YEUCAU`, tên `CTxx-YC-VT-yyyymmdd-01_PhieuYeuCauVatTu`. Mỗi vật tư thêm một việc "<vật tư> về (phiếu ...)" vào ngày cần.
 - Gửi: app hỏi trước khi mở link cho người có link xem, rồi mở Chia sẻ (Zalo) với nội dung phiếu và link.
 
