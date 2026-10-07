@@ -708,8 +708,9 @@ function veSot() {
     return l;
   }, cam = sotCt.filter(c => c.vt?.cam).map(c => [c.vt.cam, x => `${c.ma}: ${x} lô vật tư KHÔNG ĐẠT, cấm dùng`, '#vt', c.id]), toi = 5; // cấm dùng luôn đứng trên cùng; tối đa 5 việc, còn lại gom một dòng
   $('sotds').replaceChildren(...cam.map(lk), ...homVc.slice(0, toi).map(t => dongViec(t, nhanHan(t.n))), ...(homVc.length > toi ? [lk([homVc.length - toi, x => `và ${x} việc nữa`, '#viec'])] : []), ...(dong.length ? dong.map(lk) : homVc.length || cam.length ? [] : [Object.assign(document.createElement('p'), { textContent: sotXong ? 'Hôm nay không còn gì sót.' : 'Đang kiểm tra các công trình...' })]));
-  const mai = nhom.sapDen.filter(t => t.n === 1), cb = cbTT().filter(t => t.startsWith('Ngày mai')); // ngày mai cần chuẩn bị: việc đến hạn, thời tiết
-  $('sotn').replaceChildren(...(mai.length || cb.length ? [Object.assign(document.createElement('h3'), { textContent: 'Ngày mai cần chuẩn bị' }), ...mai.map(t => dongViec(t, 'Ngày mai')), ...cb.map(t => 'Cảnh báo: ' + t).map((t, i) => Object.assign(document.createElement('p'), { textContent: t, className: t.startsWith('Cảnh báo') ? 'cb' : '' }))] : []));
+  const mai = nhom.sapDen.filter(t => t.n === 1), cb = cbTT(); // ngày mai cần chuẩn bị: việc đến hạn; cảnh báo thời tiết cho cả 3 ngày (tên ngày nằm trong câu)
+  const h3 = x => Object.assign(document.createElement('h3'), { textContent: x });
+  $('sotn').replaceChildren(...(mai.length ? [h3('Ngày mai cần chuẩn bị'), ...mai.map(t => dongViec(t, 'Ngày mai'))] : []), ...(cb.length ? [h3('Cảnh báo thời tiết'), ...cb.map(t => Object.assign(document.createElement('p'), { textContent: t, className: 'cb' }))] : []));
 }
 const sotCap = kq => { const c = sotCt.find(x => x.id === $('ct').value); if (c) { Object.assign(c, kq); veSot(); } };
 const BAN_TIN = 'Sổ tay kỹ sư: hôm nay còn sót gì';
@@ -734,7 +735,7 @@ function veTT() {
   veSot(); hatVe(); // việc và thời tiết vừa đổi: gợi ý họp an toàn tính lại
 }
 async function taiTQ() {
-  const ct = $('ct').value; tqDs = []; tqMs(); veTT();
+  const ct = $('ct').value, ma = $('ct').selectedOptions[0]?.text.split('_')[0] || ''; $('tqdt').querySelector('summary').textContent = 'Vị trí công trình ' + ma; $('tqv').labels[0].textContent = `Tọa độ của ${ma} (vĩ độ, kinh độ)`; // ghi rõ công trình để khỏi lưu nhầm tqDs = []; tqMs(); veTT();
   let vt; try { vt = localStorage.getItem(tqKey()); } catch {}
   $('tqv').value = vt || ''; const vi = viTri(vt);
   if (!vi) { $('tqdt').open = true; return tqMs('Chưa có vị trí công trình. Bấm "Lấy vị trí máy" khi đang ở công trường, hoặc gõ tọa độ.'); }
