@@ -196,6 +196,7 @@ function veKpi() {
   let xx = 0; try { xx = +localStorage.getItem('xx:' + homNay()) || 0; } catch {}
   $('kpvs').textContent = `hôm nay đã xong ${xx} việc`; $('kpvs').className = '';
   $('alm').textContent = k.moi; $('alm').parentNode.hidden = !k.moi; // thẻ Nghiệm thu chưa mời chỉ hiện khi có
+  const vt = c?.vt; $('kpt').textContent = vt ? vt.cam + vt.can : '–'; $('kpts').textContent = vt?.cam ? `${vt.cam} lô cấm dùng` : vt === null ? 'Chưa đọc được' : ''; $('kpts').className = vt?.cam ? 'w' : '';
   $('kpa').textContent = c?.anh === null ? '–' : anhDs.length; // đúng số ảnh ở mục Xếp ảnh (gồm cả 00_INBOX ngoài cùng)
 }
 document.querySelectorAll('[data-l]').forEach(a => a.onclick = () => { locV = a.dataset.l; locTay = location.hash !== '#viec'; veDsv(); veHan(); });

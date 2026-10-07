@@ -84,13 +84,13 @@ header>div{flex:1;min-width:0}
 .alert[hidden]{display:none}
 .alert.b{--a:oklch(78% .15 95)} .alert.b b{color:oklch(48% .1 90)}
 .alert.r{--a:var(--late)} .alert.o{--a:var(--warn)} .alert.o b{color:oklch(48% .13 55)}
-:root[data-skin="dark"] .alert.o b{color:var(--a)}
+:root[data-skin="dark"] .alert.o b,:root[data-skin="dark"] .alert.b b{color:var(--a)}
 #viecloc:not([hidden]){display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 @media (min-width:900px){
   .home{display:grid;grid-template-columns:1fr 1fr;column-gap:20px;align-items:start}
   .home>*{grid-column:1/-1} .home>#sot{grid-column:1} .home>#sap{grid-column:2}
   #nhanh{order:0}
-  .kpis{grid-template-columns:repeat(2,1fr)} .kpi.pc{display:flex}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))} .kpi.pc{display:flex}
 }
 .side .sdx{display:none}
 body.dn .side .sdx{display:flex}

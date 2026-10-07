@@ -119,15 +119,17 @@ export async function moVatTu(ham) {
 }
 
 function ve() {
-  const can = lo.map(l => [l, canLam(l, dm)]).filter(([, v]) => v.length).sort(([, a], [, b]) => !!b[0].cam - !!a[0].cam); // lô cấm dùng lên đầu
-  $('vtcan').replaceChildren(...(can.length ? [tao('h3', `${maCt()}: cần xử lý (${can.length} lô)`)] : lo.length ? [tao('p', 'Mọi lô vật tư đã nghiệm thu hoặc xử lý xong.')] : []), ...can.map(([l, v]) => {
+  const cc = chuY(dm, lo).sort((a, b) => !!b.c[0].cam - !!a.c[0].cam).map(x => [x.l, x.c]); // lô cấm dùng lên đầu; đúng các lô thẻ Trang chủ đếm
+  const khac = lo.map(l => [l, canLam(l, dm)]).filter(([l, v]) => v.length && !cc.some(([k]) => k === l)); // chỉ còn chờ kết quả thí nghiệm: việc của phòng thí nghiệm
+  const dongLo = ([l, v]) => {
     const el = tao('div', '', 'doc cot'), th = tao('div'), nut = tao('div', '', 'nut'); // nhiều nút: xếp dưới chữ cho vừa màn hình điện thoại
     th.append(tao('div', `${l.ten} · ${l.kl.toLocaleString('vi-VN')} ${l.dv}`), tao('small', `Lô ${l.ma} · ` + l.dong.map(x => [ngayVn(x.ngay), x.ncc].filter(Boolean).join(' ')).join('; ')), ...v.map(x => tao(x.cam ? 'strong' : 'div', '• ' + x.chu)));
     const link = l.dong.flatMap(x => String(x.phieu).split(/\s+/)).filter(x => x.startsWith('https://'));
     link.forEach((u, i) => nut.append(Object.assign(tao('a', link.length > 1 ? `Phiếu ${i + 1}` : 'Phiếu', 'nutlk'), { href: u, target: '_blank', rel: 'noopener' })));
     for (const x of v) for (const n of x.nut) nut.append(nutBam(n.chu, `${n.chu}: ${l.ten} lô ${l.ma}`, () => ghiLo(l, n)));
     el.append(th, nut); return el;
-  }));
+  };
+  $('vtcan').replaceChildren(...(cc.length ? [tao('h3', `${maCt()}: cần xử lý (${cc.length} lô)`)] : lo.length ? [tao('p', 'Mọi lô vật tư đã nghiệm thu hoặc xử lý xong.')] : []), ...cc.map(dongLo), ...(khac.length ? [tao('h3', `Các lô khác (${khac.length} lô, chờ kết quả thí nghiệm)`)] : []), ...khac.map(dongLo));
   $('vtdm').replaceChildren(...(dm.length ? [] : [tao('p', 'Chưa có vật tư nào trong danh mục. Thêm vật tư đầu tiên bên dưới.')]), ...dm.map(d => {
     const el = tao('div', '', 'doc cot'), th = tao('div'), nut = tao('div', '', 'nut'), cho = d.detrinh && !d.duyet && iso(d.detrinh) ? (Date.parse(homNay()) - Date.parse(iso(d.detrinh))) / 864e5 : 0;
     const tt = d.duyet ? `Đã duyệt ${ngayVn(d.duyet)}` : d.detrinh ? `Đã đệ trình ${ngayVn(d.detrinh)}, chờ duyệt${cho > 0 ? ` ${cho} ngày` : ''}` : 'Chưa đệ trình';
