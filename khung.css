@@ -51,7 +51,7 @@ header>div{flex:1;min-width:0}
   .side{--s-bg:oklch(24% .05 258);--s-ink:oklch(92% .02 250);--s-mute:oklch(68% .035 255);--s-on:oklch(48% .12 255);display:flex;flex-direction:column;gap:2px;position:fixed;inset:0 auto 0 0;width:248px;z-index:5;overflow-y:auto;box-sizing:border-box;padding:12px 10px;background:var(--s-bg);color:var(--s-ink)}
   :root[data-skin="dark"] .side{--s-bg:oklch(14% .03 258)}
   .side .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 14px;margin-bottom:6px;border-bottom:1px solid oklch(100% 0 0 / .1)}
-  .side .brand i{width:36px;height:36px;border-radius:10px;background:var(--s-on);display:grid;place-items:center;font-style:normal;font-weight:800;font-size:13px;color:#fff}
+  .side .brand i{width:36px;height:36px;border-radius:10px;background:#fff;display:grid;place-items:center;overflow:hidden;font-style:normal} .side .brand i img{display:block;width:100%;height:100%;object-fit:contain;transform:scale(1.3)} /* logo có viền trắng quanh: phóng nhẹ cho đỡ nhỏ */
   .side .brand b{display:block;font-size:15px;letter-spacing:.02em} .side .brand small{color:var(--s-mute);font-size:12px}
   .side h3{margin:14px 10px 4px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--s-mute);font-weight:600}
   .side a,.side .sdx{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 10px;border:0;border-radius:8px;box-sizing:border-box;background:none;color:var(--s-ink);font-size:15px;font-weight:500;text-decoration:none;text-align:left}
