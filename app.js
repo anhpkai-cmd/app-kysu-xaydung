@@ -245,7 +245,7 @@ function veKpi() {
   $('tcts').replaceChildren(...cts.map(o => {
     const a = Object.assign(document.createElement('a'), { className: 'kpi', href: '#viec' }), n = viecCt(o.text).length + hanCt(o.text).length, vt = sotCt.find(x => x.id === o.value)?.vt, tiep = vt?.tiep;
     a.append(Object.assign(document.createElement('span'), { textContent: o.text.split('_')[0] }), Object.assign(document.createElement('b'), { textContent: n, className: 'nho' }), Object.assign(document.createElement('small'), { textContent: `mục trong 7 ngày tới · ${o.text.split('_').slice(1).join(' ')}` }), Object.assign(document.createElement('small'), { textContent: tiep ? 'Nghiệm thu tới: ' + ngayVt(tiep).slice(0, 5) : 'Chưa có lịch nghiệm thu' }));
-    if (vt?.hm?.tong) { const h = vt.hm, p = h.pct ?? Math.round(100 * h.xong / h.tong), t = dom('div', '', 'tien'); t.append(dom('i')); t.firstChild.style.width = p + '%'; a.append(dom('small', h.pct == null ? `${h.xong}/${h.tong} hạng mục xong (theo DANHMUC)` : `Tiến độ ${h.pct}% (theo giá trị, DANHMUC)`), t); }
+    if (vt?.hm?.tong) { const h = vt.hm, p = h.pct ?? Math.round(100 * h.xong / h.tong), t = dom('div', '', 'tien'); t.append(dom('i')); t.firstChild.style.width = p + '%'; a.append(dom('small', h.pct == null ? `${h.xong}/${h.tong} hạng mục xong (theo DANHMUC)` + (h.thieu ? ` · còn ${h.thieu} hạng mục chưa nhập Giá trị` : '') : `Tiến độ ${h.pct}% (theo giá trị, DANHMUC)`), t); }
     a.onclick = () => { locV = 'ct'; locC = o.text; locTay = location.hash !== '#viec'; veDsv(); veHan(); };
     return a;
   }));

@@ -38,7 +38,7 @@ Mục "Nhật ký ngày" ghi vào Google Sheet `CTxx-NK-NHATKY_2026` (trang NGAY
 
 ## Hạn giấy tờ
 
-Thanh xanh trên thẻ "Theo công trình" của Trang chủ là tiến độ thi công. Thêm cột **Giá trị** (thành tiền của từng hạng mục, số) vào **cột I** của trang `DANHMUC` trong file nhật ký (`CTxx-NK-NHATKY`), sau cột "% hoàn thành" ở cột H. App tính tiến độ = tổng (Giá trị × Lũy kế/KL dự toán, mỗi hạng mục tối đa 100%) chia tổng Giá trị, hiện "Tiến độ 62% (theo giá trị, DANHMUC)". Chưa nhập cột này thì thẻ ghi "x/y hạng mục xong".
+Thanh xanh trên thẻ "Theo công trình" của Trang chủ là tiến độ thi công. Thêm cột **Giá trị** (thành tiền của từng hạng mục, số) vào **cột I** của trang `DANHMUC` trong file nhật ký (`CTxx-NK-NHATKY`), sau cột "% hoàn thành" ở cột H; đặt tiêu đề ô I1 là **Giá trị (thành tiền)** (app chỉ đọc cột I khi có tiêu đề này). Phải nhập đủ mọi hạng mục thì app mới hiện %; còn thiếu thì thẻ ghi "x/y hạng mục xong · còn k hạng mục chưa nhập Giá trị". Hạng mục trọn gói không có khối lượng (chi phí chung, lán trại): ghi KL dự toán là 1, làm xong thì Lũy kế là 1 (làm một nửa ghi 0,5). App tính tiến độ = tổng (Giá trị × Lũy kế/KL dự toán, mỗi hạng mục tối đa 100%) chia tổng Giá trị, hiện "Tiến độ 62% (theo giá trị, DANHMUC)". Chưa nhập cột này thì thẻ ghi "x/y hạng mục xong".
 
 Thêm cột **Hạn hiệu lực** vào trang DANHMUC của `_SODANGKY` (cột không bắt buộc, nhập dd/mm/yyyy), ví dụ cho bảo lãnh, bảo hiểm, giấy phép. Trong mục Việc, app liệt kê giấy tờ quá hạn hoặc còn dưới 30 ngày, từ mọi công trình; nút **Nhắc tôi** điền sẵn việc "Gia hạn: ..." với hạn là 14 ngày trước ngày hết hiệu lực. Ngày hạn không đọc được vẫn hiện để sửa trong sổ.
 
