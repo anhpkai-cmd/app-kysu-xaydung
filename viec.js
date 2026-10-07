@@ -22,6 +22,9 @@ export const iso = s => isNaN(ngay(s)) ? '' : new Date(ngay(s)).toISOString().sl
 export const cong = (s, n) => new Date(ngay(s) + n * 864e5).toISOString().slice(0, 10); // cộng (trừ) n ngày
 export const conLai = (han, homNay) => Math.round((ngay(han) - ngay(homNay)) / 864e5); // NaN nếu chưa có hạn
 
+// Số mục có hạn mỗi ngày trong 14 ngày tới (ngày 0 = hôm nay). Mỗi nhóm là danh sách "còn n ngày" của từng mục; NaN (chưa có hạn) không rơi vào cột nào.
+export const dem14 = (...nhom) => Array.from({ length: 14 }, (_, i) => nhom.reduce((s, ds) => s + ds.filter(n => n === i).length, 0));
+
 export function chia(tasks, homNay, sap = 3) {
   const nhom = { quaHan: [], sapDen: [], sau: [], khongHan: [] };
   for (const t of tasks) {
@@ -37,6 +40,7 @@ export const nhan = n => n < 0 ? `Quá hạn ${-n} ngày` : n === 0 ? 'Hôm nay'
 if (typeof process !== 'undefined' && process.argv[1]?.endsWith('viec.js')) { // chạy: node viec.js
   const a = await import('node:assert/strict');
   a.ok(tenTatCa([COT, ['Mời TVGS nghiệm thu: X (A1)', '', '', 'Xong']]).has('Mời TVGS nghiệm thu: X (A1)')); // việc đã Xong vẫn tính là đã làm
+  a.deepEqual(dem14([0, 0, 3, 15, -1, NaN], [2], [13, 14]), [2, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
   a.deepEqual(dongXong('A', 'CT01', '2026-10-07'), ['A', 'CT01', '2026-10-07', 'Xong', '', '']); a.equal(parse([COT, dongXong('A', 'CT01', '2026-10-07')]).length, 0);
   const t = parse([COT, ['A', 'CT01', '2026-10-05', 'Mở'], ['B', 'Chung', '07/10/2026', ''], ['C', 'CT02', '2026-11-30', 'Mở'], ['D', '', '', 'Mở'], ['Đã làm', '', '2026-10-01', 'Xong'], []]);
   a.deepEqual(t.map(x => x.ten), ['A', 'B', 'C', 'D']);

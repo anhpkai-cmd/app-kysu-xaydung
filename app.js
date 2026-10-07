@@ -14,7 +14,7 @@ import { MAU as MAU_TIN, dmy, macDinh, soan, zalo } from './tin.js';
 import { moPS, locPSCho, ghiPS, docPS, CHO as PS_CHO } from './phatsinh.js';
 import { docFile, chuY, ngayVn as ngayVt, moVatTu, locNtMoi, luuVe, themVatTu, demVatTu, soVn, themYc, lapYc, veYc } from './vattu.js';
 import { moCC, doiThang, sauLap, lapCC } from './chamcong.js';
-import { COT as COT_VIEC, parse as parseViec, tenTatCa, dongXong, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
+import { COT as COT_VIEC, parse as parseViec, tenTatCa, dongXong, chia, nhan as nhanHan, conLai, iso, cong, dem14 } from './viec.js';
 
 const $ = id => document.getElementById(id);
 const FOLDER = 'application/vnd.google-apps.folder', SHEET = 'application/vnd.google-apps.spreadsheet';
@@ -191,6 +191,17 @@ function veDsv() {
   if (locV) { const bo = Object.assign(document.createElement('button'), { className: 'phu', textContent: 'Xem tất cả', onclick: () => { locV = ''; veDsv(); veHan(); } }); b.replaceChildren(`Đang xem: ${locV === 'ct' ? locC + ', 7 ngày tới' : LOC_VIEC[locV]}. `, bo); }
 }
 const tinhKpi = () => { const hom = homNay(), n7 = chia(viec, hom, 7), c = sotCt.find(x => x.id === $('ct').value); return { moi: (c?.vt?.moi || []).filter(t => !tenViec.has(t)).length, hom: n7.sapDen.filter(t => t.n === 0).length, qua: n7.quaHan.length + hanDs.filter(d => d.n < 0).length, sap: n7.sapDen.filter(t => t.n > 0).length + hanDs.filter(d => d.n >= 0).length }; };
+// Biểu đồ cột hạn 14 ngày (mọi công trình, cột đầu = số trên thẻ Quá hạn) và vòng tròn vật tư (công trình đang chọn, đúng thẻ Vật tư cần xử lý). SVG thẳng, chữ số để HTML cho đọc rõ.
+function veBieuDo(qua, vt) {
+  const hom = homNay(), cnt = dem14(viec.map(t => conLai(t.han, hom)), hanDs.map(d => d.n), sotCt.flatMap(c => c.vt?.lichN || [])), bars = [qua, ...cnt], mx = Math.max(1, ...bars);
+  const ngay = i => cong(hom, i), thu = i => ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][new Date(ngay(i) + 'T00:00:00Z').getUTCDay()];
+  $('bdn').textContent = `${cnt.reduce((a, b) => a + b, 0)} mục từ hôm nay đến ${ngayVt(ngay(13)).slice(0, 5)} · cột đỏ: quá hạn`;
+  $('bdc').innerHTML = `<svg class="bars" viewBox="0 0 540 110" role="img" aria-label="Số mục có hạn mỗi ngày trong 14 ngày tới">${bars.map((v, i) => `<rect class="cb ${i === 0 ? 'late' : i === 1 ? 'today' : ''}" x="${i * 36 + 4}" y="${108 - Math.round(v / mx * 100)}" width="28" height="${Math.round(v / mx * 100)}" rx="4"/>`).join('')}</svg><div class="bl">${bars.map((v, i) => `<span class="${i === 1 ? 'now' : ''}"><b>${v || ''}</b><br>${i === 0 ? 'Trễ' : thu(i - 1) + '<br>' + ngay(i - 1).slice(8)}</span>`).join('')}</div>`;
+  if (!vt) return $('bdv').textContent = vt === null ? 'Chưa đọc được vật tư.' : 'Chưa có số liệu vật tư.';
+  const seg = [['Cần xử lý', vt.cam + vt.can, 'var(--late)'], ['Chờ kết quả', vt.cho, 'var(--warn)'], ['Xong', vt.lo - vt.cam - vt.can - vt.cho, 'var(--ok)']], tot = vt.lo || 1;
+  let off = 0;
+  $('bdv').innerHTML = vt.lo ? `<div class="donut"><svg viewBox="0 0 100 100" role="img" aria-label="Vật tư theo tình trạng"><circle cx="50" cy="50" r="38" class="track"/>${seg.map(([, n, c]) => { const len = n / tot * 238.8, el = n ? `<circle cx="50" cy="50" r="38" fill="none" stroke="${c}" stroke-width="14" stroke-dasharray="${len} ${238.8 - len}" stroke-dashoffset="${-off}" transform="rotate(-90 50 50)"/>` : ''; off += len; return el; }).join('')}<text x="50" y="52" text-anchor="middle" class="big">${vt.lo}</text><text x="50" y="65" text-anchor="middle" class="sm">lô</text></svg><ul>${seg.map(([t, n, c]) => `<li><i style="background:${c}"></i>${t}<b>${n}</b></li>`).join('')}</ul></div>` : 'Chưa có lô vật tư nào về.';
+}
 function veKpi() {
   const k = tinhKpi(), c = sotCt.find(x => x.id === $('ct').value);
   $('kpi').hidden = $('sot').hidden; $('kpv').textContent = k.hom; $('als').textContent = k.sap; $('alq').textContent = k.qua;
@@ -199,6 +210,7 @@ function veKpi() {
   $('alm').textContent = k.moi; $('alm').parentNode.hidden = !k.moi; // thẻ Nghiệm thu chưa mời chỉ hiện khi có
   const vt = c?.vt; $('kpt').textContent = vt ? vt.cam + vt.can : '–'; $('kpts').textContent = vt ? [vt.cam && `${vt.cam} cấm dùng`, vt.can && `${vt.can} chưa xong thủ tục`].filter(Boolean).join(', ') : vt === null ? 'Chưa đọc được' : ''; $('kpts').className = vt?.cam ? 'w' : '';
   $('kpps').querySelector('b').textContent = psCho ?? '–';
+  veBieuDo(k.qua, vt);
   const cts = [...$('ct').options].filter(o => o.value); // thẻ Theo công trình: chỉ hiện khi có từ 2 công trình
   $('tcts').parentNode.hidden = $('sot').hidden || cts.length < 2;
   $('tcts').replaceChildren(...cts.map(o => {

@@ -101,7 +101,7 @@ export const chuY = (dm, lo) => lo.map(l => ({ l, c: canLam(l, dm) })).filter(x 
 export const viecMoi = x => `Mời TVGS nghiệm thu: ${x.ten} (${x.ma})`; // tên việc nhắc mời TVGS (do nút Nhắc tôi tạo)
 let locM = false; // mục Lịch nghiệm thu chỉ hiện các dòng chưa có việc mời TVGS (từ thẻ Trang chủ)
 export const locNtMoi = v => { locM = v; if (lich.length) ve(); };
-export const dem = (dm, lo, lich) => { const v = chuY(dm, lo); return { tiep: lich.find(x => x.n >= 0)?.kt || '', moi: lich.filter(x => x.n >= 0 && x.n <= 2).map(viecMoi), nt: lich.filter(x => x.n <= 2).length, cam: v.filter(x => x.c[0].cam).length, can: v.filter(x => !x.c[0].cam).length }; };
+export const dem = (dm, lo, lich) => { const v = chuY(dm, lo); return { lichN: lich.filter(x => x.n >= 0 && x.n < 14).map(x => x.n), lo: lo.length, cho: lo.filter(l => canLam(l, dm).length).length - v.length, tiep: lich.find(x => x.n >= 0)?.kt || '', moi: lich.filter(x => x.n >= 0 && x.n <= 2).map(viecMoi), nt: lich.filter(x => x.n <= 2).length, cam: v.filter(x => x.c[0].cam).length, can: v.filter(x => !x.c[0].cam).length }; };
 export const demVatTu = async (api, id) => { const { dm, lo, lich } = await docFile(api, id); return dem(dm, lo, lich); };
 
 // ---- Phần giao diện. h: hàm dùng chung của app.js (api, ls, thuMuc, json, taiLen, taoViec) và id file nhật ký ----
@@ -376,6 +376,7 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vattu.js')) { /
   const lc = lichNt(cv, [NT, [46300, 'CB-1', 'x', '', 'Hẹn lại'], [46301, 'HM1-1', 'x', '', 'Không đạt']], '2026-10-06');
   a.deepEqual(lc.map(x => [x.ma, x.n]), [['CB-1', -3], ['HM1-1', 4]]); // hẹn lại, không đạt vẫn còn; HM1-2 ngày số 46330 = 04/11 (quá 14 ngày); không ngày thì bỏ
   a.deepEqual(lichNt(cv, [NT, [46300, 'CB-1', 'x', '', 'Đạt']], '2026-10-06').map(x => x.ma), ['HM1-1']);
+  a.deepEqual(dem([], [{ ten: 'A', nt: true }], []), { lichN: [], lo: 1, cho: 0, tiep: '', moi: [], nt: 0, cam: 0, can: 0 }); // lô đã nghiệm thu: không cần xử lý, không chờ
   a.deepEqual(dem([], [], lc).moi, lc.filter(x => x.n >= 0 && x.n <= 2).map(x => 'Mời TVGS nghiệm thu: ' + x.ten + ' (' + x.ma + ')')); // thẻ Nghiệm thu chưa mời
   a.deepEqual(thieuNt(lc[1], lo, dm), ['Chưa có khối lượng thực hiện trong nhật ký', 'Có 1 lô vật tư KHÔNG ĐẠT chưa xử lý (xem mục Vật tư)']);
   a.deepEqual(lichNt([['Mã'], ['A', 'Cũ', '', 0, '', '01/09/2026'], ['B', 'Vừa qua', '', 0, '', '06/09/2026']], [], '2026-10-06').map(x => x.ma), ['B']); // quá 30 ngày thì bỏ
