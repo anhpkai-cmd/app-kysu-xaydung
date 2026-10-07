@@ -131,3 +131,6 @@ Tab Nhật ký có khối "Họp an toàn 5 phút": app gợi ý chủ đề the
 
 ## Đăng xuất / đổi tài khoản
 Thêm → Cài đặt → "Đăng xuất / Đổi tài khoản": thu hồi mã đăng nhập Google trên máy này, lần đăng nhập sau Google hỏi chọn tài khoản. Nếu máy còn nhật ký nháp chưa lưu hoặc file chờ lưu, app báo trước (các thứ này không bị xóa).
+
+## Thanh bên cho máy tính
+Cửa sổ rộng từ 900px (máy tính, laptop) hiện thanh bên xanh than bên trái, thay cho thanh tab dưới: Trang chủ, Bản vẽ, Việc (chấm đỏ là số mục quá hạn), Nhật ký, rồi các nhóm của mục Thêm và nút Đăng xuất. Thanh bên dựng từ chính các liên kết sẵn có, nên thêm một mục vào lưới Thêm là thanh bên tự có. Hẹp hơn 900px (điện thoại) vẫn là 5 tab dưới như cũ.
