@@ -120,3 +120,13 @@ body.dn .side .sdx{display:flex}
   .donut ul{list-style:none;margin:0;padding:0;display:grid;gap:6px;flex:1;font-size:14px}
   .donut li{display:flex;align-items:center;gap:8px} .donut li i{width:10px;height:10px;border-radius:3px;flex:none} .donut li b{margin-left:auto;font-variant-numeric:tabular-nums}
 }
+@media (min-width:900px){
+  .wxrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--rule)} .wxrow:first-child{border-top:0} .wxrow>b{width:44px;flex:none;font-size:13px}
+  .wxd{flex:1;display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;font-size:12px;color:var(--mute);min-width:0} .wxd b{color:var(--ink);font-size:15px} .wxd small{font-size:12px}
+  .wxd svg{width:26px;height:26px;flex:none;fill:none;stroke:var(--warn);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .wxd.rain{background:color-mix(in oklch,var(--c1) 12%,var(--card))} .wxd.rain svg{stroke:var(--c1)}
+  .bve{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--rule)} .bve:first-child{border-top:0}
+  .bve i{font-style:normal;font-weight:700;font-size:12px;padding:2px 6px;border-radius:6px;background:color-mix(in oklch,var(--c1) 14%,var(--card));color:var(--c1);flex:none}
+  .bve div{min-width:0;flex:1} .bve div b{display:block;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .bve small{display:block;font-size:12px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .bve em{font-style:normal;font-size:12px;color:var(--mute);flex:none}
+  .tien{width:100%;height:6px;border-radius:3px;background:var(--rule);margin-top:4px;overflow:hidden} .tien i{display:block;height:100%;background:var(--ok)}
+}

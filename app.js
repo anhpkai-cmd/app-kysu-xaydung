@@ -7,7 +7,7 @@ import { banGiao } from './bangiao.js';
 import { goiY, tatCa, dongNk } from './atld.js';
 import { ngayChup, tenAnh, sttTiep } from './anh.js';
 import { url as urlTT, parse as parseTT, viTri, nhatKy, tomTat, canhBao, NGAY } from './thoitiet.js';
-import { parse, loc, revTiep, revHopLe, tenChuan } from './register.js';
+import { parse, loc, revTiep, revHopLe, tenChuan, moiNhat } from './register.js';
 import { khoiQR, lamQR, moQR, inQR, sauBanMoi as qrSauBanMoi, laBanVe } from './qr.js';
 import { LOAI as LOAI_HAN, dong as dongHan, COT_HAN } from './han.js';
 import { MAU as MAU_TIN, dmy, macDinh, soan, zalo } from './tin.js';
@@ -31,6 +31,7 @@ const say = t => $('msg').textContent = t || '';
 const blob = async url => { const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } }); if (!r.ok) throw new Error('Lỗi tải file ' + r.status); return r.blob(); };
 
 function hien() {
+  veBanVe();
   const kq = loc(docs, $('q').value);
   if (!kq.length && docs.length) return say(`Không có tài liệu nào khớp “${$('q').value}”. Thử từ khác, ví dụ tên bộ môn (KC, DN).`), $('ds').replaceChildren();
   say();
@@ -203,6 +204,33 @@ function veBieuDo(qua, vt) {
   let off = 0;
   $('bdv').innerHTML = vt.lo ? `<div class="donut"><svg viewBox="0 0 100 100" role="img" aria-label="Vật tư theo tình trạng"><circle cx="50" cy="50" r="38" class="track"/>${seg.map(([, n, c]) => { const len = n / tot * 238.8, el = n ? `<circle cx="50" cy="50" r="38" fill="none" stroke="${c}" stroke-width="14" stroke-dasharray="${len} ${238.8 - len}" stroke-dashoffset="${-off}" transform="rotate(-90 50 50)"/>` : ''; off += len; return el; }).join('')}<text x="50" y="52" text-anchor="middle" class="big">${vt.lo}</text><text x="50" y="65" text-anchor="middle" class="sm">lô</text></svg><ul>${seg.map(([t, n, c]) => `<li><i style="background:${c}"></i>${t}<b>${n}</b></li>`).join('')}</ul></div>` : 'Chưa có lô vật tư nào về.';
 }
+// Thời tiết 3 ngày mỗi công trình (vị trí lưu theo từng máy, xem taiTQ) và 4 bản vẽ mới nhất của công trình đang chọn.
+const tqAll = new Map(); // id công trình → dự báo | null (chưa có vị trí) | 'loi'
+const dom = (tag, text, cls) => Object.assign(document.createElement(tag), { textContent: text ?? '', className: cls || '' });
+const WICO = k => k.startsWith('Mưa') ? 'M7 15a4 4 0 1 1 1-7.9A5 5 0 0 1 18 9a3.5 3.5 0 0 1-.5 6.9z M9 18v2 M13 18v3 M17 18v2' : k === 'Mây' ? 'M7 18a4 4 0 1 1 1-7.9A5 5 0 0 1 18 12a3.5 3.5 0 0 1-.5 6z' : 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4';
+const icoW = k => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('aria-hidden', 'true'); p.setAttribute('d', WICO(k)); s.append(p); return s; };
+function veThoiTiet() {
+  $('bdw').replaceChildren(...[...$('ct').options].filter(o => o.value).map(o => {
+    const row = dom('div', '', 'wxrow'), ds = tqAll.get(o.value);
+    row.append(dom('b', o.text.split('_')[0]));
+    if (ds === null) { const b = dom('button', 'Chưa có vị trí, bấm để đặt', 'phu'); b.onclick = () => { $('ct').value = o.value; $('ct').dispatchEvent(new Event('change')); $('tq').querySelector('details').open = true; $('tqv').focus(); }; row.append(b); }
+    else if (!Array.isArray(ds)) row.append(dom('span', ds === 'loi' ? 'Không lấy được thời tiết.' : 'Đang tải…'));
+    else for (const [i, d] of ds.slice(0, 3).entries()) { const k = nhatKy(d), c = dom('div', '', 'wxd' + (d.mua >= 60 ? ' rain' : '')); c.title = tomTat(d); c.append(icoW(k), dom('span', NGAY[i]), dom('b', `${Math.round(d.nong)}°`), dom('small', k)); row.append(c); }
+    return row;
+  }));
+}
+async function taiTQAll() { // mỗi công trình có vị trí thì lấy dự báo một lần cho cả phiên
+  await Promise.all([...$('ct').options].filter(o => o.value && !Array.isArray(tqAll.get(o.value))).map(async o => {
+    let vt; try { vt = localStorage.getItem('vt:' + o.value); } catch {}
+    const vi = viTri(vt); if (!vi) return tqAll.set(o.value, null);
+    try { const r = await fetch(urlTT(...vi)); if (!r.ok) throw 0; tqAll.set(o.value, parseTT(await r.json())); } catch { tqAll.set(o.value, 'loi'); }
+  }));
+  veThoiTiet();
+}
+function veBanVe() {
+  const ds = moiNhat(docs);
+  $('bdb').replaceChildren(...(ds.length ? ds.map(d => { const r = dom('div', '', 'bve'), t = dom('div'); t.append(dom('b', d.ten), dom('small', [d.ma, d.tt].filter(Boolean).join(' · '))); r.append(dom('i', d.rev), t, dom('em', ngayVt(d.ngay))); return r; }) : [dom('p', 'Sổ đăng ký của công trình này chưa có tài liệu.')]));
+}
 function veKpi() {
   const k = tinhKpi(), c = sotCt.find(x => x.id === $('ct').value);
   $('kpi').hidden = $('sot').hidden; $('kpv').textContent = k.hom; $('als').textContent = k.sap; $('alq').textContent = k.qua;
@@ -211,12 +239,13 @@ function veKpi() {
   $('alm').textContent = k.moi; $('alm').parentNode.hidden = !k.moi; // thẻ Nghiệm thu chưa mời chỉ hiện khi có
   const vt = c?.vt; $('kpt').textContent = vt ? vt.cam + vt.can : '–'; $('kpts').textContent = vt ? [vt.cam && `${vt.cam} cấm dùng`, vt.can && `${vt.can} chưa xong thủ tục`].filter(Boolean).join(', ') : vt === null ? 'Chưa đọc được' : ''; $('kpts').className = vt?.cam ? 'w' : '';
   $('kpps').querySelector('b').textContent = psCho ?? '–';
-  veBieuDo(k.qua, vt);
+  veBieuDo(k.qua, vt); veThoiTiet(); veBanVe();
   const cts = [...$('ct').options].filter(o => o.value); // thẻ Theo công trình: chỉ hiện khi có từ 2 công trình
   $('tcts').parentNode.hidden = $('sot').hidden || cts.length < 2;
   $('tcts').replaceChildren(...cts.map(o => {
-    const a = Object.assign(document.createElement('a'), { className: 'kpi', href: '#viec' }), n = viecCt(o.text).length + hanCt(o.text).length, tiep = sotCt.find(x => x.id === o.value)?.vt?.tiep;
+    const a = Object.assign(document.createElement('a'), { className: 'kpi', href: '#viec' }), n = viecCt(o.text).length + hanCt(o.text).length, vt = sotCt.find(x => x.id === o.value)?.vt, tiep = vt?.tiep;
     a.append(Object.assign(document.createElement('span'), { textContent: o.text.split('_')[0] }), Object.assign(document.createElement('b'), { textContent: n, className: 'nho' }), Object.assign(document.createElement('small'), { textContent: `mục trong 7 ngày tới · ${o.text.split('_').slice(1).join(' ')}` }), Object.assign(document.createElement('small'), { textContent: tiep ? 'Nghiệm thu tới: ' + ngayVt(tiep).slice(0, 5) : 'Chưa có lịch nghiệm thu' }));
+    if (vt?.hm?.tong) { const t = dom('div', '', 'tien'); t.append(dom('i')); t.firstChild.style.width = Math.round(100 * vt.hm.xong / vt.hm.tong) + '%'; a.append(dom('small', `${vt.hm.xong}/${vt.hm.tong} hạng mục xong (theo DANHMUC)`), t); }
     a.onclick = () => { locV = 'ct'; locC = o.text; locTay = location.hash !== '#viec'; veDsv(); veHan(); };
     return a;
   }));
@@ -642,7 +671,7 @@ async function banTinNut() { try { $('sotb').textContent = (await lichTin()).len
 let sotCt = [], sotXong = false; // mỗi công trình: {id, ma, nk: true|false|null, anh: số ảnh|null}; null = chưa kiểm tra được
 const maCT = c => c.name.split('_')[0];
 async function sotQuet(cts) { // quét mọi công trình, chỉ đọc (không tạo thư mục, không chuyển Excel thành Sheet)
-  sotXong = false; const ngay = serial(homNay());
+  sotXong = false; const ngay = serial(homNay()); taiTQAll();
   sotCt = await Promise.all(cts.map(async c => {
     const r = { id: c.id, ma: maCT(c), nk: null, anh: null };
     try { // chưa có Google Sheet nhật ký thì để null: không biết thì không báo ổn
@@ -730,6 +759,7 @@ $('nkc').onchange = e => e.target.dataset.sua = 1;
 $('tql').onclick = () => {
   const vi = viTri($('tqv').value); if (!vi) return tqMs('Gõ vĩ độ rồi kinh độ, ví dụ 10.77, 106.70.');
   try { localStorage.setItem(tqKey(), vi.join(', ')); } catch { return tqMs('Máy không cho lưu vị trí.'); }
+  tqAll.delete($('ct').value); taiTQAll();
   taiTQ();
 };
 $('tqg').onclick = () => navigator.geolocation ? navigator.geolocation.getCurrentPosition(p => { $('tqv').value = `${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`; $('tql').click(); }, () => tqMs('Không lấy được vị trí máy. Hãy cho phép vị trí hoặc gõ tọa độ.')) : tqMs('Máy không hỗ trợ lấy vị trí.');
