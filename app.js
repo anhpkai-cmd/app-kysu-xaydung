@@ -14,7 +14,7 @@ import { MAU as MAU_TIN, dmy, macDinh, soan, zalo } from './tin.js';
 import { moPS, ghiPS, docPS, CHO as PS_CHO } from './phatsinh.js';
 import { docFile, chuY, ngayVn as ngayVt, moVatTu, locNtMoi, luuVe, themVatTu, demVatTu, soVn, themYc, lapYc, veYc } from './vattu.js';
 import { moCC, doiThang, sauLap, lapCC } from './chamcong.js';
-import { COT as COT_VIEC, parse as parseViec, tenTatCa, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
+import { COT as COT_VIEC, parse as parseViec, tenTatCa, dongXong, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
 const $ = id => document.getElementById(id);
 const FOLDER = 'application/vnd.google-apps.folder', SHEET = 'application/vnd.google-apps.spreadsheet';
@@ -194,7 +194,7 @@ function veKpi() {
   const k = tinhKpi(), c = sotCt.find(x => x.id === $('ct').value);
   $('kpi').hidden = $('sot').hidden; $('kpv').textContent = k.hom; $('als').textContent = k.sap; $('alq').textContent = k.qua;
   let xx = 0; try { xx = +localStorage.getItem('xx:' + homNay()) || 0; } catch {}
-  $('kpvs').textContent = xx ? `hôm nay đã xong ${xx} việc` : ''; $('kpvs').className = '';
+  $('kpvs').textContent = `hôm nay đã xong ${xx} việc`; $('kpvs').className = '';
   $('alm').textContent = k.moi; $('alm').parentNode.hidden = !k.moi; // thẻ Nghiệm thu chưa mời chỉ hiện khi có
   $('kpa').textContent = c?.anh === null ? '–' : anhDs.length; // đúng số ảnh ở mục Xếp ảnh (gồm cả 00_INBOX ngoài cùng)
 }
@@ -754,7 +754,7 @@ const tnCtx = () => {
   return { tenCT, hom: dmy(hom), mai: dmy(cong(hom, 1)), tt: ttDong, thoiTiet: { hom: tqDs[0] && tomTat(tqDs[0]), mai: tqDs[1] && tomTat(tqDs[1]) },
     viecMai: viec.filter(t => (!t.ct || t.ct === 'Chung' || t.ct === ten) && conLai(t.han, hom) === 1).map(t => t.ten) };
 };
-let tnV = {}, tnSan = null; // tnSan: ô điền sẵn khi mở từ chỗ khác (Mời TVGS ở Lịch nghiệm thu)
+let tnV = {}, tnSan = null, tnMoi = ''; // tnMoi: tên việc "Mời TVGS" sẽ ghi Xong khi anh bấm Chép tin mời // tnSan: ô điền sẵn khi mở từ chỗ khác (Mời TVGS ở Lịch nghiệm thu)
 function tnVe(moi) {
   const m = MAU_TIN.find(x => x.id === $('tnm').value), c = tnCtx();
   if (moi) {
@@ -770,13 +770,18 @@ function tnVe(moi) {
   $('tnt').value = soan(m, tnV, c);
   const z = zalo(m, c); $('tnz').hidden = !z; if (z) { $('tnz').href = z.href; $('tnz').textContent = 'Mở Zalo của ' + z.ten; }
 }
-const moiNt = (nd, ngay) => { tnSan = { nd, ngay }; $('tnm').value = 'nt'; if ($('tnd').open) tnVe(true); else $('tnd').open = true; location.hash = 'tn'; };
+const moiNt = (nd, ngay, viecMoi) => { tnSan = { nd, ngay }; tnMoi = viecMoi; $('tnm').value = 'nt'; if ($('tnd').open) tnVe(true); else $('tnd').open = true; location.hash = 'tn'; };
 $('tnm').replaceChildren(...MAU_TIN.map(m => new Option(m.ten, m.id)));
-$('tnm').onchange = () => tnVe(true);
+$('tnm').onchange = () => { tnMoi = ''; tnVe(true); };
 $('tnd').ontoggle = () => { if ($('tnd').open) tnVe(true); };
 $('tnc').onclick = async () => {
-  try { await navigator.clipboard.writeText($('tnt').value); $('tnms').textContent = 'Đã chép. Mở Zalo rồi dán vào khung tin.'; }
-  catch { $('tnt').select(); $('tnms').textContent = document.execCommand?.('copy') ? 'Đã chép. Mở Zalo rồi dán vào khung tin.' : 'Máy không cho chép tự động: giữ vào khung tin, chọn Sao chép.'; }
+  let ok = true;
+  try { await navigator.clipboard.writeText($('tnt').value); } catch { $('tnt').select(); ok = !!document.execCommand?.('copy'); }
+  $('tnms').textContent = ok ? 'Đã chép. Mở Zalo rồi dán vào khung tin.' : 'Máy không cho chép tự động: giữ vào khung tin, chọn Sao chép.';
+  if (ok && tnMoi && !tenViec.has(tnMoi)) { // chép tin mời nghiệm thu = đã mời: ghi việc đã Xong để thẻ Nghiệm thu chưa mời tự hết
+    const t = tnMoi; tnMoi = '';
+    try { await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [dongXong(t, $('ct').selectedOptions[0].text, homNay())] })); await taiViec(); if (hv) moVatTu(hv); } catch (e) { $('tnms').textContent += ' Chưa ghi được việc đã mời: ' + e.message; }
+  }
 };
 
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.

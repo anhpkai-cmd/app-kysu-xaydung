@@ -268,7 +268,7 @@ async function taoMauYc(goc) { // tạo mẫu đề xuất một lần; từ l�
 }
 
 // Mời TVGS: mở mẫu "Mời nghiệm thu" của Tin nhắn soạn sẵn (tin.js: tên công trình thật, người nhận, nút mở Zalo), điền sẵn công việc và ngày.
-const moiTvgs = x => h.moiNt(`${x.ten} (${x.ma})`, ngayVn(x.n > 0 ? x.kt : cong(homNay(), 1)));
+const moiTvgs = x => h.moiNt(`${x.ten} (${x.ma})`, ngayVn(x.n > 0 ? x.kt : cong(homNay(), 1)), viecMoi(x));
 
 // Nghiệm thu công việc: thêm một dòng NGHIEMTHU (ngày, mã, nội dung, kết quả Đạt, số biên bản). Chỉ thêm dòng, không sửa dòng cũ.
 async function ghiNt(x) {

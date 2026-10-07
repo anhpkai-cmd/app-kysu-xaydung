@@ -82,7 +82,7 @@ header>div{flex:1;min-width:0}
 .alert span{font-size:13px;font-weight:600;line-height:1.25}
 .alert b{font-size:22px;line-height:1.1;color:var(--a);font-variant-numeric:tabular-nums}
 .alert[hidden]{display:none}
-.alert.b{--a:var(--accent)}
+.alert.b{--a:oklch(78% .15 95)} .alert.b b{color:oklch(48% .1 90)}
 .alert.r{--a:var(--late)} .alert.o{--a:var(--warn)} .alert.o b{color:oklch(48% .13 55)}
 :root[data-skin="dark"] .alert.o b{color:var(--a)}
 #viecloc:not([hidden]){display:flex;flex-wrap:wrap;align-items:center;gap:8px}
