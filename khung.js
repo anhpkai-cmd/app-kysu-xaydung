@@ -17,7 +17,7 @@ function di() {
 (() => {
   const side = document.getElementById('side'), chu = a => [...a.childNodes].find(n => n.nodeType === 3 && n.textContent.trim()).textContent.trim();
   const them = (g, a, tab) => { const l = document.createElement('a'); l.href = a.hash; if (tab) l.dataset.tab = 1; l.append(a.querySelector('svg').cloneNode(true), chu(a)); g.append(l); return l; };
-  side.innerHTML = '<div class="brand"><i>889</i><div><b>Sổ tay kỹ sư</b><small>Công trường</small></div></div>';
+  side.innerHTML = '<div class="brand"><i><img src="icon-192.png" alt="889" width="36" height="36"></i><div><b>Sổ tay kỹ sư</b><small>Công trường</small></div></div>';
   const dau = document.createElement('div');
   document.querySelectorAll('nav a:not([href="#more"])').forEach(a => { const l = them(dau, a, 1); if (a.querySelector('.dot')) l.insertAdjacentHTML('beforeend', '<span class="dot" id="sdot"></span>'); });
   side.append(dau);
