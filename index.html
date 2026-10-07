@@ -80,15 +80,19 @@
 <div class="home">
   <section id="kpi" data-s="home" hidden>
     <div class="kpis">
-      <a class="kpi" href="#viec" data-l="hom"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z M8 12l3 3 5-6"/></svg>Việc hôm nay</span><b id="kpv">0</b><small id="kpvs"></small></a>
-      <a class="kpi pc" href="#anh"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4z M4 16l5-5 4 4 3-3 4 4"/></svg>Ảnh chờ xếp</span><b id="kpa">0</b><small id="kpas">Công trình đang chọn</small></a>
-      <a class="kpi pc" href="#vt"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10"/></svg>Vật tư cần xử lý</span><b id="kpt">0</b><small id="kpts"></small></a>
-      <a class="kpi pc" id="kpps" href="#ps"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z M14 3v5h5 M10 13h6 M10 17h6"/></svg>Phát sinh chờ xác nhận</span><b>–</b><small>Chờ chủ đầu tư trả lời</small></a>
+      <a class="kpi" href="#viec" data-l="hom"><span><i class="chip c1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z M8 12l3 3 5-6"/></svg></i>Việc hôm nay</span><b id="kpv">0</b><small id="kpvs"></small></a>
+      <a class="kpi pc" href="#anh"><span><i class="chip c2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4z M4 16l5-5 4 4 3-3 4 4"/></svg></i>Ảnh chờ xếp</span><b id="kpa">0</b><small id="kpas">Công trình đang chọn</small></a>
+      <a class="kpi pc" href="#vt"><span><i class="chip c3"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10"/></svg></i>Vật tư cần xử lý</span><b id="kpt">0</b><small id="kpts"></small></a>
+      <a class="kpi pc" id="kpps" href="#ps"><span><i class="chip c4"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z M14 3v5h5 M10 13h6 M10 17h6"/></svg></i>Phát sinh chờ xác nhận</span><b>–</b><small>Chờ chủ đầu tư trả lời</small></a>
     </div>
     <div class="alerts">
       <a class="alert r" href="#viec" data-l="qua"><span>Quá hạn</span><b id="alq">0</b></a>
       <a class="alert o" href="#viec" data-l="sap"><span>Sắp đến hạn</span><b id="als">0</b></a>
       <a class="alert b" href="#ntl" hidden><span>Nghiệm thu chưa mời</span><b id="alm">0</b></a>
+    </div>
+    <div class="viz">
+      <div class="card"><div class="ch"><h3>Hạn trong 14 ngày tới</h3><span id="bdn"></span></div><div id="bdc"></div></div>
+      <div class="card"><div class="ch"><h3>Vật tư theo tình trạng</h3><a class="nutlk" href="#vt">Mở</a></div><div id="bdv"></div></div>
     </div>
   </section>
   <section data-s="home" id="tct" hidden><h2>Theo công trình</h2><div id="tcts" class="kpis"></div></section>
