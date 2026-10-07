@@ -213,7 +213,7 @@ function veThoiTiet() {
   $('bdw').replaceChildren(...[...$('ct').options].filter(o => o.value).map(o => {
     const row = dom('div', '', 'wxrow'), ds = tqAll.get(o.value);
     row.append(dom('b', o.text.split('_')[0]));
-    if (ds === null) { const b = dom('button', 'Chưa có vị trí, bấm để đặt', 'phu'); b.onclick = () => { $('ct').value = o.value; $('ct').dispatchEvent(new Event('change')); $('tq').querySelector('details').open = true; $('tqv').focus(); }; row.append(b); }
+    if (ds === null) { const b = dom('button', 'Chưa có vị trí, bấm để đặt', 'phu'); b.onclick = () => { $('ct').value = o.value; $('ct').dispatchEvent(new Event('change')); $('tqdt').open = true; $('tqv').focus(); }; row.append(b); }
     else if (!Array.isArray(ds)) row.append(dom('span', ds === 'loi' ? 'Không lấy được thời tiết.' : 'Đang tải…'));
     else for (const [i, d] of ds.slice(0, 3).entries()) { const k = nhatKy(d), c = dom('div', '', 'wxd' + (d.mua >= 60 ? ' rain' : '')); c.title = tomTat(d); c.append(icoW(k), dom('span', NGAY[i]), dom('b', `${Math.round(d.nong)}°`), dom('small', k)); row.append(c); }
     return row;
@@ -708,8 +708,9 @@ function veSot() {
     return l;
   }, cam = sotCt.filter(c => c.vt?.cam).map(c => [c.vt.cam, x => `${c.ma}: ${x} lô vật tư KHÔNG ĐẠT, cấm dùng`, '#vt', c.id]), toi = 5; // cấm dùng luôn đứng trên cùng; tối đa 5 việc, còn lại gom một dòng
   $('sotds').replaceChildren(...cam.map(lk), ...homVc.slice(0, toi).map(t => dongViec(t, nhanHan(t.n))), ...(homVc.length > toi ? [lk([homVc.length - toi, x => `và ${x} việc nữa`, '#viec'])] : []), ...(dong.length ? dong.map(lk) : homVc.length || cam.length ? [] : [Object.assign(document.createElement('p'), { textContent: sotXong ? 'Hôm nay không còn gì sót.' : 'Đang kiểm tra các công trình...' })]));
-  const mai = nhom.sapDen.filter(t => t.n === 1), tt = tqDs[1], cb = cbTT().filter(t => t.startsWith('Ngày mai')); // ngày mai cần chuẩn bị: việc đến hạn, thời tiết
-  $('sotn').replaceChildren(...(mai.length || tt ? [Object.assign(document.createElement('h3'), { textContent: 'Ngày mai cần chuẩn bị' }), ...mai.map(t => dongViec(t, 'Ngày mai')), ...(tt ? [`Thời tiết ${maCT({ name: $('ct').selectedOptions[0].text })} ngày mai: ${tomTat(tt)}`] : []).concat(cb.map(t => 'Cảnh báo: ' + t)).map((t, i) => Object.assign(document.createElement('p'), { textContent: t, className: t.startsWith('Cảnh báo') ? 'cb' : '' }))] : []));
+  const mai = nhom.sapDen.filter(t => t.n === 1), cb = cbTT(); // ngày mai cần chuẩn bị: việc đến hạn; cảnh báo thời tiết cho cả 3 ngày (tên ngày nằm trong câu)
+  const h3 = x => Object.assign(document.createElement('h3'), { textContent: x });
+  $('sotn').replaceChildren(...(mai.length ? [h3('Ngày mai cần chuẩn bị'), ...mai.map(t => dongViec(t, 'Ngày mai'))] : []), ...(cb.length ? [h3('Cảnh báo thời tiết'), ...cb.map(t => Object.assign(document.createElement('p'), { textContent: t, className: 'cb' }))] : []));
 }
 const sotCap = kq => { const c = sotCt.find(x => x.id === $('ct').value); if (c) { Object.assign(c, kq); veSot(); } };
 const BAN_TIN = 'Sổ tay kỹ sư: hôm nay còn sót gì';
@@ -731,16 +732,15 @@ let tqDs = [];
 const tqKey = () => 'vt:' + $('ct').value, tqMs = t => $('tqms').textContent = t || '';
 const cbTT = () => { const ten = $('ct').selectedOptions[0]?.text, hom = homNay(); return canhBao(tqDs, viec.filter(t => !t.ct || t.ct === 'Chung' || t.ct === ten).map(t => ({ ...t, n: conLai(t.han, hom) }))); };
 function veTT() {
-  const cb = cbTT();
-  const p = t => Object.assign(document.createElement('p'), { textContent: t });
-  $('tqd').replaceChildren(...tqDs.map((d, i) => p(`${NGAY[i]}: ${tomTat(d)}`)), ...cb.map(t => Object.assign(p('Cảnh báo: ' + t), { className: 'cb' })));
   veSot(); hatVe(); // việc và thời tiết vừa đổi: gợi ý họp an toàn tính lại
 }
 async function taiTQ() {
-  const ct = $('ct').value; tqDs = []; tqMs(); veTT();
+  const ct = $('ct').value, ma = $('ct').selectedOptions[0]?.text.split('_')[0] || '';
+  $('tqdt').querySelector('summary').textContent = 'Vị trí công trình ' + ma; $('tqv').labels[0].textContent = `Tọa độ của ${ma} (vĩ độ, kinh độ)`; // ghi rõ công trình để khỏi lưu nhầm
+  tqDs = []; tqMs(); veTT();
   let vt; try { vt = localStorage.getItem(tqKey()); } catch {}
   $('tqv').value = vt || ''; const vi = viTri(vt);
-  if (!vi) { $('tq').querySelector('details').open = true; return tqMs('Chưa có vị trí công trình. Bấm "Lấy vị trí máy" khi đang ở công trường, hoặc gõ tọa độ.'); }
+  if (!vi) { $('tqdt').open = true; return tqMs('Chưa có vị trí công trình. Bấm "Lấy vị trí máy" khi đang ở công trường, hoặc gõ tọa độ.'); }
   try {
     const r = await fetch(urlTT(...vi)), j = await r.json();
     if (!r.ok) throw new Error(j.reason || r.status);
@@ -856,7 +856,7 @@ async function vao(resp) {
     if (!goc) return say(`Không thấy thư mục ${ROOT_NAME} trên Drive.`);
     gocId = goc.id;
     const cts = (await ls(`'${goc.id}' in parents and mimeType='${FOLDER}' and name starts with 'CT'`)).sort((a, b) => a.name.localeCompare(b.name));
-    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('nhanh').hidden = false; $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('tn').hidden = false; $('ps').hidden = false; $('qr').hidden = false; $('tq').hidden = false;
+    $('ct').replaceChildren(...cts.map(c => new Option(c.name, c.id))); $('nhanh').hidden = false; $('loc').hidden = false; $('cts').hidden = false; $('sot').hidden = false; $('tn').hidden = false; $('ps').hidden = false; $('qr').hidden = false;
     try { const k = localStorage.getItem('ct'); if ([...$('ct').options].some(o => o.value === k)) $('ct').value = k; } catch {} // nhớ công trình đang làm
     $('vct').replaceChildren(new Option('Chung'), ...cts.map(c => new Option(c.name))); $('viec').hidden = false;
     viecId = await soViec(goc.id); await taiViec(); taiHan(cts); sotQuet(cts);
