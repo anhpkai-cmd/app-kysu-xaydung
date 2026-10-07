@@ -24,8 +24,20 @@ async function trang(so) { // chưa có trang PHATSINH thì tạo kèm hàng ti�
 }
 const nguoi = () => { const ai = $('psai').value.trim(); return h.ctx().tt.find(r => r[0] === 'Liên hệ' && r[1] === ai); };
 
+let dsPS = [], locPS = false, soPS = ''; // locPS: chỉ hiện việc chờ xác nhận (từ thẻ Trang chủ); số dòng hiện ra phải bằng số trên thẻ
+export const locPSCho = v => { locPS = v; if (soPS) veDs(); };
+function veDs() {
+  const cho = dsPS.filter(x => x.tt === CHO), hien = locPS ? cho : dsPS;
+  ms(dsPS.length ? `${dsPS.length} việc phát sinh, ${cho.length} chờ xác nhận.` : 'Chưa ghi việc phát sinh nào.');
+  $('psds').replaceChildren(...(locPS ? [Object.assign(document.createElement('p'), { textContent: `Đang xem: chờ xác nhận (${cho.length} / ${dsPS.length}) ` })] : []), ...hien.map(x => {
+    const p = document.createElement('p'); p.textContent = `${x.ngay} · ${x.ai}: ${x.nd}${x.kl ? ' · ' + x.kl : ''} · ${x.tt}`;
+    if (x.tt === CHO) { p.append(' '); const b = p.appendChild(document.createElement('button')); b.textContent = 'Đã được xác nhận'; b.onclick = () => xacNhan(soPS, x, b); }
+    return p;
+  }));
+  if (locPS) $('psds').firstChild.append(Object.assign(document.createElement('button'), { textContent: 'Xem tất cả', onclick: () => locPSCho(false) }));
+}
 export async function moPS(ham) {
-  h = ham; ms(); $('psm').hidden = true; $('psds').replaceChildren(); $('psk').hidden = true;
+  h = ham; soPS = ''; dsPS = []; h.cho?.(undefined); ms(); $('psm').hidden = true; $('psds').replaceChildren(); $('psk').hidden = true;
   const { so, tt } = h.ctx();
   $('psais').replaceChildren(...tt.filter(r => r[0] === 'Liên hệ' && r[1]).map(r => new Option(r[2] ? `${r[1]} (${r[2]})` : r[1], r[1])));
   const hom = () => $('psd').value = new Date().toLocaleDateString('sv-SE'); // ngày theo giờ máy (valueAsDate lấy giờ UTC, 0h-7h ra hôm qua)
@@ -36,13 +48,7 @@ export async function moPS(ham) {
     const v = gid == null ? [] : (await h.api(`${sh(so)}/values/PHATSINH!A:I`)).values;
     if (h.ctx().so !== so) return; // đổi công trình giữa chừng
     $('psm').hidden = gid == null; $('psm').href = `https://docs.google.com/spreadsheets/d/${so}/edit#gid=${gid}`;
-    const ds = docPS(v).reverse(), cho = ds.filter(x => x.tt === CHO).length;
-    ms(ds.length ? `${ds.length} việc phát sinh, ${cho} chờ xác nhận.` : 'Chưa ghi việc phát sinh nào.');
-    $('psds').replaceChildren(...ds.map(x => {
-      const p = document.createElement('p'); p.textContent = `${x.ngay} · ${x.ai}: ${x.nd}${x.kl ? ' · ' + x.kl : ''} · ${x.tt}`;
-      if (x.tt === CHO) { p.append(' '); const b = p.appendChild(document.createElement('button')); b.textContent = 'Đã được xác nhận'; b.onclick = () => xacNhan(so, x, b); }
-      return p;
-    }));
+    dsPS = docPS(v).reverse(); soPS = so; veDs(); h.cho?.(dsPS.filter(x => x.tt === CHO).length);
   } catch (e) { ms(e.message); }
 }
 async function xacNhan(so, x, b) {

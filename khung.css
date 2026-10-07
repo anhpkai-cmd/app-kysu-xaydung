@@ -94,3 +94,7 @@ header>div{flex:1;min-width:0}
 }
 .side .sdx{display:none}
 body.dn .side .sdx{display:flex}
+
+.cot .nut>*{min-width:0;overflow-wrap:anywhere} /* nút chữ dài (Không cần CO/CQ) xuống dòng, không tràn ô */
+#sotds .doc{margin:0} /* khoảng cách giữa các dòng Còn sót do gap của lưới, không cộng thêm margin */
+.cot .nut{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}

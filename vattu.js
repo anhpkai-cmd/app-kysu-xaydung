@@ -123,7 +123,7 @@ function ve() {
   const khac = lo.map(l => [l, canLam(l, dm)]).filter(([l, v]) => v.length && !cc.some(([k]) => k === l)); // chỉ còn chờ kết quả thí nghiệm: việc của phòng thí nghiệm
   const dongLo = ([l, v]) => {
     const el = tao('div', '', 'doc cot'), th = tao('div'), nut = tao('div', '', 'nut'); // nhiều nút: xếp dưới chữ cho vừa màn hình điện thoại
-    th.append(tao('div', `${l.ten} · ${l.kl.toLocaleString('vi-VN')} ${l.dv}`), tao('small', `Lô ${l.ma} · ` + l.dong.map(x => [ngayVn(x.ngay), x.ncc].filter(Boolean).join(' ')).join('; ')), ...v.map(x => tao(x.cam ? 'strong' : 'div', '• ' + x.chu)));
+    th.append(tao('div', `${l.ten} · ${l.kl.toLocaleString('vi-VN')} ${l.dv}`), tao('small', `Lô ${l.ma} · ` + l.dong.map(x => [ngayVn(x.ngay), x.ncc].filter(Boolean).join(' ')).join('; ')), ...v.map(x => { const d = tao('div'); d.append(x.cam ? tao('strong', '• ' + x.chu) : '• ' + x.chu); return d; })); // chữ đậm cũng xuống dòng riêng, không dính dòng ngày về
     const link = l.dong.flatMap(x => String(x.phieu).split(/\s+/)).filter(x => x.startsWith('https://'));
     link.forEach((u, i) => nut.append(Object.assign(tao('a', link.length > 1 ? `Phiếu ${i + 1}` : 'Phiếu', 'nutlk'), { href: u, target: '_blank', rel: 'noopener' })));
     for (const x of v) for (const n of x.nut) nut.append(nutBam(n.chu, `${n.chu}: ${l.ten} lô ${l.ma}`, () => ghiLo(l, n)));
