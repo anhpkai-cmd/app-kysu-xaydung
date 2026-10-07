@@ -248,14 +248,16 @@ export async function lapYc() {
   let ten = h.tenCt();
   if (ten === '(tên công trình)') { if (!confirm(`Trang Thông tin chưa có dòng "Tên công trình", phiếu sẽ ghi "${tenCt}". Vẫn lập phiếu?`)) return; ten = tenCt; }
   ms('Đang lập phiếu...');
-  const goc = await h.thuMucMau(), mau = (await h.dsMau(goc)).find(f => f.name.startsWith(MAU_YC));
+  const goc = await h.thuMucMau(), mau = (await h.dsMau(goc)).filter(f => f.name.startsWith(MAU_YC)).at(-1); // dsMau xếp theo tên: tên dài nhất (PHIEU-YEU-CAU-VAT-TU_889) thắng tên trần của mẫu 7 cột cũ, nếu còn
   if (!mau) throw new Error(`Chưa có mẫu ${MAU_YC} trong thư mục CONGTRINH/_CHUNG/MAUBIEU_CONGTY. Bỏ file mẫu phiếu yêu cầu vật tư vào đó rồi lập lại.`);
   const dir = await h.thuMuc(ct, '05_VATTU_DOITHICONG/PHIEU_YEUCAU'), so = `${maCt()}-YC-VT-${homNay().replaceAll('-', '')}`;
   const ma = `${so}-${soTiep(so, (await h.ls(`'${dir}' in parents and name contains '${so}'`)).map(f => f.name))}`;
   const f = await h.lapMau(mau, ma + '_PhieuYeuCauVatTu', dir);
   const sh2 = `https://sheets.googleapis.com/v4/spreadsheets/${f.id}`, tab = (await h.api(`${sh2}?fields=sheets.properties`)).sheets[0].properties;
-  const cho = choBang((await h.api(`${sh2}/values/'${tab.title}'!A1:B60`)).values || [], ds.length);
+  const v = (await h.api(`${sh2}/values/'${tab.title}'!A1:C60`)).values || [];
+  const cho = choBang(v, ds.length);
   if (!cho) throw new Error(`Mẫu ${mau.name} thiếu dòng tiêu đề bảng có ô "STT" ở cột A.`);
+  if (!/đơn vị/i.test(v[cho.stt][2] ?? '')) throw new Error(`Mẫu ${mau.name} không đúng bố cục 6 cột (STT, Tên vật tư và quy cách, Đơn vị tính, Số lượng, Ngày cần, Ghi chú). Xóa mẫu cũ trong MAUBIEU_CONGTY rồi bỏ mẫu mới vào.`);
   await h.api(`${sh2}:batchUpdate`, h.json({ requests: [...cho.them ? [{ insertDimension: { range: { sheetId: tab.sheetId, dimension: 'ROWS', startIndex: cho.at, endIndex: cho.at + cho.them }, inheritFromBefore: cho.dau } }] : [],
     ...[['Số phiếu', ma], ['Công trình', ten]].map(([t, gt]) => ({ findReplace: { find: `{{${t}}}`, replacement: gt, allSheets: true } }))] }));
   await h.api(`${sh2}/values/'${tab.title}'!A${cho.stt + 2}?valueInputOption=RAW`, { ...h.json({ values: ds.map((x, i) => [i + 1, tenQc(x), x.dv, x.sl, ngayVn(x.can), x.gc]) }), method: 'PUT' }); // số thứ tự ghi số thẳng (thay công thức đánh số của dòng đã dùng)
