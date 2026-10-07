@@ -2,7 +2,12 @@
 
 Web app (cài được lên điện thoại/máy tính) đọc Google Drive theo cây thư mục `CONGTRINH/CTxx_.../` và sổ đăng ký `_SODANGKY` của từng công trình.
 
-Bản đầu: đăng nhập Google → chọn công trình → xem/tìm tài liệu trong sổ → bấm **Gửi** để chia sẻ link bản hiện hành.
+Bản đầu: đăng nhập Google → chọn công trình → xem/tìm tài liệu trong sổ → bấm **Gửi**: app hỏi xác nhận, đặt file thành "ai có link đều xem được" rồi mở bảng chia sẻ của máy.
+
+## Bản mới và nhận file từ Zalo
+- **Bản mới** (mỗi tài liệu có nút này): chọn file → nhập Rev → app lưu vào thư mục chuẩn trong cột "Thư mục chuẩn" của sổ với tên chuẩn, chuyển bản cũ sang `LUUTRU` (không xóa gì) và ghi Rev, ngày vào sổ. Tài liệu phải có sẵn một dòng trong sổ.
+- **Nhận file từ Zalo/ứng dụng khác:** sau khi cài app ra màn hình chính (Android/Chrome), bấm Chia sẻ trong Zalo → chọn "Sổ tay KS" → mở app, đăng nhập, bấm "Bản mới" ở đúng tài liệu. iPhone/Safari không hỗ trợ kiểu này.
+- **iPhone:** trong Zalo giữ file → Chia sẻ → **Lưu vào Drive** → chọn thư mục `00_INBOX` của công trình. Mở app: file hiện trong khung "file chờ lưu"; chọn file, bấm "Bản mới" ở đúng tài liệu. File đã nằm trên Drive nên app chỉ đổi tên và chuyển thư mục, không tải lại. Hộp `00_INBOX` được tạo tự động nếu chưa có.
 
 ## Điều kiện
 - Trên Drive có thư mục `CONGTRINH`, trong đó mỗi công trình có Google Sheet tên bắt đầu bằng `_SODANGKY` với trang `DANHMUC` (cột: Mã tài liệu, Tên, Rev hiện hành, Ngày rev, Trạng thái, Từ khóa).
@@ -16,3 +21,126 @@ Bản đầu: đăng nhập Google → chọn công trình → xem/tìm tài li�
 ## Chạy thử / kiểm tra
 - `node register.js` chạy bài kiểm tra tự động cho phần đọc sổ.
 - `python3 -m http.server` rồi mở http://localhost:8000.
+
+## Việc cần làm
+
+- Sheet `_CONGVIEC` (tab `VIEC`) tự tạo trong thư mục `CONGTRINH` lần đầu dùng.
+- Việc có hạn sẽ tạo sự kiện Google Calendar 08:00 (nhắc trước 3 ngày, 1 ngày, đúng ngày). Cần bật **Google Calendar API** trong Google Cloud; đăng nhập lại để cấp quyền lịch.
+- Bấm **Xong** sẽ đánh dấu trong sheet và xóa sự kiện lịch. Sửa hạn tay trong sheet không cập nhật lịch.
+
+## Nhớ đăng nhập
+
+App giữ phiên đăng nhập trên máy (khoảng 1 giờ). Hết hạn, app thử xin lại âm thầm; nếu Google không cho thì hiện nút Đăng nhập. Không có máy chủ nên không thể kéo dài quá 1 giờ mỗi lần.
+
+## Nhật ký ngày
+
+Mục "Nhật ký ngày" ghi vào Google Sheet `CTxx-NK-NHATKY_2026` (trang NGAY và KHOILUONG), tìm theo mã công trình đang chọn. Nếu trên Drive mới chỉ có file Excel, app tự chuyển thành Google Sheet (giữ nguyên file Excel). App chỉ thêm dòng mới, không ghi đè. Khối lượng còn gõ trong ô mà chưa bấm "Thêm việc vào ngày" thì tự được thêm khi bấm Lưu; số gõ kiểu Việt Nam (12.500 là mười hai nghìn năm trăm, 15,5 là mười lăm phẩy năm), không đọc được thì báo để sửa. Ngày đã có trong nhật ký: bấm Lưu chỉ thêm khối lượng còn thiếu (sau khi hỏi), các ô nhật ký đã có không bị sửa. Chạy `node nhatky.js` để tự kiểm tra đổi ngày.
+
+## Hạn giấy tờ
+
+Thanh xanh trên thẻ "Theo công trình" của Trang chủ là tiến độ thi công. Thêm cột **Giá trị** (thành tiền của từng hạng mục, số) vào **cột I** của trang `DANHMUC` trong file nhật ký (`CTxx-NK-NHATKY`), sau cột "% hoàn thành" ở cột H; đặt tiêu đề ô I1 là **Giá trị (thành tiền)** (app chỉ đọc cột I khi có tiêu đề này). Phải nhập đủ mọi hạng mục thì app mới hiện %; còn thiếu thì thẻ ghi "x/y hạng mục xong · còn k hạng mục chưa nhập Giá trị". Hạng mục trọn gói không có khối lượng (chi phí chung, lán trại): ghi KL dự toán là 1, làm xong thì Lũy kế là 1 (làm một nửa ghi 0,5). App tính tiến độ = tổng (Giá trị × Lũy kế/KL dự toán, mỗi hạng mục tối đa 100%) chia tổng Giá trị, hiện "Tiến độ 62% (theo giá trị, DANHMUC)". Chưa nhập cột này thì thẻ ghi "x/y hạng mục xong".
+
+Thêm cột **Hạn hiệu lực** vào trang DANHMUC của `_SODANGKY` (cột không bắt buộc, nhập dd/mm/yyyy), ví dụ cho bảo lãnh, bảo hiểm, giấy phép. Trong mục Việc, app liệt kê giấy tờ quá hạn hoặc còn dưới 30 ngày, từ mọi công trình; nút **Nhắc tôi** điền sẵn việc "Gia hạn: ..." với hạn là 14 ngày trước ngày hết hiệu lực. Ngày hạn không đọc được vẫn hiện để sửa trong sổ.
+
+## Thông tin công trình
+
+Mục "Thông tin công trình" đọc trang `THONGTIN` trong `_SODANGKY` (app tự tạo trang này lần đầu). Mỗi dòng: Nhóm (Liên hệ hoặc Thông tin), Tên, Chi tiết, Điện thoại. Liên hệ có số điện thoại thì có nút Gọi và Zalo. Thêm dòng ngay trong app; sửa hoặc xóa thì làm trực tiếp trong Trang tính. Trang chỉ có một ô "Công trình đang làm" ở đầu, app nhớ lần chọn cuối; tài liệu, thông tin, nhật ký đều theo ô đó. Trang THONGTIN chỉ được tạo khi bấm Thêm lần đầu. Nhật ký đang nhập dở được lưu nháp trên máy theo từng công trình, lưu thành công thì xóa nháp.
+
+## Văn bản gửi đi (hợp đồng, báo giá, biên bản)
+
+- **Soát trước khi gửi:** bấm **Gửi**, app đọc bản Google Docs, Word hoặc PDF của tài liệu (PDF scan thì Drive tự nhận dạng chữ; bản tạm để trong `CONGTRINH/_TAM` và xóa ngay sau khi đọc) rồi so với các dòng nhóm "Thông tin" của trang `THONGTIN`. App báo: số tiền gần giống mà khác (lệch dưới 5%, ví dụ 424.575.008 đ trong khi thông tin ghi 423.301.185 đ), số bằng số khác số bằng chữ trong cùng văn bản, và mục không thấy trong văn bản. Số tiền viết 423.301.185, 423,301,185 hay 423301185 đồng, ngày viết 24/9/2026 hay "ngày 24 tháng 9 năm 2026" đều được coi là một. Không đọc được chữ thì báo "chưa soát được", không bao giờ báo khớp. Thấy cảnh báo vẫn có thể bấm OK để gửi (gửi vội). Gửi xong app hỏi riêng "lần sau vẫn nhắc chứ?": bấm OK là vẫn nhắc; chỉ khi bấm Hủy (báo nhầm) thì lần sau tài liệu này mới không nhắc lại (nhớ trên máy). Bảng tính chỉ soát trang đầu và app ghi rõ điều đó. Mỗi dòng Thông tin nên ghi một giá trị (ví dụ Tên "Giá trị hợp đồng", Chi tiết "423.301.185 đ").
+- **Sổ gửi nhận:** gửi xong app thêm một dòng vào trang `NHATKY_GUINHAN` của `_SODANGKY` (ngày, mã, Rev, file). File có đuôi `_NHAP` được bỏ đuôi khi gửi.
+- **Lập văn bản từ mẫu:** bỏ mẫu (Word, Excel, Google Docs/Trang tính, có sẵn logo và thông tin công ty) vào `CONGTRINH/_CHUNG/MAUBIEU_CONGTY`. Chỗ cần điền ghi `{{Tên mục}}` đúng như cột Tên trong Thông tin, thêm `{{Ngày}}` là ngày lập. Chọn mẫu và loại (CV, HD, BB...), app chép mẫu vào `07_VANBAN/DI` của công trình, điền, đặt tên theo luồng 1 `CT01-CV-DI-20261006-01-R00_MoTa_NHAP`, ghi vào sổ (R00, Nháp) rồi mở để sửa. Chỗ nào chưa có thông tin thì app báo. Cần bật **Google Docs API** trong Google Cloud (không phải đăng nhập lại). Thông tin công ty (địa chỉ, mã số thuế, tài khoản) chỉ nằm trong mẫu trên Drive, không nằm trong mã app vì kho mã công khai.
+- **Bị trả:** mỗi tài liệu có nút **Bị trả** để ghi lý do chủ đầu tư/TVGS trả hồ sơ (một dòng "Nhận", "Bị trả: ..." trong NHATKY_GUINHAN). Lần Gửi sau, hộp xác nhận nhắc lại tối đa 5 lý do đã gặp của công trình.
+- **Số bằng chữ trong mẫu:** mục Thông tin nào là số tiền thì có thêm chỗ điền `{{Tên mục bằng chữ}}`, ví dụ `{{Giá trị HĐ bằng chữ}}` thành "Bốn trăm hai mươi ba triệu ... đồng". `{{Ngày dài}}` thành "ngày 06 tháng 10 năm 2026". Báo giá, bảng khối lượng bằng Excel/Trang tính cũng được soát khi Gửi (đọc trang đầu), kể cả tổng tiền bằng số so với dòng bằng chữ.
+- **Thông tư, nghị định:** nút trong mục Thông tin mở thư mục `CONGTRINH/_CHUNG/THONGTU_NGHIDINH` (tự tạo lần đầu bấm). Dòng Thông tin có Chi tiết là đường link `https://...` (ví dụ sổ NotebookLM của công trình) có nút **Mở**.
+- Chạy `node vanban.js` để tự kiểm tra phần soát.
+- **Họp chủ đầu tư:** nút **Chuẩn bị họp chủ đầu tư** trong mục Thông tin gom cho công trình đang chọn: tiến độ 7 ngày (số ngày có nhật ký, số người trung bình, khối lượng từng việc, sự cố), việc đang mở, giấy tờ đang chờ duyệt và 5 lần gửi gần nhất trong 30 ngày. Bản tin sửa được: xóa phần nội bộ (việc quá hạn, sự cố) rồi bấm **Chép / gửi (đã xem lại)**. 6 ảnh mới nhất chỉ hiện trên màn hình, không gửi kèm. Chỉ đọc, không ghi gì. `node hop.js` tự kiểm tra.
+- **Phát sinh, chỉ đạo hiện trường:** CĐT, TVGS yêu cầu miệng thì bấm **+ Ghi yêu cầu miệng**: người yêu cầu (chọn trong danh bạ công trình), ngày, nội dung, vị trí, khối lượng ước, ảnh. App ghi vào trang PHATSINH của `_SODANGKY` (ảnh vào `04_KHOILUONG_THANHTOAN/PS_PHATSINH`), rồi soạn sẵn tin xác nhận lại để chép gửi Zalo người yêu cầu làm bằng chứng. Người đó trả lời đồng ý thì bấm **Đã được xác nhận**. Cuối kỳ bấm **Mở sổ phát sinh** để làm phụ lục. `node phatsinh.js` tự kiểm tra.
+
+## Ảnh hiện trường
+
+Tải ảnh lên thư mục `00_INBOX` của công trình, hoặc `00_INBOX` ngoài cùng của My Drive (ảnh vào công trình đang chọn), bằng app Google Drive (từ Zalo hoặc Timemark). Mục "Ảnh hiện trường" hiện lưới ảnh nhỏ. Tick các ảnh cùng một hạng mục, chọn hạng mục (mã trong trang DANHMUC của file nhật ký; luôn có thêm CHUNG, ATLD, VATLIEU ở cuối), gõ mô tả nếu muốn, bấm Xếp; ảnh chưa tick ở lại cho lượt sau. Dòng trên nút cho biết trước các ảnh sẽ vào ngày nào.
+
+Ảnh được chuyển (không xóa, không nén) vào `09_HINHANH/yyyy-mm/yyyy-mm-dd/` và đặt tên `CT01-HA-20261006-001_HM2-1.1_MoTa.jpg`. Ngày chụp lấy theo EXIF, rồi mốc thời gian đầu tên file Zalo (chỉ nhận khi nằm trong khoảng 2020 đến ngày mai). Ảnh chỉ đoán được ngày (theo ngày tải lên) thì app hỏi: bấm "Dùng ngày này" (hoặc "Dùng ngày đoán cho các ảnh đã tick") hoặc chọn ngày; chưa có ngày thì ảnh ở lại INBOX, không xếp. Có nút "Chọn tất cả / Bỏ chọn". Ảnh chụp tài liệu (bản vẽ, biên bản) thì bấm "Đây là tài liệu": file được đổi tên thêm tiền tố `TAILIEU_` ngay trên Drive và chuyển sang danh sách file chờ lưu (giữ lại cả khi mở app lần sau). Nếu ảnh nhỏ hiện ô xám trên iPhone, app tự thử tải lại bằng mã đăng nhập. `node anh.js` tự kiểm tra.
+
+Lưu ý ảnh HEIC của iPhone: bước điền báo cáo tuần vào mẫu Excel sẽ không chèn được HEIC. Hoặc đặt iPhone: Cài đặt, Camera, Định dạng, chọn "Tương thích nhất" (ra JPG), hoặc báo cáo phải lấy bản JPG từ Drive (`thumbnailLink` cỡ lớn). Chưa có sổ ảnh riêng: tên file đã mang đủ công trình, ngày, hạng mục, mô tả.
+
+## Hôm nay còn sót gì
+
+Khung đầu trang liệt kê: việc quá hạn hoặc đến hạn hôm nay (từng việc có nút **Xong** ngay tại khung), giấy tờ hết hạn trong 7 ngày, và với **từng công trình** (không chỉ công trình đang chọn): nhật ký hôm nay chưa ghi, ảnh chờ xếp. Chạm một dòng thì app chuyển sang đúng công trình đó. Mục nào không kiểm tra được (chưa có Google Sheet nhật ký, mất sóng) thì hiện "Chưa kiểm tra được...", và chỉ ghi "Hôm nay không còn gì sót" khi mọi mục đã kiểm tra xong. Việc quét chỉ đọc, không tạo thư mục hay chuyển Excel. Để app mở qua đêm thì sang ngày mới app tự tải lại.
+
+Dưới đó là mục **Ngày mai cần chuẩn bị**: việc đến hạn ngày mai (có nút Xong), dự báo và cảnh báo thời tiết của ngày mai.
+
+Nút **Nhắc tôi lúc 17h mỗi ngày** tạo một sự kiện lặp trên Google Lịch (thứ 2 đến thứ 7, 17:00); bấm lại không tạo trùng, đã bật thì nút thành **Tắt nhắc 17h** (xóa sự kiện). Lịch chỉ nhắc mở app, nội dung nằm trong app. Cần bật Google Calendar API.
+
+## Thời tiết công trình
+
+Khung "Thời tiết công trình" lấy dự báo 3 ngày từ Open-Meteo (miễn phí, không cần khóa) theo vị trí của công trình đang chọn. Vị trí: bấm **Lấy vị trí máy** khi đang ở công trường, hoặc gõ tọa độ "vĩ độ, kinh độ"; vị trí lưu trên máy này theo từng công trình. App đọc tên các việc chưa xong có hạn trong 3 ngày tới (của công trình đó hoặc Chung) và cảnh báo: đổ bê tông gặp mưa hoặc từ 35°C; mái, tôn, cẩu, giàn giáo gặp gió giật từ 36 km/h hoặc mưa; sơn, bả gặp độ ẩm từ 85% (cao nhất 7h đến 17h) hoặc mưa; sơn chỉ khớp tên như "Sơn tường ngoài", "Bả matit". Mở Nhật ký ngày của hôm nay thì ô Thời tiết sáng và chiều được điền sẵn theo dự báo (sáng và chiều giống nhau, sửa tay được; không đè lên nháp). `node thoitiet.js` tự kiểm tra.
+
+## Vật tư
+
+Mục "Vật tư" ghi vào file nhật ký `CTxx-NK-NHATKY` của công trình (cùng file với Nhật ký ngày). Cột A..H của trang VATTU giữ nguyên như file gốc; app chỉ thêm cột từ I trở đi.
+- Trang `DMVATTU` (app tự tạo lần đầu bấm Thêm): Vật tư, Quy cách, ĐV, Ngày đệ trình, Ngày duyệt, Tần suất lấy mẫu (tự ghi), Ghi chú, KL dự toán. Có dự toán thì danh mục hiện "Đã về 19/20 tấn (95%)", vượt thì báo VƯỢT dự toán; chưa có thì bấm Nhập dự toán, sai thì bấm Sửa dự toán. Số gõ kiểu Việt Nam: 12.500 là mười hai nghìn rưỡi, 15,5 là mười lăm phẩy năm.
+- Trang `VATTU`: mỗi lần vật tư về một dòng; thêm cột Phiếu giao nhận, Mã lô, Kết quả TN (bê tông: R7), Kết quả R28, Xử lý. Thí nghiệm và nghiệm thu tính theo **lô**: về thêm cho lô cũ thì chọn lại Mã lô, kết quả ghi lên mọi dòng của lô.
+- **Vật tư về:** vật tư chưa được TVGS duyệt thì app hỏi lại trước khi ghi. CO/CQ chọn Chưa, Có hoặc Không cần (cát, đá mua ngoài bãi). Ảnh phiếu giao nhận lưu vào `05_VATTU_DOITHICONG/PHIEU_GIAONHAN/` tên `CT01-GN-20261006-01_XiMangPcb40.jpg`, tải ảnh trước rồi mới ghi dòng; mất sóng giữa chừng thì bấm lại, ảnh đã tải không tải lại.
+- **Cần xử lý:** mỗi lô chưa xong kèm nút bước tiếp theo. Bê tông: bấm Đã đúc mẫu là thêm việc "Nén mẫu R7", "R28" (theo ngày đổ) vào Việc cần làm. Không đạt: lô ghi "Cấm dùng", thêm việc "Xử lý lô không đạt" hạn hôm nay (bê tông đã đổ: R7 không đạt chỉ cảnh báo; R28 không đạt ghi "Báo TVGS, khoan lõi" và thêm việc báo TVGS, khoan lõi kiểm định), đứng đầu khung Còn sót tới khi bấm Đã xử lý xong.
+- **Nghiệm thu** (chỉ mở khi đã duyệt, đủ CO/CQ, mẫu đạt): thêm một dòng mã VATLIEU vào trang `NGHIEMTHU`.
+- Khung **Còn sót** đếm lô cấm dùng và lô chưa xong của mọi công trình.
+- Trước khi ghi, app đọc lại các dòng đó; sheet vừa bị sửa ở nơi khác thì không ghi mà tải lại. Chạy `node vattu.js` để tự kiểm tra.
+
+## Mã QR bản vẽ
+
+Ở mỗi **bản vẽ** (mã tài liệu có BV hoặc SD, ví dụ CT01-BV-KC-005; hợp đồng, báo giá không có nút này) có nút **QR**. Bấm (sau khi xác nhận cảnh báo: **ai có mã QR đều xem được bản vẽ, không cần đăng nhập Google**) thì app tạo một bản sao cố định của bản hiện hành trong thư mục `QR_HIENHANH` của công trình, mở quyền "ai có link xem được" và hiện mã QR ở mục "Mã QR bản vẽ". Quét mã bằng camera là mở file trên Drive. Khi bấm **Bản mới** cho tài liệu đó, app thay nội dung và tên của chính file QR (một yêu cầu duy nhất) nên mã QR in sẵn vẫn đúng; tên file ghi "bản R03 ngày ...", Drive hiện tên này trên đầu khi mở. Nếu chưa chuyển được sang bản mới, app báo CHÚ Ý (mã vẫn mở bản cũ) và bấm QR ở tài liệu để thử lại. **Thu hồi** gỡ quyền xem (quét không mở được), **Bật lại** mở lại. Tick các mã rồi bấm **In tờ A4**: mỗi ô một mã, tên và Rev in to để cắt dán (in từ máy tính cho chắc; app cài trên iPhone có thể không mở được hộp in).
+
+Giới hạn: thay nội dung phải tải file về máy rồi tải lại lên (bản vẽ vài chục MB trên 4G sẽ chậm); tài liệu dạng Google Docs không thay được tự động. Thư viện tạo mã `qrcode.mjs` (qrcode-generator 2.0.4, MIT) để nguyên bản; mã sinh ra đã được kiểm bằng máy đọc QR (jsQR). `node qr.js` tự kiểm tra.
+
+## Lịch nghiệm thu
+
+Mục "Lịch nghiệm thu" tự liệt kê các công việc trong trang `DANHMUC` của file nhật ký (lấy từ tiến độ đã trình) có ngày **Kết thúc KH** trong 14 ngày tới hoặc đã qua không quá 30 ngày, mà trang `NGHIEMTHU` chưa có dòng mã đó với Kết quả "Đạt".
+- Mỗi việc ghi những gì còn thiếu mà app tự kiểm được: chưa có khối lượng thực hiện trong nhật ký, còn lô vật tư KHÔNG ĐẠT chưa xử lý.
+- **Nhắc tôi** thêm việc "Mời TVGS nghiệm thu: ..." (trước 1 ngày) và "Nghiệm thu: ..." vào Việc cần làm, hạn là ngày kết thúc. **Mời TVGS** mở mẫu "Mời nghiệm thu" của Tin nhắn soạn sẵn, điền sẵn công việc và ngày (Google Lịch nhắc trước 3 ngày, 1 ngày). **Đã nghiệm thu** hỏi ngày và số biên bản rồi thêm một dòng vào `NGHIEMTHU` (không sửa dòng cũ).
+- Khung **Còn sót** đếm việc cần nghiệm thu trong 2 ngày tới hoặc đã quá ngày.
+
+## Phiếu yêu cầu vật tư
+
+Trong mục Vật tư, **+ Phiếu yêu cầu vật tư** gợi ý các công việc tuần tới theo tiến độ và vật tư còn thiếu so với dự toán. Đánh dấu một hay nhiều vật tư, ghi số lượng và đơn vị tính (đơn vị lấy sẵn từ danh mục, sửa được), chọn ngày cần, bấm **Thêm vào phiếu**, rồi **Lập phiếu và gửi**. Phiếu ghi tên công trình theo dòng "Tên công trình" trong trang Thông tin:
+- Mẫu là file `PHIEU-YEU-CAU-VAT-TU_889.xlsx` (logo, thông tin công ty) anh bỏ vào `CONGTRINH/_CHUNG/MAUBIEU_CONGTY`; chưa có mẫu thì app báo và không lập. App không tự tạo mẫu. Có nhiều mẫu cùng tiền tố thì app lấy mẫu tên dài nhất; mẫu lệch bố cục (ví dụ mẫu 7 cột cũ) thì app báo và không ghi gì. Giữ nguyên thứ tự cột bảng: STT, Tên vật tư và quy cách, Đơn vị tính, Số lượng, Ngày cần, Ghi chú (tên vật tư và quy cách ghi chung một ô, cách nhau dấu phẩy), và dòng tiêu đề có ô **STT** ở cột A. Các dòng trống có sẵn dưới tiêu đề được điền trước, nhiều vật tư hơn thì app chèn thêm dòng (ô "Tổng số loại" tự giãn theo); các ô `{{Tên mục}}` điền như văn bản gửi đi.
+- Nếu logo mất sau khi app đổi Excel sang Trang tính: mở file mẫu bằng Google Trang tính, Lưu thành Google Trang tính, rồi dùng bản đó làm mẫu (cùng tên, đuôi khác). Sau đó xóa file `.xlsx` khỏi `MAUBIEU_CONGTY`: có nhiều mẫu cùng tiền tố thì app lấy tên dài nhất, tức file `.xlsx` sẽ thắng bản Trang tính.
+- Phiếu lưu ở `05_VATTU_DOITHICONG/PHIEU_YEUCAU`, tên `CTxx-YC-VT-yyyymmdd-01_PhieuYeuCauVatTu`. Mỗi vật tư thêm một việc "<vật tư> về (phiếu ...)" vào ngày cần.
+- Gửi: app hỏi trước khi mở link cho người có link xem, rồi mở Chia sẻ (Zalo) với nội dung phiếu và link.
+
+## Hồ sơ nghiệm thu, hoàn công
+
+Màn **Hồ sơ nghiệm thu** (ô trong tab Thêm) liệt kê từng công việc trong trang `DANHMUC` của file nhật ký, mỗi việc có 5 mục hồ sơ: Biên bản nghiệm thu, Kết quả thí nghiệm vật liệu, mẫu, Bản vẽ hoàn công, Ảnh thi công, Nhật ký thi công. App tự tích **Biên bản nghiệm thu** (trang `NGHIEMTHU` có dòng Đạt cho mã đó) và **Nhật ký thi công** (cột Lũy kế thực hiện lớn hơn 0); ba mục còn lại anh chọn Chưa, Có hoặc Không cần (mục không liên quan đến việc đó thì chọn Không cần). Đầu màn ghi bao nhiêu công việc đã đủ hồ sơ. Mỗi lần chọn app thêm một dòng vào trang `HOSO` (tự tạo khi ghi lần đầu: Ngày, Mã công việc, Hồ sơ, Tình trạng); dòng sau cùng của mỗi mục là tình trạng hiện tại, không sửa dòng cũ. Danh sách mục ghi cứng cho mọi công việc, app chưa tự soát ảnh hay bản vẽ trong Drive. `node hoso.js` tự kiểm tra.
+
+## Chấm công tổ đội
+
+Mục "Chấm công tổ đội" cộng số người từng nhóm đã ghi trong Nhật ký ngày (trang `NGAY`) theo tháng: công = số người, nghỉ nửa buổi tính nửa công, nghỉ cả ngày không tính. App báo các ngày trong tháng chưa ghi nhật ký (trừ Chủ nhật). **Lập bảng công gửi tổ trưởng ký** tạo Trang tính `CTxx-CC-yyyymm-01_BangCong` trong `05_VATTU_DOITHICONG/CHAMCONG` (từng ngày, tổng công, chỗ ký), hỏi trước khi mở link cho người có link xem, rồi mở Chia sẻ (Zalo). App không ghi gì vào nhật ký. `node chamcong.js` tự kiểm tra.
+
+## Thiết bị, thẻ an toàn, giấy tờ có hạn
+
+Dưới danh sách giấy tờ sắp hết hạn có ô "+ Thêm thiết bị cần kiểm định, thẻ an toàn, giấy tờ có hạn": chọn loại (kiểm định cẩu, giàn giáo, máy hàn; thẻ an toàn lao động; giấy tờ khác như bảo lãnh, bảo hiểm), gõ tên và ngày hết hạn. App thêm một dòng vào trang DANHMUC của `_SODANGKY` công trình đang chọn (mã dạng CT01-TB-001, CT01-AT-001, CT01-GT-001; tự thêm cột "Hạn hiệu lực" nếu sổ chưa có), nên dùng luôn danh sách "Giấy tờ sắp hết hạn" (còn dưới 30 ngày), nút **Nhắc tôi** và khung Còn sót (dưới 7 ngày). Muốn sửa ngày hay xóa dòng thì sửa trực tiếp trong Trang tính. `node han.js` tự kiểm tra.
+
+## Tin nhắn Zalo soạn sẵn
+
+Mục "Tin nhắn soạn sẵn" soạn bốn loại tin hay gửi: báo tổ đội lịch ngày mai, báo chủ đầu tư dừng thi công do mưa, mời nghiệm thu (tư vấn giám sát), nhắc nhà cung cấp giao hàng. Tên công trình (trang Thông tin, dòng "Tên công trình", nếu có), ngày, dự báo thời tiết, việc đến hạn ngày mai và người nhận (liên hệ có vai trò "Chủ đầu tư" hoặc "Giám sát" trong trang Thông tin) được điền sẵn; chỉ phải gõ phần còn lại. Sửa tin trong khung rồi bấm **Chép tin**, mở Zalo và dán; nếu liên hệ có số điện thoại thì có nút mở đúng cuộc trò chuyện Zalo. Không cần bot Zalo, không gửi gì đi từ app. Đổi một ô thì tin được soạn lại cả (chữ sửa tay trong khung sẽ mất). `node tin.js` tự kiểm tra.
+
+Nút **Đã gia hạn** trên mỗi dòng hạn: hỏi ngày hết hạn mới (dd/mm/yyyy, không được trước hôm nay) rồi ghi đè ô "Hạn hiệu lực" của đúng dòng trong sổ công trình đó (đọc lại mã tài liệu của dòng trước khi ghi; sổ vừa đổi thì tải lại và hỏi lại). Thiết bị cần kiểm định (mã có -TB-) được nhắc trước 30 ngày, giấy tờ khác trước 14 ngày. Đổi công trình thì app bỏ sổ đăng ký của công trình trước, nên công trình chưa có sổ hoặc tải lỗi sẽ không ghi nhầm vào sổ cũ (cũng áp dụng cho nút lập văn bản từ mẫu).
+
+## Khung giao diện (thanh tab dưới)
+Năm tab: Trang chủ (còn sót, thời tiết), Bản vẽ (tài liệu, mã QR), Việc, Nhật ký (xếp ảnh), Thêm (tin Zalo, thông tin công trình, vật tư, lịch nghiệm thu, Cài đặt). Ô chọn công trình luôn nằm ở đầu trang. Chấm đỏ ở Việc là số việc quá hạn. Thêm → Cài đặt chọn giao diện Sáng (mặc định), Tối hoặc Biển xanh (nền bãi biển). Trang chủ có 4 ô Làm nhanh. Khối mới thêm vào index.html chỉ cần ghi `data-s="tên màn"`; địa chỉ `#tên` mở màn đó.
+
+## Bàn giao khi vắng mặt
+Thêm → Thông tin công trình → "Bàn giao khi vắng mặt" (có thể ghi "Vắng đến ngày"): tạo một trang cho người thay gồm việc đang dở của công trình (quá hạn lên đầu), nghiệm thu sắp đến theo tiến độ, vật tư cần chú ý (từng lô: tên, mã lô, ngày về, lý do), giấy tờ và thiết bị hết hạn lúc vắng, phát sinh chờ chủ đầu tư trả lời và số điện thoại trong mục Liên hệ. Chép hoặc gửi qua Zalo như bản tin họp. App chỉ gom số liệu đã có, nên kiểm tra lại trước khi gửi.
+## Họp an toàn 5 phút
+Tab Nhật ký có khối "Họp an toàn 5 phút": app gợi ý chủ đề theo việc đã thêm vào nhật ký hôm nay (không có thì theo việc đến hạn hôm nay trong Việc cần làm; ngày dự báo trên 35 độ thì gợi chủ đề nắng nóng), đổi được. Chụp ảnh tổ đội rồi bấm Lưu: ảnh vào `09_HINHANH/yyyy-mm/yyyy-mm-dd` tên `CTxx-HA-yyyymmdd-STT_ATLD_HopAnToan`, và dòng "Họp an toàn 5 phút: chủ đề" được điền sẵn vào ô Sự cố, ATLĐ của nhật ký (bấm Lưu nhật ký để chốt). Chủ đề và ý chính nằm trong `atld.js` (sửa theo công ty được).
+
+## Đăng xuất / đổi tài khoản
+Thêm → Cài đặt → "Đăng xuất / Đổi tài khoản": thu hồi mã đăng nhập Google trên máy này, lần đăng nhập sau Google hỏi chọn tài khoản. Nếu máy còn nhật ký nháp chưa lưu hoặc file chờ lưu, app báo trước (các thứ này không bị xóa).
+
+## Thanh bên cho máy tính
+Cửa sổ rộng từ 900px (máy tính, laptop) hiện thanh bên xanh than bên trái, thay cho thanh tab dưới: Trang chủ, Bản vẽ, Việc (chấm đỏ là số mục quá hạn), Nhật ký, rồi các nhóm của mục Thêm và nút Đăng xuất. Thanh bên dựng từ chính các liên kết sẵn có, nên thêm một mục vào lưới Thêm là thanh bên tự có. Hẹp hơn 900px (điện thoại) vẫn là 5 tab dưới như cũ.
+
+## Trang chủ dạng bảng điều khiển
+Đầu Trang chủ có thẻ số liệu (Việc hôm nay; trên máy tính thêm Ảnh chờ xếp của công trình đang chọn) và thẻ cảnh báo viền màu (Quá hạn, Sắp đến hạn). Bấm thẻ mở mục Việc đã lọc đúng như thẻ ("Đang xem: Quá hạn", nút Xem tất cả); số trên thẻ bằng số dòng ở mục Việc, gồm cả giấy tờ có hạn. Điện thoại đưa Làm nhanh lên đầu; máy tính chia hai cột và chào "Xin chào anh Phan". Chưa có: thẻ Vật tư cần xử lý, Phát sinh, Nghiệm thu chưa mời và "Theo công trình".
