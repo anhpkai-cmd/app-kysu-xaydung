@@ -735,7 +735,9 @@ function veTT() {
   veSot(); hatVe(); // việc và thời tiết vừa đổi: gợi ý họp an toàn tính lại
 }
 async function taiTQ() {
-  const ct = $('ct').value, ma = $('ct').selectedOptions[0]?.text.split('_')[0] || ''; $('tqdt').querySelector('summary').textContent = 'Vị trí công trình ' + ma; $('tqv').labels[0].textContent = `Tọa độ của ${ma} (vĩ độ, kinh độ)`; // ghi rõ công trình để khỏi lưu nhầm tqDs = []; tqMs(); veTT();
+  const ct = $('ct').value, ma = $('ct').selectedOptions[0]?.text.split('_')[0] || '';
+  $('tqdt').querySelector('summary').textContent = 'Vị trí công trình ' + ma; $('tqv').labels[0].textContent = `Tọa độ của ${ma} (vĩ độ, kinh độ)`; // ghi rõ công trình để khỏi lưu nhầm
+  tqDs = []; tqMs(); veTT();
   let vt; try { vt = localStorage.getItem(tqKey()); } catch {}
   $('tqv').value = vt || ''; const vi = viTri(vt);
   if (!vi) { $('tqdt').open = true; return tqMs('Chưa có vị trí công trình. Bấm "Lấy vị trí máy" khi đang ở công trường, hoặc gõ tọa độ.'); }
