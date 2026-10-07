@@ -69,14 +69,12 @@ header>div{flex:1;min-width:0}
 
 /* Trang chủ kiểu bảng điều khiển: thẻ số liệu, thẻ cảnh báo viền màu; máy tính chia 2 cột */
 .home{display:flex;flex-direction:column}
-#nhanh{order:-1} /* điện thoại: Làm nhanh lên đầu */
 .kpis{display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px}
 .kpi{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px;min-height:88px;box-sizing:border-box;text-align:left;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--rule);border-radius:12px;box-shadow:0 1px 2px oklch(30% .04 255 / .06)}
 .kpi span{display:flex;align-items:center;gap:6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:600}
 .kpi span svg{width:18px;height:18px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .kpi b{font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
 .kpi small{font-size:14px;color:var(--mute)} .kpi small.w{color:var(--late);font-weight:600}
-.kpi.pc{display:none}
 .alerts{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;margin-top:8px}
 .alert{display:flex;flex-direction:column;justify-content:space-between;gap:2px;padding:10px 12px;min-height:76px;box-sizing:border-box;text-decoration:none;color:var(--ink);background:var(--card);border:2px solid var(--a);border-radius:12px}
 .alert span{font-size:13px;font-weight:600;line-height:1.25}
@@ -89,8 +87,7 @@ header>div{flex:1;min-width:0}
 @media (min-width:900px){
   .home{display:grid;grid-template-columns:1fr 1fr;column-gap:20px;align-items:start}
   .home>*{grid-column:1/-1} .home>#sot{grid-column:1} .home>#sap{grid-column:2}
-  #nhanh{order:0}
-  .kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))} .kpi.pc{display:flex}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
 }
 .side .sdx{display:none}
 body.dn .side .sdx{display:flex}
@@ -98,8 +95,7 @@ body.dn .side .sdx{display:flex}
 .cot .nut>*{min-width:0;overflow-wrap:anywhere} /* nút chữ dài (Không cần CO/CQ) xuống dòng, không tràn ô */
 #sotds .doc{margin:0} /* khoảng cách giữa các dòng Còn sót do gap của lưới, không cộng thêm margin */
 .cot .nut{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
-#tct{display:none}
-@media (min-width:900px){#tct:not([hidden]){display:block} #tct .kpi b.nho{font-size:20px}}
+#tct:not([hidden]){display:block} #tct .kpi b.nho{font-size:20px}
 
 /* Biểu đồ trang chủ (chỉ máy tính) và icon màu trên thẻ số liệu */
 :root{--c1:oklch(48% .11 245);--c2:oklch(50% .09 190);--c3:oklch(56% .14 65);--c4:oklch(50% .12 295)}
@@ -107,9 +103,8 @@ body.dn .side .sdx{display:flex}
 .chip{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:color-mix(in oklch,var(--cc) 14%,var(--card))}
 .chip.c1{--cc:var(--c1)}.chip.c2{--cc:var(--c2)}.chip.c3{--cc:var(--c3)}.chip.c4{--cc:var(--c4)}
 .kpi span .chip svg{stroke:var(--cc)}
-.viz{display:none}
-@media (min-width:900px){
-  .viz{display:grid;grid-template-columns:3fr 2fr;gap:12px;margin-top:12px}
+.viz{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
+@media (min-width:900px){.viz{grid-template-columns:3fr 2fr}}
   .viz .card{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:14px 16px;min-width:0}
   .viz .ch{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px} .viz .ch h3{margin:0;font-size:15px} .viz .ch span{font-size:13px;color:var(--mute)}
   .bars{width:100%;height:auto;display:block}
@@ -119,8 +114,6 @@ body.dn .side .sdx{display:flex}
   .donut .track{fill:none;stroke:var(--rule);stroke-width:14} .donut .big{font-size:22px;font-weight:700;fill:var(--ink)} .donut .sm{font-size:10px;fill:var(--mute)}
   .donut ul{list-style:none;margin:0;padding:0;display:grid;gap:6px;flex:1;font-size:14px}
   .donut li{display:flex;align-items:center;gap:8px} .donut li i{width:10px;height:10px;border-radius:3px;flex:none} .donut li b{margin-left:auto;font-variant-numeric:tabular-nums}
-}
-@media (min-width:900px){
   .wxrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--rule)} .wxrow:first-child{border-top:0} .wxrow>b{width:44px;flex:none;font-size:13px}
   .wxd{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:8px;font-size:12px;color:var(--mute);min-width:0;text-align:center} .wxd b{color:var(--ink);font-size:15px} .wxd small{font-size:12px}
   .wxd svg{width:26px;height:26px;flex:none;fill:none;stroke:var(--warn);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -129,5 +122,16 @@ body.dn .side .sdx{display:flex}
   .bve i{font-style:normal;font-weight:700;font-size:12px;padding:2px 6px;border-radius:6px;background:color-mix(in oklch,var(--c1) 14%,var(--card));color:var(--c1);flex:none}
   .bve div{min-width:0;flex:1} .bve div b{display:block;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .bve small{display:block;font-size:12px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .bve em{font-style:normal;font-size:12px;color:var(--mute);flex:none}
   .tien{width:100%;height:6px;border-radius:3px;background:var(--rule);margin-top:4px;overflow:hidden} .tien i{display:block;height:100%;background:var(--ok)}
+.ch h3{white-space:nowrap}
+
+/* Điện thoại (hẹp hơn 900px): cùng các khối với máy tính, xếp 1 cột. Thứ tự: số liệu 2×2, cảnh báo, Làm nhanh, Còn sót, Sắp đến hạn, biểu đồ, thời tiết, bản vẽ, Theo công trình */
+.viz .ch{flex-wrap:wrap}
+@media (max-width:899.98px){
+  #kpi:not([hidden]){display:contents}
+  #kpi>.kpis{order:1;grid-template-columns:1fr 1fr} #kpi>.alerts{order:2} #nhanh{order:3} #sot{order:4} #sap{order:5} #kpi>.viz{order:6} #tct{order:7} #tq{order:8}
+  #nhanh .luoi{grid-template-columns:repeat(4,1fr);gap:6px}
+  #nhanh .luoi a:has(.ic){display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:68px;padding:8px 2px;text-align:center;font-size:12px;line-height:1.2}
+  #nhanh .luoi .ic{grid-row:auto} #nhanh .luoi small{display:none}
+  .bl{font-size:10px} .bl b{font-size:11px}
+  .donut svg{width:110px}
 }
-@media (min-width:900px){.ch h3{white-space:nowrap}}
