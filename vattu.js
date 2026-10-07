@@ -101,8 +101,12 @@ export const chuY = (dm, lo) => lo.map(l => ({ l, c: canLam(l, dm) })).filter(x 
 export const viecMoi = x => `Mời TVGS nghiệm thu: ${x.ten} (${x.ma})`; // tên việc nhắc mời TVGS (do nút Nhắc tôi tạo)
 let locM = false; // mục Lịch nghiệm thu chỉ hiện các dòng chưa có việc mời TVGS (từ thẻ Trang chủ)
 export const locNtMoi = v => { locM = v; if (lich.length) ve(); };
-// Hạng mục xong / tổng theo trang DANHMUC (dòng có mã công việc, trừ mã chung). Xong = cột H (% hoàn thành) là 100%, ghi 1 hoặc 100 (hoặc "100%"); ô trống hay lỗi tính là chưa xong.
-export const hangMuc = cv => { const r = (cv || []).slice(1).filter(r => r[0] && !['CHUNG', 'ATLD', 'VATLIEU'].includes(r[0])); return { tong: r.length, xong: r.filter(x => +x[3] > 0 && +x[6] >= +x[3]).length }; }; // xong = Lũy kế (G) ≥ KL dự toán (D); D trống hoặc 0 thì chưa xong; làm vượt vẫn là xong
+// Tiến độ theo trang DANHMUC (dòng có mã công việc, trừ mã chung). Hạng mục xong = Lũy kế (G) ≥ KL dự toán (D) > 0 (làm vượt vẫn là xong).
+// pct = % theo giá trị: tổng(Giá trị cột I × min(G/D, 1)) / tổng Giá trị; null nếu chưa có cột Giá trị hoặc toàn ô trống (khi đó thẻ chỉ ghi x/y hạng mục).
+export const hangMuc = cv => {
+  const r = (cv || []).slice(1).filter(r => r[0] && !['CHUNG', 'ATLD', 'VATLIEU'].includes(r[0])), gt = x => Math.max(+x[8] || 0, 0), tien = x => +x[3] > 0 ? Math.min(+x[6] / +x[3] || 0, 1) : 0, t = r.reduce((a, x) => a + gt(x), 0);
+  return { tong: r.length, xong: r.filter(x => +x[3] > 0 && +x[6] >= +x[3]).length, pct: t > 0 ? Math.round(100 * r.reduce((a, x) => a + gt(x) * tien(x), 0) / t) : null };
+};
 export const dem = (dm, lo, lich, cv) => { const v = chuY(dm, lo); return { hm: hangMuc(cv), lichN: lich.filter(x => x.n >= 0 && x.n < 14).map(x => x.n), lo: lo.length, cho: lo.filter(l => canLam(l, dm).length).length - v.length, tiep: lich.find(x => x.n >= 0)?.kt || '', moi: lich.filter(x => x.n >= 0 && x.n <= 2).map(viecMoi), nt: lich.filter(x => x.n <= 2).length, cam: v.filter(x => x.c[0].cam).length, can: v.filter(x => !x.c[0].cam).length }; };
 export const demVatTu = async (api, id) => { const { dm, lo, lich, cv } = await docFile(api, id); return dem(dm, lo, lich, cv); };
 
@@ -378,8 +382,9 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vattu.js')) { /
   const lc = lichNt(cv, [NT, [46300, 'CB-1', 'x', '', 'Hẹn lại'], [46301, 'HM1-1', 'x', '', 'Không đạt']], '2026-10-06');
   a.deepEqual(lc.map(x => [x.ma, x.n]), [['CB-1', -3], ['HM1-1', 4]]); // hẹn lại, không đạt vẫn còn; HM1-2 ngày số 46330 = 04/11 (quá 14 ngày); không ngày thì bỏ
   a.deepEqual(lichNt(cv, [NT, [46300, 'CB-1', 'x', '', 'Đạt']], '2026-10-06').map(x => x.ma), ['HM1-1']);
-  a.deepEqual(dem([], [{ ten: 'A', nt: true }], []), { hm: { tong: 0, xong: 0 }, lichN: [], lo: 1, cho: 0, tiep: '', moi: [], nt: 0, cam: 0, can: 0 }); // lô đã nghiệm thu: không cần xử lý, không chờ
-  a.deepEqual(hangMuc([['Mã'], ['A1', '', '', 100, '', '', 105], ['A2', '', '', 10, '', '', 9.99], ['A3', '', '', 10, '', '', 10], ['A4', '', '', 0, '', '', 5], ['A5', '', '', '', '', '', '#DIV/0!'], ['A6'], ['CHUNG', '', '', 1, '', '', 1], ['', 'dòng trống', '', 1, '', '', 1]]), { tong: 6, xong: 2 }); // G≥D là xong (kể cả vượt); thiếu, D=0, lỗi thì chưa; mã chung và dòng không mã bỏ qua
+  a.deepEqual(dem([], [{ ten: 'A', nt: true }], []), { hm: { tong: 0, xong: 0, pct: null }, lichN: [], lo: 1, cho: 0, tiep: '', moi: [], nt: 0, cam: 0, can: 0 }); // lô đã nghiệm thu: không cần xử lý, không chờ
+  a.deepEqual(hangMuc([['Mã'], ['A1', '', '', 100, '', '', 105], ['A2', '', '', 10, '', '', 9.99], ['A3', '', '', 10, '', '', 10], ['A4', '', '', 0, '', '', 5], ['A5', '', '', '', '', '', '#DIV/0!'], ['A6'], ['CHUNG', '', '', 1, '', '', 1], ['', 'dòng trống', '', 1, '', '', 1]]), { tong: 6, xong: 2, pct: null }); // G≥D là xong (kể cả vượt); thiếu, D=0, lỗi thì chưa; mã chung và dòng không mã bỏ qua; không có Giá trị thì pct null
+  a.equal(hangMuc([['Mã'], ['A1', '', '', 10, '', '', 15, '', 600], ['A2', '', '', 10, '', '', 5, '', 400], ['A3', '', '', 0, '', '', 3, '', 0], ['CHUNG', '', '', 1, '', '', 1, '', 999]]).pct, 80); // (600×1 vượt tính 100% + 400×0,5) / 1000 = 80%; mã chung không tính
   a.deepEqual(dem([], [], lc).moi, lc.filter(x => x.n >= 0 && x.n <= 2).map(x => 'Mời TVGS nghiệm thu: ' + x.ten + ' (' + x.ma + ')')); // thẻ Nghiệm thu chưa mời
   a.deepEqual(thieuNt(lc[1], lo, dm), ['Chưa có khối lượng thực hiện trong nhật ký', 'Có 1 lô vật tư KHÔNG ĐẠT chưa xử lý (xem mục Vật tư)']);
   a.deepEqual(lichNt([['Mã'], ['A', 'Cũ', '', 0, '', '01/09/2026'], ['B', 'Vừa qua', '', 0, '', '06/09/2026']], [], '2026-10-06').map(x => x.ma), ['B']); // quá 30 ngày thì bỏ
