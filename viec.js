@@ -5,6 +5,10 @@ export const parse = values => (values || []).slice(1)
   .map((r, i) => ({ ten: r[0] ?? '', ct: r[1] ?? '', han: r[2] ?? '', tt: r[3] ?? '', ghichu: r[4] ?? '', lich: r[5] ?? '', dong: i + 2 }))
   .filter(t => t.ten && t.tt !== 'Xong');
 
+export const tenTatCa = values => new Set((values || []).slice(1).map(r => r[0]).filter(Boolean)); // tên mọi việc, kể cả đã Xong (để biết việc "Mời TVGS" đã làm rồi)
+
+export const dongXong = (ten, ct, han) => [ten, ct, han, 'Xong', '', '']; // dòng VIEC đã làm xong sẵn (theo thứ tự COT)
+
 // Hạn là số ngày của Google Sheets (đọc không định dạng, chắc nhất), yyyy-mm-dd (ô chọn ngày) hoặc dd/mm/yyyy (gõ tay). Ngày không có thật (tháng 13, ngày 32) cho NaN, không đoán.
 const ngay = s => {
   if (typeof s === 'number') return Date.UTC(1899, 11, 30) + Math.round(s) * 864e5;
@@ -32,6 +36,8 @@ export const nhan = n => n < 0 ? `Quá hạn ${-n} ngày` : n === 0 ? 'Hôm nay'
 
 if (typeof process !== 'undefined' && process.argv[1]?.endsWith('viec.js')) { // chạy: node viec.js
   const a = await import('node:assert/strict');
+  a.ok(tenTatCa([COT, ['Mời TVGS nghiệm thu: X (A1)', '', '', 'Xong']]).has('Mời TVGS nghiệm thu: X (A1)')); // việc đã Xong vẫn tính là đã làm
+  a.deepEqual(dongXong('A', 'CT01', '2026-10-07'), ['A', 'CT01', '2026-10-07', 'Xong', '', '']); a.equal(parse([COT, dongXong('A', 'CT01', '2026-10-07')]).length, 0);
   const t = parse([COT, ['A', 'CT01', '2026-10-05', 'Mở'], ['B', 'Chung', '07/10/2026', ''], ['C', 'CT02', '2026-11-30', 'Mở'], ['D', '', '', 'Mở'], ['Đã làm', '', '2026-10-01', 'Xong'], []]);
   a.deepEqual(t.map(x => x.ten), ['A', 'B', 'C', 'D']);
   a.equal(t[3].dong, 5);

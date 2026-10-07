@@ -12,13 +12,13 @@ import { khoiQR, lamQR, moQR, inQR, sauBanMoi as qrSauBanMoi, laBanVe } from './
 import { LOAI as LOAI_HAN, dong as dongHan, COT_HAN } from './han.js';
 import { MAU as MAU_TIN, dmy, macDinh, soan, zalo } from './tin.js';
 import { moPS, ghiPS, docPS, CHO as PS_CHO } from './phatsinh.js';
-import { docFile, chuY, ngayVn as ngayVt, moVatTu, luuVe, themVatTu, demVatTu, soVn, themYc, lapYc, veYc } from './vattu.js';
+import { docFile, chuY, ngayVn as ngayVt, moVatTu, locNtMoi, luuVe, themVatTu, demVatTu, soVn, themYc, lapYc, veYc } from './vattu.js';
 import { moCC, doiThang, sauLap, lapCC } from './chamcong.js';
-import { COT as COT_VIEC, parse as parseViec, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
+import { COT as COT_VIEC, parse as parseViec, tenTatCa, dongXong, chia, nhan as nhanHan, conLai, iso, cong } from './viec.js';
 
 const $ = id => document.getElementById(id);
 const FOLDER = 'application/vnd.google-apps.folder', SHEET = 'application/vnd.google-apps.spreadsheet';
-let token, docs = [], head = [], soId, nhan = [], viec = [], viecId; // nhan: file chờ lưu (từ Zalo/ứng dụng khác, hoặc trong 00_INBOX); viec: việc cần làm (xem viec.js)
+let token, docs = [], head = [], soId, nhan = [], viec = [], tenViec = new Set(), viecId; // nhan: file chờ lưu (từ Zalo/ứng dụng khác, hoặc trong 00_INBOX); viec: việc cần làm (xem viec.js)
 
 const api = async (url, opt = {}) => {
   const r = await fetch(url, { ...opt, headers: { Authorization: 'Bearer ' + token, ...opt.headers } });
@@ -172,7 +172,8 @@ const dongViec = (t, han) => { // một dòng việc có nút Xong (dùng ở m�
   el.append(th, x); return el;
 };
 async function taiViec() {
-  viec = parseViec((await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC`)).values);
+  const vv = (await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC`)).values;
+  viec = parseViec(vv); tenViec = tenTatCa(vv);
   veDsv(); veHan(); veTT();
 }
 // Mục Việc có thể lọc theo thẻ ở Trang chủ (hom: việc hôm nay, qua: quá hạn, sap: sắp đến hạn): số dòng hiện ra phải bằng số trên thẻ (veKpi), kể cả giấy tờ ở veHan.
@@ -188,16 +189,19 @@ function veDsv() {
   const b = $('viecloc'); b.hidden = !locV;
   if (locV) { const bo = Object.assign(document.createElement('button'), { className: 'phu', textContent: 'Xem tất cả', onclick: () => { locV = ''; veDsv(); veHan(); } }); b.replaceChildren(`Đang xem: ${LOC_VIEC[locV]}. `, bo); }
 }
-const tinhKpi = () => { const hom = homNay(), n7 = chia(viec, hom, 7); return { hom: n7.sapDen.filter(t => t.n === 0).length, qua: n7.quaHan.length + hanDs.filter(d => d.n < 0).length, sap: n7.sapDen.filter(t => t.n > 0).length + hanDs.filter(d => d.n >= 0).length }; };
+const tinhKpi = () => { const hom = homNay(), n7 = chia(viec, hom, 7), c = sotCt.find(x => x.id === $('ct').value); return { moi: (c?.vt?.moi || []).filter(t => !tenViec.has(t)).length, hom: n7.sapDen.filter(t => t.n === 0).length, qua: n7.quaHan.length + hanDs.filter(d => d.n < 0).length, sap: n7.sapDen.filter(t => t.n > 0).length + hanDs.filter(d => d.n >= 0).length }; };
 function veKpi() {
   const k = tinhKpi(), c = sotCt.find(x => x.id === $('ct').value);
   $('kpi').hidden = $('sot').hidden; $('kpv').textContent = k.hom; $('als').textContent = k.sap; $('alq').textContent = k.qua;
-  $('kpvs').textContent = k.qua ? `${k.qua} quá hạn` : ''; $('kpvs').className = k.qua ? 'w' : '';
+  let xx = 0; try { xx = +localStorage.getItem('xx:' + homNay()) || 0; } catch {}
+  $('kpvs').textContent = `hôm nay đã xong ${xx} việc`; $('kpvs').className = '';
+  $('alm').textContent = k.moi; $('alm').parentNode.hidden = !k.moi; // thẻ Nghiệm thu chưa mời chỉ hiện khi có
   $('kpa').textContent = c?.anh === null ? '–' : anhDs.length; // đúng số ảnh ở mục Xếp ảnh (gồm cả 00_INBOX ngoài cùng)
 }
 document.querySelectorAll('[data-l]').forEach(a => a.onclick = () => { locV = a.dataset.l; locTay = location.hash !== '#viec'; veDsv(); veHan(); });
 let locTay = false;
-addEventListener('hashchange', () => { if (!locTay && locV) { locV = ''; veDsv(); veHan(); } locTay = false; }); // vào mục Việc từ nơi khác thì hiện đủ, không lọc
+document.querySelector('.alert.b').onclick = () => { locTay = location.hash !== '#ntl'; locNtMoi(true); };
+addEventListener('hashchange', () => { if (!locTay) { locNtMoi(false); if (locV) { locV = ''; veDsv(); veHan(); } } locTay = false; }); // vào mục Việc từ nơi khác thì hiện đủ, không lọc
 
 // Giấy tờ có ngày hết hiệu lực (cột "Hạn hiệu lực" trong sổ đăng ký) còn ≤ 30 ngày, đã quá hạn, hoặc ngày không đọc được; gom từ mọi công trình.
 let hanDs = [], hanLoi = [];
@@ -282,6 +286,7 @@ async function xong(t) {
     if (hang !== t.ten) { await taiViec(); return say('Danh sách việc vừa thay đổi, đã tải lại. Bấm Xong lần nữa.'); } // sổ bị sửa/đổi thứ tự ở nơi khác
     await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC!D${t.dong}?valueInputOption=RAW`, { ...json({ values: [['Xong']] }), method: 'PUT' });
     if (t.lich) await api(`${LICH}/${t.lich}`, { method: 'DELETE' }).catch(() => {}); // việc xong rồi thì thôi nhắc; lỗi Lịch không chặn
+    try { if (conLai(t.han, homNay()) === 0) { const k = 'xx:' + homNay(); localStorage.setItem(k, +(localStorage.getItem(k) || 0) + 1); } } catch {} // đếm việc có hạn hôm nay đã bấm Xong (máy này) cho thẻ Việc hôm nay
     await taiViec(); say(`Xong: ${t.ten}`);
   } catch (e) { say(e.message); }
 }
@@ -749,7 +754,7 @@ const tnCtx = () => {
   return { tenCT, hom: dmy(hom), mai: dmy(cong(hom, 1)), tt: ttDong, thoiTiet: { hom: tqDs[0] && tomTat(tqDs[0]), mai: tqDs[1] && tomTat(tqDs[1]) },
     viecMai: viec.filter(t => (!t.ct || t.ct === 'Chung' || t.ct === ten) && conLai(t.han, hom) === 1).map(t => t.ten) };
 };
-let tnV = {}, tnSan = null; // tnSan: ô điền sẵn khi mở từ chỗ khác (Mời TVGS ở Lịch nghiệm thu)
+let tnV = {}, tnSan = null, tnMoi = ''; // tnMoi: tên việc "Mời TVGS" sẽ ghi Xong khi anh bấm Chép tin mời // tnSan: ô điền sẵn khi mở từ chỗ khác (Mời TVGS ở Lịch nghiệm thu)
 function tnVe(moi) {
   const m = MAU_TIN.find(x => x.id === $('tnm').value), c = tnCtx();
   if (moi) {
@@ -765,13 +770,18 @@ function tnVe(moi) {
   $('tnt').value = soan(m, tnV, c);
   const z = zalo(m, c); $('tnz').hidden = !z; if (z) { $('tnz').href = z.href; $('tnz').textContent = 'Mở Zalo của ' + z.ten; }
 }
-const moiNt = (nd, ngay) => { tnSan = { nd, ngay }; $('tnm').value = 'nt'; if ($('tnd').open) tnVe(true); else $('tnd').open = true; location.hash = 'tn'; };
+const moiNt = (nd, ngay, viecMoi) => { tnSan = { nd, ngay }; tnMoi = viecMoi; $('tnm').value = 'nt'; if ($('tnd').open) tnVe(true); else $('tnd').open = true; location.hash = 'tn'; };
 $('tnm').replaceChildren(...MAU_TIN.map(m => new Option(m.ten, m.id)));
-$('tnm').onchange = () => tnVe(true);
+$('tnm').onchange = () => { tnMoi = ''; tnVe(true); };
 $('tnd').ontoggle = () => { if ($('tnd').open) tnVe(true); };
 $('tnc').onclick = async () => {
-  try { await navigator.clipboard.writeText($('tnt').value); $('tnms').textContent = 'Đã chép. Mở Zalo rồi dán vào khung tin.'; }
-  catch { $('tnt').select(); $('tnms').textContent = document.execCommand?.('copy') ? 'Đã chép. Mở Zalo rồi dán vào khung tin.' : 'Máy không cho chép tự động: giữ vào khung tin, chọn Sao chép.'; }
+  let ok = true;
+  try { await navigator.clipboard.writeText($('tnt').value); } catch { $('tnt').select(); ok = !!document.execCommand?.('copy'); }
+  $('tnms').textContent = ok ? 'Đã chép. Mở Zalo rồi dán vào khung tin.' : 'Máy không cho chép tự động: giữ vào khung tin, chọn Sao chép.';
+  if (ok && tnMoi && !tenViec.has(tnMoi)) { // chép tin mời nghiệm thu = đã mời: ghi việc đã Xong để thẻ Nghiệm thu chưa mời tự hết
+    const t = tnMoi; tnMoi = '';
+    try { await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, json({ values: [dongXong(t, $('ct').selectedOptions[0].text, homNay())] })); await taiViec(); if (hv) moVatTu(hv); } catch (e) { $('tnms').textContent += ' Chưa ghi được việc đã mời: ' + e.message; }
+  }
 };
 
 // Nhớ đăng nhập: giữ token (~1 giờ) trên máy để mở lại app khỏi đăng nhập; hết hạn thì xin lại âm thầm, không được mới hiện nút.
@@ -810,7 +820,7 @@ function doiCT() {
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
   const ct = $('ct').value;
   Promise.all([chonCT(), taiTT()]).then(() => $('ct').value === ct && moPS({ api, json, taiLen, thuMuc, ctx: () => ({ so: soId, ct: $('ct').value, ma: maCT({ name: $('ct').selectedOptions[0].text }), tenCT: tnCtx().tenCT, tt: ttDong }) })); // sổ phát sinh cần sổ đăng ký và danh bạ
-  moQR(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu(hv = { api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), thuMucMau: () => thuMuc(gocId, MAU), dsMau: d => dsMau(g, d), lapMau: (m, ten, dir) => lap(g, m, ten, dir, ttTin()), tenCt: () => tnCtx().tenCT, moiNt, sot: sotCap, id: nkId }), moCC(hv); }); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
+  moQR(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu(hv = { api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), daMoi: t => tenViec.has(t), thuMucMau: () => thuMuc(gocId, MAU), dsMau: d => dsMau(g, d), lapMau: (m, ten, dir) => lap(g, m, ten, dir, ttTin()), tenCt: () => tnCtx().tenCT, moiNt, sot: sotCap, id: nkId }), moCC(hv); }); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
 khoiQR({ api, ls, thuMuc, json, tim, blob, ct: () => $('ct').value, say, hoi: t => confirm(t), q, FOLDER });
