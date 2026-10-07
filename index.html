@@ -31,6 +31,8 @@
   .ycv{display:grid;grid-template-columns:1fr 6em;gap:8px}
   #ycl label{color:var(--ink);font-size:16px;margin:0;display:flex;gap:10px;align-items:center}
   #ycl input[type=checkbox]{min-height:24px;width:24px;flex:none}
+  #hs label{color:var(--ink);font-size:16px;margin:12px 0;display:flex;gap:10px;align-items:center;min-height:44px}
+  #hs input[type=checkbox]{min-height:24px;width:24px;flex:none}
   [aria-invalid=true]{border:2px solid oklch(55% .22 27)}
   .nut{display:grid;gap:8px}
   #nhan button{display:block;margin-top:8px;max-width:100%;height:auto;min-height:44px;padding:8px 12px;white-space:normal;text-align:left;overflow-wrap:anywhere}
@@ -303,6 +305,7 @@
     <h2>Hồ sơ nghiệm thu, hoàn công</h2>
     <p>Mỗi công việc trong tiến độ cần đủ: biên bản nghiệm thu, kết quả thí nghiệm, bản vẽ hoàn công, ảnh thi công, nhật ký. Biên bản nghiệm thu và nhật ký app tự tích; các mục khác anh chọn Chưa, Có hoặc Không cần.</p>
     <p id="hsms" role="status"></p>
+    <label><input type="checkbox" id="hsloc"> Chỉ việc còn thiếu hồ sơ</label>
     <div id="hsds"></div>
   </section>
   <section id="cc" data-s="cc" hidden>
