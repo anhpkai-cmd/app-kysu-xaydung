@@ -188,11 +188,13 @@ function veDsv() {
   const b = $('viecloc'); b.hidden = !locV;
   if (locV) { const bo = Object.assign(document.createElement('button'), { className: 'phu', textContent: 'Xem tất cả', onclick: () => { locV = ''; veDsv(); veHan(); } }); b.replaceChildren(`Đang xem: ${LOC_VIEC[locV]}. `, bo); }
 }
-const tinhKpi = () => { const hom = homNay(), n7 = chia(viec, hom, 7); return { hom: n7.sapDen.filter(t => t.n === 0).length, qua: n7.quaHan.length + hanDs.filter(d => d.n < 0).length, sap: n7.sapDen.filter(t => t.n > 0).length + hanDs.filter(d => d.n >= 0).length }; };
+const tinhKpi = () => { const hom = homNay(), n7 = chia(viec, hom, 7), c = sotCt.find(x => x.id === $('ct').value); return { moi: (c?.vt?.moi || []).filter(t => !viec.some(v => v.ten === t)).length, hom: n7.sapDen.filter(t => t.n === 0).length, qua: n7.quaHan.length + hanDs.filter(d => d.n < 0).length, sap: n7.sapDen.filter(t => t.n > 0).length + hanDs.filter(d => d.n >= 0).length }; };
 function veKpi() {
   const k = tinhKpi(), c = sotCt.find(x => x.id === $('ct').value);
   $('kpi').hidden = $('sot').hidden; $('kpv').textContent = k.hom; $('als').textContent = k.sap; $('alq').textContent = k.qua;
-  $('kpvs').textContent = k.qua ? `${k.qua} quá hạn` : ''; $('kpvs').className = k.qua ? 'w' : '';
+  let xx = 0; try { xx = +localStorage.getItem('xx:' + homNay()) || 0; } catch {}
+  $('kpvs').textContent = xx ? `${xx} xong` : ''; $('kpvs').className = '';
+  $('alm').textContent = k.moi; $('alm').parentNode.hidden = !k.moi; // thẻ Nghiệm thu chưa mời chỉ hiện khi có
   $('kpa').textContent = c?.anh === null ? '–' : anhDs.length; // đúng số ảnh ở mục Xếp ảnh (gồm cả 00_INBOX ngoài cùng)
 }
 document.querySelectorAll('[data-l]').forEach(a => a.onclick = () => { locV = a.dataset.l; locTay = location.hash !== '#viec'; veDsv(); veHan(); });
@@ -282,6 +284,7 @@ async function xong(t) {
     if (hang !== t.ten) { await taiViec(); return say('Danh sách việc vừa thay đổi, đã tải lại. Bấm Xong lần nữa.'); } // sổ bị sửa/đổi thứ tự ở nơi khác
     await api(`https://sheets.googleapis.com/v4/spreadsheets/${viecId}/values/VIEC!D${t.dong}?valueInputOption=RAW`, { ...json({ values: [['Xong']] }), method: 'PUT' });
     if (t.lich) await api(`${LICH}/${t.lich}`, { method: 'DELETE' }).catch(() => {}); // việc xong rồi thì thôi nhắc; lỗi Lịch không chặn
+    try { const k = 'xx:' + homNay(); localStorage.setItem(k, +(localStorage.getItem(k) || 0) + 1); } catch {} // đếm việc xong trong ngày (máy này) cho thẻ Việc hôm nay
     await taiViec(); say(`Xong: ${t.ten}`);
   } catch (e) { say(e.message); }
 }

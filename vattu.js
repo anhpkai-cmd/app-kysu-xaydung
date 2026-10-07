@@ -91,7 +91,8 @@ export async function docFile(api, id) {
 }
 // Cho khung Còn sót: số lô cấm dùng và số lô chưa xong (bỏ qua lô chỉ còn chờ kết quả thí nghiệm, vì đó là việc của phòng thí nghiệm).
 export const chuY = (dm, lo) => lo.map(l => ({ l, c: canLam(l, dm) })).filter(x => x.c.length && (x.c[0].cam || !x.c.every(y => y.chu.startsWith('Chờ kết quả')))); // lô cần chú ý: cấm dùng hoặc chưa xong thủ tục; dem đếm, sổ bàn giao liệt kê
-const dem = (dm, lo, lich) => { const v = chuY(dm, lo); return { nt: lich.filter(x => x.n <= 2).length, cam: v.filter(x => x.c[0].cam).length, can: v.filter(x => !x.c[0].cam).length }; };
+export const viecMoi = x => `Mời TVGS nghiệm thu: ${x.ten} (${x.ma})`; // tên việc nhắc mời TVGS (do nút Nhắc tôi tạo)
+export const dem = (dm, lo, lich) => { const v = chuY(dm, lo); return { moi: lich.filter(x => x.n <= 2).map(viecMoi), nt: lich.filter(x => x.n <= 2).length, cam: v.filter(x => x.c[0].cam).length, can: v.filter(x => !x.c[0].cam).length }; };
 export const demVatTu = async (api, id) => { const { dm, lo, lich } = await docFile(api, id); return dem(dm, lo, lich); };
 
 // ---- Phần giao diện. h: hàm dùng chung của app.js (api, ls, thuMuc, json, taiLen, taoViec) và id file nhật ký ----
@@ -135,7 +136,7 @@ function ve() {
   }));
   $('ntds').replaceChildren(...(lich.length ? [] : [tao('p', 'Không có công việc nào cần nghiệm thu trong 14 ngày tới (theo ngày kết thúc trong trang DANHMUC của file nhật ký).')]), ...lich.map(x => {
     const el = tao('div', '', 'doc cot'), th = tao('div'), nut = tao('div', '', 'nut'), viec = `Nghiệm thu: ${x.ten} (${x.ma})`;
-    th.append(tao('div', x.ten), tao('small', `${x.ma} · kết thúc theo tiến độ ${ngayVn(x.kt)} · ${nhan(x.n)}`), ...thieuNt(x, lo, dm).map(t => tao('div', '• ' + t)));
+    th.append(tao('div', x.ten), ...(x.n <= 2 && !h.coViec?.(viecMoi(x)) ? [tao('strong', 'Chưa có việc mời TVGS')] : []), tao('small', `${x.ma} · kết thúc theo tiến độ ${ngayVn(x.kt)} · ${nhan(x.n)}`), ...thieuNt(x, lo, dm).map(t => tao('div', '• ' + t)));
     if (!h.coViec?.(viec)) nut.append(nutBam('Nhắc tôi', 'Nhắc nghiệm thu ' + x.ten, async () => { // kèm việc mời TVGS trước 1 ngày: bước hay quên nhất
       const tenCt = $('ct').selectedOptions[0].text, g1 = await h.taoViec(`Mời TVGS nghiệm thu: ${x.ten} (${x.ma})`, tenCt, x.n > 1 ? cong(x.kt, -1) : homNay()), g = (await h.taoViec(viec, tenCt, x.n > 0 ? x.kt : homNay())) || g1;
       await moVatTu(h); ms(g || `Đã thêm 2 việc: mời TVGS trước 1 ngày và “${viec}”. Google Lịch sẽ nhắc.`);
@@ -367,6 +368,7 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('vattu.js')) { /
   const lc = lichNt(cv, [NT, [46300, 'CB-1', 'x', '', 'Hẹn lại'], [46301, 'HM1-1', 'x', '', 'Không đạt']], '2026-10-06');
   a.deepEqual(lc.map(x => [x.ma, x.n]), [['CB-1', -3], ['HM1-1', 4]]); // hẹn lại, không đạt vẫn còn; HM1-2 ngày số 46330 = 04/11 (quá 14 ngày); không ngày thì bỏ
   a.deepEqual(lichNt(cv, [NT, [46300, 'CB-1', 'x', '', 'Đạt']], '2026-10-06').map(x => x.ma), ['HM1-1']);
+  a.deepEqual(dem([], [], lc).moi, lc.filter(x => x.n <= 2).map(x => 'Mời TVGS nghiệm thu: ' + x.ten + ' (' + x.ma + ')')); // thẻ Nghiệm thu chưa mời
   a.deepEqual(thieuNt(lc[1], lo, dm), ['Chưa có khối lượng thực hiện trong nhật ký', 'Có 1 lô vật tư KHÔNG ĐẠT chưa xử lý (xem mục Vật tư)']);
   a.deepEqual(lichNt([['Mã'], ['A', 'Cũ', '', 0, '', '01/09/2026'], ['B', 'Vừa qua', '', 0, '', '06/09/2026']], [], '2026-10-06').map(x => x.ma), ['B']); // quá 30 ngày thì bỏ
   a.deepEqual(tuanToi(cv, '2026-10-06'), ['Lợp mái (11/10/2026)']); // CB-1, HM1-1 đã bắt đầu; ô Bắt đầu trống thì bỏ
