@@ -763,6 +763,7 @@ const KHO = 'dn', dangNhap = (opt = {}, callback = vao) => google.accounts.oauth
 async function vao(resp) {
   if (resp.error) return say('Đăng nhập không được: ' + resp.error);
   token = resp.access_token; $('vao').hidden = true;
+  try { localStorage.removeItem('dx'); } catch {}
   try { localStorage.setItem(KHO, JSON.stringify({ token, het: resp.het ?? Date.now() + (resp.expires_in - 60) * 1000 })); } catch {}
   try {
     const [goc] = await ls(`name='${ROOT_NAME}' and mimeType='${FOLDER}'`);
@@ -803,7 +804,17 @@ const khoa = (id, fn, sau) => async () => {
 
 $('vao').onclick = () => {
   if (!CLIENT_ID) return say('Chưa điền CLIENT_ID trong config.js (xem README).');
-  dangNhap();
+  let dx; try { dx = localStorage.getItem('dx'); } catch {}
+  dangNhap(dx ? { prompt: 'select_account' } : {}); // vừa đăng xuất: cho chọn lại tài khoản
+};
+// Đăng xuất / đổi tài khoản: thu hồi mã đăng nhập, quên đăng nhập trên máy này. Nháp nhật ký và file chờ lưu không bị xóa, nên báo trước nếu còn.
+$('dx').onclick = async () => {
+  let nhap = 0; try { nhap = Object.keys(localStorage).filter(k => k.startsWith('nk:')).length; } catch {}
+  const cho = window.caches ? (await (await caches.open('chia-se')).keys()).length : 0;
+  if (!confirm((nhap || cho ? `Máy còn ${nhap ? nhap + ' nhật ký nháp chưa lưu' : ''}${nhap && cho ? ' và ' : ''}${cho ? cho + ' file chờ lưu' : ''}. Chúng vẫn nằm trên máy này, nhưng nên lưu xong trước khi đổi tài khoản.\n\n` : '') + 'Đăng xuất khỏi Google trên máy này?')) return;
+  try { localStorage.removeItem(KHO); localStorage.setItem('dx', '1'); } catch {}
+  try { if (token) google.accounts.oauth2.revoke(token, () => location.reload()); else location.reload(); } catch { location.reload(); }
+  setTimeout(() => location.reload(), 1500); // thu hồi không trả lời (mất mạng) thì vẫn tải lại
 };
 try { // mở lại app: còn token thì dùng luôn, hết hạn thì thử xin lại không hỏi gì
   const luu = JSON.parse(localStorage.getItem(KHO));
