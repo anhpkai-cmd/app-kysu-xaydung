@@ -14,6 +14,7 @@ import { MAU as MAU_TIN, dmy, macDinh, soan, zalo } from './tin.js';
 import { moPS, locPSCho, ghiPS, docPS, CHO as PS_CHO } from './phatsinh.js';
 import { docFile, chuY, ngayVn as ngayVt, moVatTu, locNtMoi, luuVe, themVatTu, demVatTu, soVn, themYc, lapYc, veYc } from './vattu.js';
 import { moCC, doiThang, sauLap, lapCC } from './chamcong.js';
+import { moHS } from './hoso.js';
 import { COT as COT_VIEC, parse as parseViec, tenTatCa, dongXong, chia, nhan as nhanHan, conLai, iso, cong, dem14 } from './viec.js';
 
 const $ = id => document.getElementById(id);
@@ -195,7 +196,7 @@ const tinhKpi = () => { const hom = homNay(), n7 = chia(viec, hom, 7), c = sotCt
 function veBieuDo(qua, vt) {
   const hom = homNay(), cnt = dem14(viec.map(t => conLai(t.han, hom)), hanDs.map(d => d.n), sotCt.flatMap(c => c.vt?.lichN || [])), bars = [qua, ...cnt], mx = Math.max(1, ...bars);
   const ngay = i => cong(hom, i), thu = i => ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][new Date(ngay(i) + 'T00:00:00Z').getUTCDay()];
-  $('bdn').textContent = `${cnt.reduce((a, b) => a + b, 0)} mục từ hôm nay đến ${ngayVt(ngay(13)).slice(0, 5)} · cột đỏ: quá hạn`;
+  $('bdn').textContent = `${cnt.reduce((a, b) => a + b, 0)} mục từ hôm nay đến ${ngayVt(ngay(13)).slice(0, 5)} · cột đỏ: quá hạn (việc và giấy tờ)`;
   $('bdc').innerHTML = `<svg class="bars" viewBox="0 0 540 110" role="img" aria-label="Số mục có hạn mỗi ngày trong 14 ngày tới">${bars.map((v, i) => `<rect class="cb ${i === 0 ? 'late' : i === 1 ? 'today' : ''}" x="${i * 36 + 4}" y="${108 - Math.round(v / mx * 100)}" width="28" height="${Math.round(v / mx * 100)}" rx="4"/>`).join('')}</svg><div class="bl">${bars.map((v, i) => `<span class="${i === 1 ? 'now' : ''}"><b>${v || ''}</b><br>${i === 0 ? 'Trễ' : thu(i - 1) + '<br>' + ngay(i - 1).slice(8)}</span>`).join('')}</div>`;
   if (!vt) return $('bdv').textContent = vt === null ? 'Chưa đọc được vật tư.' : 'Chưa có số liệu vật tư.';
   const seg = [['Cần xử lý', vt.cam + vt.can, 'var(--late)'], ['Chờ kết quả', vt.cho, 'var(--warn)'], ['Xong', vt.lo - vt.cam - vt.can - vt.cho, 'var(--ok)']], tot = vt.lo || 1;
@@ -844,7 +845,7 @@ function doiCT() {
   $('vct').value = $('ct').selectedOptions[0].text; // việc mới mặc định thuộc công trình đang chọn (vẫn đổi được sang Chung)
   const ct = $('ct').value;
   Promise.all([chonCT(), taiTT()]).then(() => $('ct').value === ct && moPS({ cho: n => { psCho = n; veKpi(); }, api, json, taiLen, thuMuc, ctx: () => ({ so: soId, ct: $('ct').value, ma: maCT({ name: $('ct').selectedOptions[0].text }), tenCT: tnCtx().tenCT, tt: ttDong }) })); // sổ phát sinh cần sổ đăng ký và danh bạ
-  moQR(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu(hv = { api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), daMoi: t => tenViec.has(t), thuMucMau: () => thuMuc(gocId, MAU), dsMau: d => dsMau(g, d), lapMau: (m, ten, dir) => lap(g, m, ten, dir, ttTin()), tenCt: () => tnCtx().tenCT, moiNt, sot: sotCap, id: nkId }), moCC(hv); }); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
+  moQR(); moNhatKy().then(() => { taiAnh(); if ($('ct').value === ct) moVatTu(hv = { api, ls, thuMuc, json, taiLen, taoViec, coViec: t => viec.some(v => v.ten === t), daMoi: t => tenViec.has(t), thuMucMau: () => thuMuc(gocId, MAU), dsMau: d => dsMau(g, d), lapMau: (m, ten, dir) => lap(g, m, ten, dir, ttTin()), tenCt: () => tnCtx().tenCT, moiNt, sot: sotCap, id: nkId }), moCC(hv), moHS(hv); }); taiTQ(); // vật tư nằm trong file nhật ký: chờ nhật ký tìm (và đổi Excel sang Sheet) xong, khỏi đổi hai lần
 }
 // Khóa nút trong lúc đang ghi: bấm hai lần khi sóng yếu không ghi hai dòng (hai sự kiện Lịch).
 khoiQR({ api, ls, thuMuc, json, tim, blob, ct: () => $('ct').value, say, hoi: t => confirm(t), q, FOLDER });

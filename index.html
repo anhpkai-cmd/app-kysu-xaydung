@@ -283,7 +283,7 @@
     <h2>Hồ sơ và tin nhắn</h2>
     <div class="luoi"><a href="#tn"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z M10 9a2 2 0 1 1 3 1.7c-.7.4-1 .8-1 1.3 M12 14h.01"/></svg></span>Tin nhắn Zalo<small>Soạn sẵn</small></a><a href="#ps"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v5 M7 3v18h7 M14 18h7 M18 15l3 3-3 3"/></svg></span>Phát sinh<small>Yêu cầu miệng, chỉ đạo</small></a></div>
     <h2>Công trường</h2>
-    <div class="luoi"><a href="#vt"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10"/></svg></span>Vật tư<small>Nhập, lấy mẫu</small></a><a href="#ntl"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3h8v3H8z M6 4.5H5V21h14V4.5h-1 M9 14l2 2 4-4"/></svg></span>Lịch nghiệm thu<small>Sắp tới</small></a><a href="#cc"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16v15H4z M4 10h16 M8 3v4 M16 3v4 M8 14h2 M14 14h2 M8 18h2"/></svg></span>Chấm công<small>Tổ đội theo tháng</small></a><a href="#tt"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z M12 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M8 17c.5-2 2-3 4-3s3.5 1 4 3"/></svg></span>Thông tin công trình<small>Liên hệ, họp CĐT</small></a></div>
+    <div class="luoi"><a href="#vt"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10"/></svg></span>Vật tư<small>Nhập, lấy mẫu</small></a><a href="#ntl"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3h8v3H8z M6 4.5H5V21h14V4.5h-1 M9 14l2 2 4-4"/></svg></span>Lịch nghiệm thu<small>Sắp tới</small></a><a href="#cc"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16v15H4z M4 10h16 M8 3v4 M16 3v4 M8 14h2 M14 14h2 M8 18h2"/></svg></span>Chấm công<small>Tổ đội theo tháng</small></a><a href="#tt"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z M12 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M8 17c.5-2 2-3 4-3s3.5 1 4 3"/></svg></span>Thông tin công trình<small>Liên hệ, họp CĐT</small></a><a href="#hs"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z M14 3v5h5 M9 13l2 2 4-4"/></svg></span>Hồ sơ nghiệm thu<small>Đủ hồ sơ hoàn công</small></a></div>
     <h2>Khác</h2>
     <div class="luoi"><a href="#cai"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></span>Cài đặt<small>Giao diện</small></a></div>
   </section>
@@ -294,6 +294,12 @@
     <h2>Tài khoản</h2>
     <p><button id="dx" class="phu">Đăng xuất / Đổi tài khoản</button></p>
     <p class="hint">Dùng khi muốn vào bằng tài khoản Google khác. Nháp nhật ký chưa lưu vẫn ở lại trên máy.</p>
+  </section>
+  <section id="hs" data-s="hs" hidden>
+    <h2>Hồ sơ nghiệm thu, hoàn công</h2>
+    <p>Mỗi công việc trong tiến độ cần đủ: biên bản nghiệm thu, kết quả thí nghiệm, bản vẽ hoàn công, ảnh thi công, nhật ký. Biên bản nghiệm thu và nhật ký app tự tích; các mục khác anh chọn Chưa, Có hoặc Không cần.</p>
+    <p id="hsms" role="status"></p>
+    <div id="hsds"></div>
   </section>
   <section id="cc" data-s="cc" hidden>
     <h2>Chấm công tổ đội</h2>
