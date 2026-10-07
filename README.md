@@ -108,6 +108,10 @@ Trong mục Vật tư, **+ Phiếu yêu cầu vật tư** gợi ý các công vi
 - Phiếu lưu ở `05_VATTU_DOITHICONG/PHIEU_YEUCAU`, tên `CTxx-YC-VT-yyyymmdd-01_PhieuYeuCauVatTu`. Mỗi vật tư thêm một việc "<vật tư> về (phiếu ...)" vào ngày cần.
 - Gửi: app hỏi trước khi mở link cho người có link xem, rồi mở Chia sẻ (Zalo) với nội dung phiếu và link.
 
+## Hồ sơ nghiệm thu, hoàn công
+
+Màn **Hồ sơ nghiệm thu** (ô trong tab Thêm) liệt kê từng công việc trong trang `DANHMUC` của file nhật ký, mỗi việc có 5 mục hồ sơ: Biên bản nghiệm thu, Kết quả thí nghiệm vật liệu, mẫu, Bản vẽ hoàn công, Ảnh thi công, Nhật ký thi công. App tự tích **Biên bản nghiệm thu** (trang `NGHIEMTHU` có dòng Đạt cho mã đó) và **Nhật ký thi công** (cột Lũy kế thực hiện lớn hơn 0); ba mục còn lại anh chọn Chưa, Có hoặc Không cần (mục không liên quan đến việc đó thì chọn Không cần). Đầu màn ghi bao nhiêu công việc đã đủ hồ sơ. Mỗi lần chọn app thêm một dòng vào trang `HOSO` (tự tạo khi ghi lần đầu: Ngày, Mã công việc, Hồ sơ, Tình trạng); dòng sau cùng của mỗi mục là tình trạng hiện tại, không sửa dòng cũ. Danh sách mục ghi cứng cho mọi công việc, app chưa tự soát ảnh hay bản vẽ trong Drive. `node hoso.js` tự kiểm tra.
+
 ## Chấm công tổ đội
 
 Mục "Chấm công tổ đội" cộng số người từng nhóm đã ghi trong Nhật ký ngày (trang `NGAY`) theo tháng: công = số người, nghỉ nửa buổi tính nửa công, nghỉ cả ngày không tính. App báo các ngày trong tháng chưa ghi nhật ký (trừ Chủ nhật). **Lập bảng công gửi tổ trưởng ký** tạo Trang tính `CTxx-CC-yyyymm-01_BangCong` trong `05_VATTU_DOITHICONG/CHAMCONG` (từng ngày, tổng công, chỗ ký), hỏi trước khi mở link cho người có link xem, rồi mở Chia sẻ (Zalo). App không ghi gì vào nhật ký. `node chamcong.js` tự kiểm tra.
